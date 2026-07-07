@@ -20,12 +20,22 @@ function permissions_summary(?string $json): string
         return '—';
     }
     if (in_array('all', $arr, true)) {
-        return 'Tüm modüller';
+        return 'Tüm modüller (Süper Admin)';
     }
     $modules = all_modules();
-    $labels = [];
+    // Modüle göre işlem sayısını topla (hem kaba hem ince anahtarları anlar).
+    $byModule = [];
     foreach ($arr as $k) {
-        $labels[] = $modules[$k] ?? $k;
+        $k = (string) $k;
+        $dot = strpos($k, '.');
+        $mod = $dot !== false ? substr($k, 0, $dot) : $k;
+        $byModule[$mod] = $byModule[$mod] ?? 0;
+        if ($dot !== false) { $byModule[$mod]++; }
+    }
+    $labels = [];
+    foreach ($byModule as $mod => $count) {
+        $label = $modules[$mod] ?? $mod;
+        $labels[] = $count > 0 ? ($label . ' (' . $count . ')') : $label;
     }
     return implode(', ', $labels);
 }

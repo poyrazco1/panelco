@@ -10,23 +10,91 @@ declare(strict_types=1);
 require_once __DIR__ . '/auth.php';
 
 /**
- * Sistemdeki modüller ve etiketleri.
- * Yeni modül eklerken buraya bir satır eklemek yeterlidir.
+ * İşlem (action) etiketleri — modül bazlı yetki matrisinde kullanılır.
+ */
+function permission_action_labels(): array
+{
+    return [
+        'view'     => 'Görüntüle',
+        'create'   => 'Ekle',
+        'edit'     => 'Düzenle',
+        'delete'   => 'Sil',
+        'export'   => 'Dışa Aktar',
+        'import'   => 'İçe Aktar',
+        'print'    => 'Yazdır',
+        'pdf'      => 'PDF',
+        'mail'     => 'Mail',
+        'whatsapp' => 'WhatsApp',
+        'approve'  => 'Onayla',
+        'status'   => 'Durum',
+        'settings' => 'Ayarlar',
+        'reveal'   => 'Şifre Göster',
+        'upload'   => 'Yükle',
+    ];
+}
+
+/**
+ * Modül → [etiket, grup, işlem yetkileri] kaydı (whitelist).
+ * Yetki sistemi hem modül bazlı (eski) hem işlem bazlı (yeni) çalışır:
+ *   - Eski/kaba anahtar:  "service"        (modülün tamamı)
+ *   - Yeni/ince anahtar:  "service.status" (yalnızca ilgili işlem)
+ * Bir modülün herhangi bir "modul.*" yetkisi, o modülü görünür kılar (can('modul')).
+ */
+function module_action_registry(): array
+{
+    return [
+        'dashboard'       => ['Genel Bakış',           'Panel',       ['view']],
+        'customers'       => ['Müşteriler',            'Satış',       ['view','create','edit','delete','export','import']],
+        'quotes'          => ['Teklifler',             'Satış',       ['view','create','edit','delete','pdf','mail','whatsapp','print']],
+        'orders'          => ['Siparişler',            'Satış',       ['view','create','edit','delete','status','print','pdf']],
+        'reconciliation'  => ['Mutabakat',             'Satış',       ['view','create','edit','delete','mail','whatsapp','print','pdf']],
+        'suppliers'       => ['Tedarikçiler',          'Satın Alma',  ['view','create','edit','delete','export']],
+        'tsoft_products'  => ['T-Soft Ürünler',        'Satın Alma',  ['view']],
+        'service'         => ['Teknik Servis',         'Operasyon',   ['view','create','edit','delete','status','mail','whatsapp','print','pdf']],
+        'rma'             => ['İade-Değişim Yönetimi', 'Operasyon',   ['view','create','edit','delete','import','export','status','print']],
+        'commissions'     => ['Primler',               'İK / Finans', ['view','create','edit','delete','export','print']],
+        'reports'         => ['Raporlar',              'Raporlama',   ['view','export','print']],
+        'leads'           => ['Lead Yönetimi',         'Satış',       ['view','create','edit','delete','export','whatsapp','mail']],
+        'inventory'       => ['Envanter / Demirbaş',   'Operasyon',   ['view','create','edit','delete','export','print']],
+        'file_manager'    => ['Dosya Yöneticisi',      'Araçlar',     ['view','upload','delete']],
+        'password_vault'  => ['Şifre Kasası',          'Araçlar',     ['view','reveal','create','edit','delete']],
+        'integrations'    => ['Entegrasyonlar',        'Sistem',      ['view','edit']],
+        'currency'        => ['Kur Çevirici',          'Araçlar',     ['view']],
+        'brands'          => ['Markalar',              'Operasyon',   ['view','create','edit','delete']],
+        'shipping'        => ['Kargo Yöntemleri',      'Operasyon',   ['view','create','edit','delete']],
+        'personnel'       => ['Personeller',           'İK / Finans', ['view','create','edit','delete','export']],
+        'leave'           => ['İzin / İK',             'İK / Finans', ['view','create','edit','delete','approve','export']],
+        'attendance'      => ['Puantaj',               'İK / Finans', ['view','edit','export']],
+        'settings'        => ['Ayarlar',               'Sistem',      ['view','edit','settings']],
+    ];
+}
+
+/**
+ * Sistemdeki modüller ve etiketleri (geriye dönük uyumlu düz liste).
  */
 function all_modules(): array
 {
-    return [
-        'dashboard' => 'Genel Bakış',
-        'currency'  => 'Kur Çevirici',
-        'settings'  => 'Ayarlar',
-        'shipping'  => 'Kargo Yöntemleri',
-        'brands'    => 'Markalar',
-        'personnel' => 'Personeller',
-        'service'   => 'Teknik Servis',
-        'rma'       => 'İade-Değişim Yönetimi',
-        'leave'     => 'İzin / İK',
-        'attendance'=> 'Puantaj',
-    ];
+    $out = [];
+    foreach (module_action_registry() as $key => $meta) {
+        $out[$key] = $meta[0];
+    }
+    return $out;
+}
+
+/**
+ * Geçerli tüm yetki anahtarlarının kümesi: kaba modül + ince işlem anahtarları.
+ * @return array<string,bool>
+ */
+function valid_permission_keys(): array
+{
+    $keys = [];
+    foreach (module_action_registry() as $mod => $meta) {
+        $keys[$mod] = true; // kaba anahtar (geriye uyum)
+        foreach ($meta[2] as $action) {
+            $keys[$mod . '.' . $action] = true;
+        }
+    }
+    return $keys;
 }
 
 /**
@@ -40,27 +108,71 @@ function current_permissions(): array
 }
 
 /**
- * Kullanıcı belirtilen modüle erişebilir mi?
+ * Kullanıcı belirtilen yetkiye sahip mi? Hem kaba ("service") hem ince
+ * ("service.status") anahtarları destekler; tam geriye dönük uyumludur.
+ *
+ *  - "all" → her şey.
+ *  - Tam eşleşme (kaba veya ince anahtar).
+ *  - İnce sorgu ("service.status"): kaba modül yetkisi ("service") de geçer.
+ *  - Kaba sorgu ("service"): modülün herhangi bir "service.*" yetkisi de geçer.
  */
-function can(string $moduleKey): bool
+function can(string $key): bool
 {
     if (!is_logged_in()) {
         return false;
     }
     $perms = current_permissions();
-    return in_array('all', $perms, true) || in_array($moduleKey, $perms, true);
+    if (in_array('all', $perms, true)) { return true; }
+    if (in_array($key, $perms, true))  { return true; }
+
+    $dot = strpos($key, '.');
+    if ($dot !== false) {
+        // İnce sorgu: kaba modül yetkisi tüm işlemleri kapsar.
+        $module = substr($key, 0, $dot);
+        return in_array($module, $perms, true);
+    }
+
+    // Kaba sorgu: modülün herhangi bir işlem yetkisi modülü görünür kılar.
+    $prefix = $key . '.';
+    $len = strlen($prefix);
+    foreach ($perms as $p) {
+        if (is_string($p) && strncmp($p, $prefix, $len) === 0) { return true; }
+    }
+    return false;
+}
+
+/** Kısayol: can("$module.$action"). */
+function can_action(string $module, string $action): bool
+{
+    return can($module . '.' . $action);
+}
+
+/**
+ * Belirli bir işlem yetkisini zorunlu kılar; yoksa 403.
+ */
+function require_action(string $module, string $action): void
+{
+    require_permission($module . '.' . $action);
 }
 
 /**
  * Geçerli yetki anahtarlarını temizler. "all" varsa yalnızca ["all"].
+ * Hem kaba modül hem ince işlem anahtarlarını kabul eder (whitelist).
  */
 function sanitize_permissions(array $keys): string
 {
     if (in_array('all', $keys, true)) {
         return json_encode(['all']);
     }
-    $valid = array_keys(all_modules());
-    return json_encode(array_values(array_intersect($valid, $keys)));
+    $valid = valid_permission_keys();
+    $out = [];
+    foreach ($keys as $k) {
+        $k = is_string($k) ? trim($k) : '';
+        if ($k !== '' && isset($valid[$k]) && !in_array($k, $out, true)) {
+            $out[] = $k;
+        }
+    }
+    return json_encode(array_values($out));
 }
 
 /**

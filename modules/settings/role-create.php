@@ -47,6 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'INSERT INTO roles (name, slug, description, permissions, is_system)
                  VALUES (:n, :s, :d, :p, 0)'
             )->execute([':n' => $name, ':s' => $slug, ':d' => ($desc !== '' ? $desc : null), ':p' => $perms]);
+            log_activity('role_create', 'role', (int) db()->lastInsertId(), $slug, 'success', 'Rol oluşturuldu: ' . $name);
             flash('success', 'Rol oluşturuldu.');
             redirect('modules/settings/roles.php');
         } catch (Throwable $e) {
@@ -71,7 +72,7 @@ layout_top('Yeni Rol', 'settings');
     <div class="alert alert-error"><?= e($er) ?></div>
 <?php endforeach; ?>
 
-<div class="card" style="max-width:680px">
+<div class="card" style="max-width:900px">
     <div class="card-body">
         <form method="post" action="<?= e(url('modules/settings/role-create.php')) ?>"
               data-lock-on-submit novalidate>
@@ -90,20 +91,7 @@ layout_top('Yeni Rol', 'settings');
 
             <div class="form-group">
                 <label>Yetkiler</label>
-                <label class="check-item" style="display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid var(--border);border-radius:6px;margin-bottom:10px">
-                    <input type="checkbox" name="perms[]" value="all" <?= $allChecked ? 'checked' : '' ?> style="width:auto">
-                    <span><strong>Tüm modüller</strong> (tam yetki)</span>
-                </label>
-                <div class="check-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px">
-                    <?php foreach ($modules as $key => $label): ?>
-                        <label class="check-item" style="display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid var(--border);border-radius:6px">
-                            <input type="checkbox" name="perms[]" value="<?= e($key) ?>"
-                                   <?= in_array($key, $selected, true) ? 'checked' : '' ?> style="width:auto">
-                            <span><?= e($label) ?></span>
-                        </label>
-                    <?php endforeach; ?>
-                </div>
-                <div class="field-hint">“Tüm modüller” seçiliyse diğer seçimler dikkate alınmaz.</div>
+                <?php $isSystem = false; require __DIR__ . '/_permissions-picker.php'; ?>
             </div>
 
             <div class="form-actions">

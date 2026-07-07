@@ -24,6 +24,8 @@ if (!pref_is_valid_sidebar($uiSidebar)) { $uiSidebar = 'expanded'; }
     <meta name="robots" content="noindex, nofollow">
     <meta name="color-scheme" content="light dark">
     <title><?= e(page_title()) ?> · <?= e(SITE_NAME) ?></title>
+    <?php $__favicon = function_exists('pub_favicon_url') ? pub_favicon_url() : null; ?>
+    <?php if ($__favicon): ?><link rel="icon" type="<?= e(favicon_mime($__favicon)) ?>" href="<?= e($__favicon) ?>"><?php endif; ?>
     <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>">
 </head>
 <body class="app sidebar-<?= e($uiSidebar) ?>">

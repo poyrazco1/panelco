@@ -60,6 +60,41 @@ function mail_is_configured(): bool
     return mail_config_status()['ok'];
 }
 
+/** app_settings'ten tekil değer okur (mail görünen gönderen override'ları için). */
+function mail_setting(string $key): string
+{
+    static $cache = [];
+    if (array_key_exists($key, $cache)) { return $cache[$key]; }
+    $val = '';
+    try {
+        $st = db()->prepare('SELECT setting_value FROM app_settings WHERE setting_key = ? LIMIT 1');
+        $st->execute([$key]);
+        $v = $st->fetchColumn();
+        if ($v !== false) { $val = trim((string) $v); }
+    } catch (Throwable $e) {
+        log_error('mail_setting: ' . $e->getMessage());
+    }
+    return $cache[$key] = $val;
+}
+
+/**
+ * Görünen From e-postası: app_settings 'mail_from_email' geçerliyse onu, yoksa
+ * config MAIL_FROM'u kullanır. (SMTP giriş hesabı DEĞİŞMEZ; bu yalnızca From başlığı.)
+ */
+function mail_from_email(): string
+{
+    $s = mail_setting('mail_from_email');
+    if ($s !== '' && is_valid_email($s)) { return $s; }
+    return (string) MAIL_FROM;
+}
+
+/** Görünen From taban adı: app_settings 'mail_from_name' doluysa onu, yoksa MAIL_FROM_NAME. */
+function mail_from_name_base(): string
+{
+    $s = mail_setting('mail_from_name');
+    return $s !== '' ? $s : (string) MAIL_FROM_NAME;
+}
+
 /**
  * Mail gönderimini yapan kullanıcıyı (actor) normalize eder.
  *
@@ -183,7 +218,7 @@ function mail_resolve_actor_email(array $u): string
  */
 function mail_from_display_name(string $actorName): string
 {
-    $base = defined('MAIL_FROM_NAME') ? trim((string) MAIL_FROM_NAME) : 'PoyrazTech Panel';
+    $base = mail_from_name_base();
     $actorName = trim($actorName);
     if ($actorName === '') { return $base; }
     return $base !== '' ? ($actorName . ' - ' . $base) : $actorName;
@@ -249,7 +284,8 @@ function mail_send(string $to, string $toName, string $subject, string $body, ar
     $actor = mail_build_actor($opts['sender_user'] ?? null);
 
     // From görünen adı actor'a göre değişir; Reply-To actor'a döner.
-    $fromEmail   = (string) MAIL_FROM;
+    // From e-postası: app_settings override → yoksa config MAIL_FROM (SMTP giriş hesabı değil).
+    $fromEmail   = mail_from_email();
     $fromName    = mail_from_display_name($actor['name']);
     $allowFrom   = defined('MAIL_ALLOW_ACTOR_FROM') && MAIL_ALLOW_ACTOR_FROM === true;
     if ($allowFrom && $actor['email'] !== '') { $fromEmail = $actor['email']; }
@@ -268,8 +304,8 @@ function mail_send(string $to, string $toName, string $subject, string $body, ar
             if ($replyName === '') { $replyName = (string) MAIL_FROM_NAME; }
             $replyFallback = 'MAIL_REPLY_TO';
         } else {
-            $replyEmail = (string) MAIL_FROM;
-            $replyName  = (string) MAIL_FROM_NAME;
+            $replyEmail = mail_from_email();
+            $replyName  = mail_from_name_base();
             $replyFallback = 'MAIL_FROM';
         }
     }

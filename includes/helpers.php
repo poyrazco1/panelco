@@ -386,6 +386,46 @@ if (!function_exists('pub_logo_url')) {
     }
 }
 
+if (!function_exists('pub_favicon_url')) {
+    /**
+     * Panel favicon URL'i. app_settings 'company_favicon' anahtarında göreli yol
+     * tutulur; dosya varsa asset URL döner. layout-header.php üzerinden basılır.
+     */
+    function pub_favicon_url(): ?string
+    {
+        static $cached = false;
+        static $val = null;
+        if ($cached) { return $val; }
+        $cached = true;
+        try {
+            if (!function_exists('db')) { return $val = null; }
+            $st = db()->prepare("SELECT setting_value FROM app_settings WHERE setting_key = 'company_favicon' LIMIT 1");
+            $st->execute();
+            $path = trim((string) ($st->fetchColumn() ?: ''));
+            if ($path === '') { return $val = null; }
+            $rel = ltrim($path, '/');
+            if (is_file(APP_ROOT . '/' . $rel)) { return $val = asset($rel); }
+        } catch (Throwable $e) {
+            // sessiz
+        }
+        return $val = null;
+    }
+}
+
+if (!function_exists('favicon_mime')) {
+    /** Uzantıya göre favicon MIME tipi. */
+    function favicon_mime(string $url): string
+    {
+        $ext = strtolower((string) pathinfo(parse_url($url, PHP_URL_PATH) ?: $url, PATHINFO_EXTENSION));
+        return match ($ext) {
+            'ico'          => 'image/x-icon',
+            'svg'          => 'image/svg+xml',
+            'jpg', 'jpeg'  => 'image/jpeg',
+            default        => 'image/png',
+        };
+    }
+}
+
 if (!function_exists('log_activity')) {
     /**
      * İşlem denetim logu (activity_logs). Asla exception fırlatmaz.

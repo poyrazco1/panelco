@@ -77,6 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ':d' => ($desc !== '' ? $desc : null),
                     ':p' => $perms, ':id' => $id,
                 ]);
+            log_activity('role_edit', 'role', $id, $slug, 'success', 'Rol güncellendi: ' . $name);
             flash('success', 'Rol güncellendi.');
             redirect('modules/settings/roles.php');
         } catch (Throwable $e) {
@@ -101,7 +102,7 @@ layout_top('Rolü Düzenle', 'settings');
     <div class="alert alert-error"><?= e($er) ?></div>
 <?php endforeach; ?>
 
-<div class="card" style="max-width:680px">
+<div class="card" style="max-width:900px">
     <div class="card-body">
         <form method="post" action="<?= e(url('modules/settings/role-edit.php')) ?>"
               data-lock-on-submit novalidate>
@@ -121,24 +122,7 @@ layout_top('Rolü Düzenle', 'settings');
 
             <div class="form-group">
                 <label>Yetkiler</label>
-                <?php if ($isSystem): ?>
-                    <div class="alert alert-info">Bu bir sistem rolüdür; tam yetkiye sahiptir ve yetkileri değiştirilemez.</div>
-                <?php else: ?>
-                    <label class="check-item" style="display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid var(--border);border-radius:6px;margin-bottom:10px">
-                        <input type="checkbox" name="perms[]" value="all" <?= $allChecked ? 'checked' : '' ?> style="width:auto">
-                        <span><strong>Tüm modüller</strong> (tam yetki)</span>
-                    </label>
-                    <div class="check-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px">
-                        <?php foreach ($modules as $key => $label): ?>
-                            <label class="check-item" style="display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid var(--border);border-radius:6px">
-                                <input type="checkbox" name="perms[]" value="<?= e($key) ?>"
-                                       <?= in_array($key, $selected, true) ? 'checked' : '' ?> style="width:auto">
-                                <span><?= e($label) ?></span>
-                            </label>
-                        <?php endforeach; ?>
-                    </div>
-                    <div class="field-hint">“Tüm modüller” seçiliyse diğer seçimler dikkate alınmaz.</div>
-                <?php endif; ?>
+                <?php require __DIR__ . '/_permissions-picker.php'; ?>
             </div>
 
             <div class="form-actions">

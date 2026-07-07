@@ -870,3 +870,42 @@ INSERT IGNORE INTO `notification_templates` (`template_key`, `title`, `channel`,
      'Merhaba {personnel_name}, şirketimizdeki {year}. yılınızı kutlarız. Emekleriniz ve katkılarınız için teşekkür ederiz.\n\n{company_name}'),
     ('anniversary', 'Çalışma Yıl Dönümü — E-posta', 'email', 'Çalışma Yıl Dönümünüz Kutlu Olsun',
      'Merhaba {personnel_name},\n\nŞirketimizdeki {year}. yılınızı kutlarız. Emekleriniz ve katkılarınız için teşekkür ederiz.\n\n{company_name}');
+
+/* =========================================================================
+   FAZ A — Detaylı rol/yetki sistemi + genişletilmiş şirket ayarları
+   (İdempotent: mevcut kayıtları ezmez; INSERT IGNORE ile eklenir.)
+   Yetkiler işlem bazlı anahtarlarla saklanır: "modul.islem"
+   ====================================================================== */
+
+-- Varsayılan roller (mevcut roller 1-5 korunur; yenileri eklenir)
+INSERT IGNORE INTO `roles` (`name`, `slug`, `description`, `permissions`, `is_system`) VALUES
+    ('Süper Admin', 'super-admin', 'Tüm modül ve işlemlerde tam yetki', '["all"]', 1),
+    ('Teknik Servis', 'teknik-servis', 'Servis ve iade/değişim operasyonu',
+     '["dashboard.view","service.view","service.create","service.edit","service.status","service.mail","service.whatsapp","service.print","service.pdf","rma.view","tsoft_products.view"]', 0),
+    ('Satın Alma', 'satin-alma', 'Tedarikçi ve satın alma',
+     '["dashboard.view","suppliers.view","suppliers.create","suppliers.edit","tsoft_products.view","orders.view","reports.view"]', 0),
+    ('İhracat', 'ihracat', 'İhracat / yurtdışı satış',
+     '["dashboard.view","customers.view","quotes.view","quotes.create","quotes.edit","quotes.pdf","quotes.mail","quotes.whatsapp","orders.view","reports.view"]', 0),
+    ('İnsan Kaynakları', 'insan-kaynaklari', 'Personel, izin ve prim',
+     '["dashboard.view","personnel.view","personnel.create","personnel.edit","leave.view","leave.approve","attendance.view","commissions.view"]', 0),
+    ('Sadece Görüntüleme', 'sadece-goruntuleme', 'Yalnızca görüntüleme yetkisi',
+     '["dashboard.view","customers.view","quotes.view","orders.view","suppliers.view","service.view","rma.view","reports.view","inventory.view"]', 0);
+
+-- Genişletilmiş şirket / genel ayar anahtarları (boş varsayılan; mevcut değeri ezmez)
+INSERT IGNORE INTO `app_settings` (`setting_key`, `setting_value`) VALUES
+    ('company_name',        ''),
+    ('company_legal_name',  ''),
+    ('company_tax_office',  ''),
+    ('company_tax_no',      ''),
+    ('company_tax',         ''),
+    ('company_address',     ''),
+    ('company_phone',       ''),
+    ('company_whatsapp',    ''),
+    ('company_email',       ''),
+    ('company_website',     ''),
+    ('company_logo',        ''),
+    ('company_favicon',     ''),
+    ('default_currency',    'TRY'),
+    ('default_vat',         '20'),
+    ('mail_from_name',      ''),
+    ('mail_from_email',     '');
