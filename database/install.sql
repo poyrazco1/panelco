@@ -1233,3 +1233,50 @@ CREATE TABLE IF NOT EXISTS `integration_logs` (
     PRIMARY KEY (`id`),
     KEY `idx_integration_logs_key` (`int_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+/* =========================================================================
+   FAZ D — Lead Yönetimi (Chrome eklentisi güvenli API ile besleyebilir)
+   ====================================================================== */
+
+CREATE TABLE IF NOT EXISTS `leads` (
+    `id`                   INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `company_name`         VARCHAR(190) NOT NULL,
+    `contact_name`         VARCHAR(150) DEFAULT NULL,
+    `phone`                VARCHAR(40)  DEFAULT NULL,
+    `whatsapp`             VARCHAR(40)  DEFAULT NULL,
+    `email`                VARCHAR(190) DEFAULT NULL,
+    `website`              VARCHAR(190) DEFAULT NULL,
+    `instagram`            VARCHAR(190) DEFAULT NULL,
+    `maps_url`             VARCHAR(500) DEFAULT NULL,
+    `sector`               VARCHAR(120) DEFAULT NULL,
+    `city`                 VARCHAR(80)  DEFAULT NULL,
+    `district`             VARCHAR(80)  DEFAULT NULL,
+    `source`               VARCHAR(80)  DEFAULT NULL,
+    `notes`                TEXT         DEFAULT NULL,
+    `status`               VARCHAR(30)  NOT NULL DEFAULT 'new',
+    `assigned_personnel_id` INT UNSIGNED DEFAULT NULL,
+    `last_message_at`      DATETIME     DEFAULT NULL,
+    `is_deleted`           TINYINT(1)   NOT NULL DEFAULT 0,
+    `created_by`           INT UNSIGNED DEFAULT NULL,
+    `updated_by`           INT UNSIGNED DEFAULT NULL,
+    `created_at`           DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`           DATETIME     NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_leads_status` (`status`),
+    KEY `idx_leads_deleted` (`is_deleted`),
+    KEY `idx_leads_phone` (`phone`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `lead_api_log` (
+    `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `ip`         VARCHAR(64)  DEFAULT NULL,
+    `result`     VARCHAR(20)  NOT NULL DEFAULT 'ok',
+    `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_lead_api_time` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Lead ayarları (API token + WhatsApp şablonu)
+INSERT IGNORE INTO `app_settings` (`setting_key`, `setting_value`) VALUES
+    ('leads_api_token', ''),
+    ('lead_wa_template', 'Merhaba {yetkili}, {firma} olarak sizinle iletişime geçmek istiyoruz.');

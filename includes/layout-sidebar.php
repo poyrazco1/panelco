@@ -46,6 +46,8 @@ $items = [
         ['prefix' => ['modules/reconciliation/']]],
     ['tsoft_products', 'T-Soft Ürünler', 'modules/tsoft-products/index.php', 'store',
         ['prefix' => ['modules/tsoft-products/']]],
+    ['leads', 'Lead Yönetimi', 'modules/leads/index.php', 'user-check',
+        ['prefix' => ['modules/leads/']]],
 
     ['__group', 'Teknik Servis', '', '', []],
     ['service', 'Servis Kabul',          'modules/service/intake.php', 'clipboard-plus',
