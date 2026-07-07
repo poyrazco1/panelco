@@ -29,7 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $subject = 'PoyrazTech Panel SMTP Test';
     $body    = "Bu e-posta PoyrazTech Panel SMTP yapılandırmasını test etmek için gönderilmiştir.";
 
-    $res = mail_send($to, 'PoyrazTech Panel', $subject, $body, ['type' => 'test']);
+    $res = mail_send($to, 'PoyrazTech Panel', $subject, $body, ['type' => 'test', 'sender_user' => mail_session_user()]);
     if ($res['ok']) {
         flash('success', 'SMTP test maili başarıyla gönderildi.');
     } elseif (($res['error'] ?? '') === 'not_configured') {

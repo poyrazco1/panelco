@@ -540,11 +540,26 @@ function log_notification(array $d): void
 /**
  * Kutlama maili gönderimi — merkezî mail servisine (PHPMailer/SMTP) delege eder.
  * PHP mail() KULLANILMAZ. Yalnızca gerçek SMTP send() true dönerse başarı döner.
+ * $senderUser: mail'i gönderen oturum kullanıcısı (From adı + Reply-To için).
  * @return array{ok:bool, msg:string, error:?string}
  */
-function notif_send_mail(string $to, string $toName, string $subject, string $body, string $type = 'celebration'): array
+function notif_send_mail(string $to, string $toName, string $subject, string $body, string $type = 'celebration', ?array $senderUser = null): array
 {
-    return mail_send($to, $toName, $subject, $body, ['type' => $type]);
+    return mail_send($to, $toName, $subject, $body, ['type' => $type, 'sender_user' => $senderUser]);
+}
+
+/**
+ * Kutlama maili gövdesine, işlemi yapan kullanıcının imzasını ekler.
+ * Kullanıcı adı yoksa yalnızca "PoyrazTech Ekibi" yazılır.
+ */
+function notif_mail_signature(string $body, array $senderUser): string
+{
+    $name = trim((string) ($senderUser['full_name'] ?? ''));
+    if ($name === '') { $name = trim((string) ($senderUser['username'] ?? '')); }
+    $sig = "\n\n--\nSevgiler,\n";
+    if ($name !== '') { $sig .= $name . "\n"; }
+    $sig .= 'PoyrazTech Ekibi';
+    return rtrim($body) . $sig;
 }
 
 function notif_celebration_vars(array $personnel, string $type): array
@@ -583,8 +598,12 @@ function send_celebration_email(int $personnelId, string $type): array
     $subject = notif_render_template((string) ($tpl['subject'] ?? ''), $vars);
     $body = notif_render_template((string) $tpl['body'], $vars);
 
-    // 4) Gerçek SMTP gönderimi — başarı yalnızca send() true dönerse.
-    $res = notif_send_mail($to, (string) ($p['full_name'] ?? ''), $subject, $body, $type);
+    // 4) İşlemi yapan oturum kullanıcısını al → From adı + Reply-To + imza.
+    $senderUser = mail_session_user();
+    $body = notif_mail_signature($body, $senderUser);
+
+    // 5) Gerçek SMTP gönderimi — başarı yalnızca send() true dönerse.
+    $res = notif_send_mail($to, (string) ($p['full_name'] ?? ''), $subject, $body, $type, $senderUser);
 
     log_notification([
         'notification_type' => $type, 'channel' => 'email', 'personnel_id' => $personnelId,

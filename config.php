@@ -49,6 +49,12 @@ if (!defined('MAIL_REPLY_TO_NAME')) { define('MAIL_REPLY_TO_NAME', ''); }
 
 if (!defined('TEST_MAIL_TO')) { define('TEST_MAIL_TO', 'panel@poyraztech.com'); }
 
+// Gönderen (From) e-postasını işlemi yapan kullanıcının adresine ayarlamayı dener.
+// Çoğu SMTP sunucusu, kimlik doğrulanan hesaptan (SMTP_USERNAME) farklı bir From
+// adresini reddeder. Bu yüzden VARSAYILAN GÜVENLİ MOD kapalıdır: From daima
+// MAIL_FROM olur, kullanıcı adı From görünen adında + Reply-To olarak taşınır.
+if (!defined('MAIL_ALLOW_ACTOR_FROM')) { define('MAIL_ALLOW_ACTOR_FROM', false); }
+
 // Placeholder sabiti — mail servisi bu değeri "yapılandırılmamış" olarak kabul eder.
 if (!defined('SMTP_PASSWORD_PLACEHOLDER')) { define('SMTP_PASSWORD_PLACEHOLDER', 'BURAYA_MAIL_SIFRESI_YAZILACAK'); }
 
