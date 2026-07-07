@@ -1265,3 +1265,9 @@ body.att-modal-open { overflow: hidden; }
 /* Şifre kasası — şifre gösterme kutusu */
 .vault-secret { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 12px; background: var(--surface-3); border: 1px solid var(--border); border-radius: var(--radius-sm); }
 .vault-secret code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 14px; color: var(--text); word-break: break-all; }
+
+/* Dosya yöneticisi */
+.fm-crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 14px; font-size: 13.5px; }
+.fm-crumbs .fm-sep { color: var(--muted); }
+.fm-actions { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 14px; }
+.fm-inline { display: flex; gap: 8px; align-items: center; margin: 0; }
