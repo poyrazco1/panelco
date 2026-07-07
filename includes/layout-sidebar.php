@@ -40,6 +40,10 @@ $items = [
         ['prefix' => ['modules/suppliers/']]],
     ['quotes', 'Teklifler', 'modules/quotes/index.php', 'file-text',
         ['prefix' => ['modules/quotes/']]],
+    ['orders', 'Siparişler', 'modules/orders/index.php', 'clipboard-list',
+        ['prefix' => ['modules/orders/']]],
+    ['reconciliation', 'Mutabakat', 'modules/reconciliation/index.php', 'file-pen',
+        ['prefix' => ['modules/reconciliation/']]],
     ['tsoft_products', 'T-Soft Ürünler', 'modules/tsoft-products/index.php', 'store',
         ['prefix' => ['modules/tsoft-products/']]],
 
