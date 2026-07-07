@@ -38,6 +38,8 @@ $items = [
         ['prefix' => ['modules/customers/']]],
     ['suppliers', 'Tedarikçiler', 'modules/suppliers/index.php', 'warehouse',
         ['prefix' => ['modules/suppliers/']]],
+    ['quotes', 'Teklifler', 'modules/quotes/index.php', 'file-text',
+        ['prefix' => ['modules/quotes/']]],
     ['tsoft_products', 'T-Soft Ürünler', 'modules/tsoft-products/index.php', 'store',
         ['prefix' => ['modules/tsoft-products/']]],
 

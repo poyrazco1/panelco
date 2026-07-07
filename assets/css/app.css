@@ -1239,3 +1239,25 @@ body.att-modal-open { overflow: hidden; }
 .dl-k { color: var(--muted); }
 .dl-v { color: var(--text); word-break: break-word; }
 @media (max-width: 560px) { .dl-row { grid-template-columns: 1fr; gap: 2px; } .dl-k { font-size: 12px; } }
+
+/* =========================================================================
+   Teklif / Sipariş — satır tablosu, T-Soft arama, toplam kutusu
+   ====================================================================== */
+.ts-search { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+.ts-search input[type="text"] { flex: 1 1 280px; }
+.ts-results { margin-bottom: 12px; }
+.ts-results .ts-note { padding: 8px 10px; font-size: 13px; color: var(--muted); background: var(--surface-3); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.ts-results .ts-error { color: var(--error-fg); background: var(--error-bg); border-color: var(--error-bg); }
+.ts-table { margin: 0; }
+.ts-table th, .ts-table td { padding: 7px 10px; font-size: 12.5px; }
+
+.quote-lines input { width: 100%; padding: 6px 8px; font-size: 13px; box-sizing: border-box; }
+.quote-lines td { padding: 6px 6px; vertical-align: middle; }
+.quote-lines .line-total { font-weight: 600; }
+.quote-totals { margin-top: 14px; }
+.quote-total-table { border-collapse: collapse; min-width: 280px; margin-top: 10px; }
+.quote-total-table td { padding: 6px 12px; border-bottom: 1px solid var(--border); font-size: 13.5px; }
+.quote-total-table td:last-child { text-align: right; font-weight: 600; white-space: nowrap; }
+.quote-total-table tr.grand td { border-top: 2px solid var(--primary); border-bottom: 0; font-size: 15px; font-weight: 700; color: var(--primary); }
+
+.doc-party { font-size: 13px; color: #333; padding: 10px 0; border-bottom: 1px solid #eee; }
