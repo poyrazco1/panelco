@@ -54,6 +54,8 @@ $groups = [
         ['title' => 'Tedarikçiler', 'icon' => 'warehouse', 'desc' => 'Ürün tedarikçilerinin yönetimi.', 'soon' => true, 'kw' => 'tedarikci supplier'],
     ],
     'Entegrasyon Ayarları' => [
+        ['title' => 'Entegrasyon Merkezi', 'icon' => 'plug', 'perm' => 'integrations', 'desc' => 'PayTR, Santral, Parmak İzi, Logo ERP ve T-Soft bağlantı ayarları + test.', 'url' => url('modules/integrations/index.php'), 'kw' => 'entegrasyon integration paytr santral parmak izi logo erp tsoft api'],
+        ['title' => 'PayTR Ödeme', 'icon' => 'credit-card', 'perm' => 'integrations', 'desc' => 'PayTR merchant bilgileri, test/canlı mod ve dönüş adresleri.', 'url' => url('modules/integrations/edit.php?key=paytr'), 'kw' => 'paytr odeme payment merchant'],
         ['title' => 'T-Soft Entegrasyonu', 'icon' => 'plug', 'desc' => 'İleride ürünler ve siparişler buradan çekilecek.', 'soon' => true, 'kw' => 'tsoft entegrasyon urun siparis'],
         ['title' => 'Kargo Takip Entegrasyonları', 'icon' => 'route', 'desc' => 'Kargo takip link şablonları.', 'soon' => true, 'kw' => 'kargo takip link entegrasyon'],
         ['title' => 'WhatsApp Mesaj Şablonları', 'icon' => 'message-circle', 'desc' => 'Servis ve iade/değişim bilgilendirme mesajları.', 'soon' => true, 'kw' => 'whatsapp mesaj sablon'],

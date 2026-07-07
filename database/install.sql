@@ -1200,3 +1200,36 @@ CREATE TABLE IF NOT EXISTS `password_vault_access` (
     PRIMARY KEY (`id`),
     KEY `idx_vault_access_vault` (`vault_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+/* =========================================================================
+   FAZ D — Entegrasyon ayarları + PayTR (secret alanlar AES-256-GCM şifreli)
+   ====================================================================== */
+
+CREATE TABLE IF NOT EXISTS `integrations` (
+    `id`           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `int_key`      VARCHAR(40)  NOT NULL,
+    `name`         VARCHAR(120) NOT NULL,
+    `is_active`    TINYINT(1)   NOT NULL DEFAULT 0,
+    `api_url`      VARCHAR(255) DEFAULT NULL,
+    `username`     VARCHAR(190) DEFAULT NULL,
+    `secret_enc`   TEXT         DEFAULT NULL,   -- şifreli JSON (token/key/salt/şifre)
+    `config_json`  TEXT         DEFAULT NULL,   -- şifresiz ek ayarlar (JSON)
+    `last_test_at` DATETIME     DEFAULT NULL,
+    `last_error`   VARCHAR(500) DEFAULT NULL,
+    `created_at`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`   DATETIME     NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_integrations_key` (`int_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `integration_logs` (
+    `id`          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `int_key`     VARCHAR(40)  NOT NULL,
+    `action`      VARCHAR(40)  NOT NULL DEFAULT 'test',
+    `status`      VARCHAR(20)  NOT NULL DEFAULT 'info',
+    `message`     VARCHAR(500) DEFAULT NULL,
+    `user_id`     INT UNSIGNED DEFAULT NULL,
+    `created_at`  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_integration_logs_key` (`int_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

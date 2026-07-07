@@ -85,6 +85,8 @@ $items = [
         ['prefix' => ['modules/password-vault/']]],
 
     ['__group', 'Ayarlar', '', '', []],
+    ['integrations', 'Entegrasyonlar', 'modules/integrations/index.php', 'plug',
+        ['prefix' => ['modules/integrations/']]],
     ['settings', 'Genel Ayarlar', 'modules/settings/index.php', 'settings',
         ['prefix' => ['modules/settings/',
                       // Ayar niteliğindeki servis alt sayfaları da Genel Ayarlar'ı aktif etsin
