@@ -30,6 +30,16 @@ function permission_action_labels(): array
         'settings' => 'Ayarlar',
         'reveal'   => 'Şifre Göster',
         'upload'   => 'Yükle',
+        // Sevkiyat modülü işlemleri
+        'assign'              => 'Ata',
+        'complete'            => 'Tamamla',
+        'photo_upload'        => 'Fotoğraf Yükle',
+        'reports'             => 'Raporlar',
+        'route_plan'          => 'Rota Planı',
+        'collection_view'     => 'Toplama Gör',
+        'collection_create'   => 'Toplama Ekle',
+        'collection_edit'     => 'Toplama Düzenle',
+        'collection_complete' => 'Toplama Tamamla',
     ];
 }
 
@@ -52,6 +62,8 @@ function module_action_registry(): array
         'tsoft_products'  => ['T-Soft Ürünler',        'Satın Alma',  ['view']],
         'service'         => ['Teknik Servis',         'Operasyon',   ['view','create','edit','delete','status','mail','whatsapp','print','pdf']],
         'rma'             => ['İade-Değişim Yönetimi', 'Operasyon',   ['view','create','edit','delete','import','export','status','print']],
+        'shipment_addresses' => ['Sevkiyat Adresleri', 'Sevkiyat',   ['view','create','edit','delete']],
+        'shipments'       => ['Sevkiyat Takibi',       'Sevkiyat',   ['view','create','edit','delete','status','assign','complete','photo_upload','reports','route_plan','whatsapp','collection_view','collection_create','collection_edit','collection_complete']],
         'commissions'     => ['Primler',               'İK / Finans', ['view','create','edit','delete','export','print']],
         'reports'         => ['Raporlar',              'Raporlama',   ['view','export','print']],
         'leads'           => ['Lead Yönetimi',         'Satış',       ['view','create','edit','delete','export','whatsapp','mail']],
@@ -59,6 +71,7 @@ function module_action_registry(): array
         'file_manager'    => ['Dosya Yöneticisi',      'Araçlar',     ['view','upload','delete']],
         'password_vault'  => ['Şifre Kasası',          'Araçlar',     ['view','reveal','create','edit','delete']],
         'integrations'    => ['Entegrasyonlar',        'Sistem',      ['view','edit']],
+        'help'            => ['Yardım Merkezi',        'Sistem',      ['view','create','edit','delete','settings']],
         'currency'        => ['Kur Çevirici',          'Araçlar',     ['view']],
         'brands'          => ['Markalar',              'Operasyon',   ['view','create','edit','delete']],
         'shipping'        => ['Kargo Yöntemleri',      'Operasyon',   ['view','create','edit','delete']],

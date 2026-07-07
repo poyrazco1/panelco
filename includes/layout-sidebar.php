@@ -87,6 +87,8 @@ $items = [
         ['prefix' => ['modules/password-vault/']]],
 
     ['__group', 'Ayarlar', '', '', []],
+    ['help', 'Yardım Merkezi', 'modules/help/index.php', 'help-circle',
+        ['prefix' => ['modules/help/']]],
     ['integrations', 'Entegrasyonlar', 'modules/integrations/index.php', 'plug',
         ['prefix' => ['modules/integrations/']]],
     ['settings', 'Genel Ayarlar', 'modules/settings/index.php', 'settings',

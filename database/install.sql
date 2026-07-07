@@ -1280,3 +1280,46 @@ CREATE TABLE IF NOT EXISTS `lead_api_log` (
 INSERT IGNORE INTO `app_settings` (`setting_key`, `setting_value`) VALUES
     ('leads_api_token', ''),
     ('lead_wa_template', 'Merhaba {yetkili}, {firma} olarak sizinle iletişime geçmek istiyoruz.');
+
+/* =========================================================================
+   EK PART 25 — Yardım Merkezi / Panel Kullanım Rehberi
+   ====================================================================== */
+
+CREATE TABLE IF NOT EXISTS `help_articles` (
+    `id`              INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `slug`            VARCHAR(160) NOT NULL,
+    `title`           VARCHAR(190) NOT NULL,
+    `category`        VARCHAR(40)  NOT NULL DEFAULT 'dashboard',
+    `short_desc`      VARCHAR(500) DEFAULT NULL,
+    `content`         TEXT         DEFAULT NULL,
+    `steps`           TEXT         DEFAULT NULL,   -- her satır bir adım
+    `screen_path`     VARCHAR(190) DEFAULT NULL,   -- ör. "Ayarlar → Şirket Bilgileri"
+    `related_module`  VARCHAR(40)  DEFAULT NULL,   -- ilgili modül anahtarı
+    `search_keywords` VARCHAR(500) DEFAULT NULL,
+    `tags`            VARCHAR(300) DEFAULT NULL,
+    `sort`            INT UNSIGNED NOT NULL DEFAULT 0,
+    `is_active`       TINYINT(1)   NOT NULL DEFAULT 1,
+    `created_by`      INT UNSIGNED DEFAULT NULL,
+    `updated_by`      INT UNSIGNED DEFAULT NULL,
+    `created_at`      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`      DATETIME     NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_help_slug` (`slug`),
+    KEY `idx_help_category` (`category`),
+    KEY `idx_help_active` (`is_active`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Varsayılan yardım konuları (idempotent: slug'a göre INSERT IGNORE)
+INSERT IGNORE INTO `help_articles` (`slug`, `title`, `category`, `short_desc`, `content`, `steps`, `screen_path`, `related_module`, `search_keywords`, `tags`, `sort`) VALUES
+('musteri-nasil-eklenir', 'Müşteri nasıl eklenir?', 'customers', 'Yeni bir müşteri (cari) kaydı oluşturma adımları.', 'Müşteriler modülünden yeni cari kartı oluşturabilir, kategori (TR, Yurtdışı, Bayi vb.) atayabilirsiniz.', 'Sol menüden "Müşteriler" bölümüne girin.\n"Yeni Müşteri" butonuna tıklayın.\nFirma adı ve gerekli bilgileri doldurun.\nMüşteri tipini seçin.\n"Kaydet" butonuna basın.', 'Müşteriler → Yeni Müşteri', 'customers', 'musteri ekle cari yeni firma kayit', 'müşteri,cari,ekleme', 10),
+('teklif-nasil-olusturulur', 'Teklif nasıl oluşturulur?', 'quotes', 'Ürün satırlı, KDV/iskontolu teklif hazırlama.', 'Teklifler modülünde müşteri seçip ürün satırları ekleyerek, T-Soft''tan ürün aratarak teklif hazırlarsınız. Toplamlar otomatik hesaplanır.', 'Sol menüden "Teklifler" bölümüne girin.\n"Yeni Teklif" butonuna tıklayın.\nMüşteri seçin veya manuel girin.\n"T-Soft''ta Ara" ile ürün ekleyin ya da "Satır ekle" ile manuel girin.\nKDV/iskonto ayarlayın; toplam otomatik hesaplanır.\n"Kaydet" ile teklifi oluşturun; ardından PDF/WhatsApp/Mail ile paylaşın.', 'Teklifler → Yeni Teklif', 'quotes', 'teklif olustur urun kdv iskonto tsoft pdf', 'teklif,fiyat,pdf', 20),
+('siparis-nasil-olusturulur', 'Sipariş nasıl oluşturulur?', 'orders', 'Sipariş kaydı ve kargo/ödeme bilgileri.', 'Siparişler modülünde ürün satırları, kargo firması, takip no ve ödeme durumuyla sipariş oluşturursunuz.', 'Sol menüden "Siparişler" bölümüne girin.\n"Yeni Sipariş" butonuna tıklayın.\nMüşteri ve ürün satırlarını girin.\nKargo ve ödeme bilgilerini doldurun.\n"Kaydet" butonuna basın.', 'Siparişler → Yeni Sipariş', 'orders', 'siparis olustur kargo odeme takip', 'sipariş,kargo', 30),
+('servis-kaydi-nasil-acilir', 'Servis kaydı nasıl açılır?', 'service', 'Teknik servise cihaz kabul kaydı.', 'Teknik Servis modülünden cihaz kabul kaydı oluşturur, müşteri ve arıza bilgilerini girersiniz.', 'Sol menüden "Servis Kabul" bölümüne girin.\nMüşteri ve cihaz bilgilerini doldurun.\nArıza/servis sebebini yazın.\n"Kaydet" ile servis kaydını oluşturun.', 'Teknik Servis → Servis Kabul', 'service', 'servis kayit cihaz kabul ariza', 'servis,cihaz', 40),
+('servis-durumu-nasil-degistirilir', 'Servis durumu nasıl değiştirilir?', 'service', 'Servis sürecinin durumunu güncelleme ve müşteriyi bilgilendirme.', 'Servis detay sayfasında yeni durum seçip kaydedebilir, ardından WhatsApp/e-posta ile müşteriyi bilgilendirebilirsiniz.', 'Servis kaydının detayına girin.\n"Durum" bölümünden yeni durumu seçin.\nGerekirse not ekleyin ve güncelleyin.\n"Durumu WhatsApp''tan bildir" veya "e-posta ile bildir" butonuyla müşteriyi bilgilendirin.', 'Teknik Servis → (kayıt) → Durum', 'service', 'servis durum degistir bilgilendirme whatsapp', 'servis,durum', 50),
+('rma-kaydi-nasil-eklenir', 'İade/değişim kaydı nasıl eklenir?', 'rma', 'İade-değişim süreci kaydı oluşturma.', 'İade-Değişim Yönetimi modülünden yeni kayıt açar, platform, ürün ve işlem türünü girersiniz.', 'Sol menüden "İade-Değişim Yönetimi" bölümüne girin.\n"Yeni Kayıt" butonuna tıklayın.\nFirma, ürün, platform ve işlem türünü doldurun.\n"Kaydet" butonuna basın.', 'İade-Değişim → Yeni Kayıt', 'rma', 'iade degisim rma kayit platform', 'iade,değişim,rma', 60),
+('rma-csv-nasil-ice-aktarilir', 'CSV nasıl içeri aktarılır?', 'rma', 'İade-değişim kayıtlarını CSV ile toplu içe aktarma.', 'Önce "Örnek CSV indir" ile şablonu alın, doldurun ve içe aktarın. Sistem başarılı/atlanan/hatalı satır sayısını raporlar.', 'İade-Değişim → "CSV İçe Aktar" bölümüne girin.\n"Örnek CSV indir" ile şablonu indirin.\nŞablonu Excel''de doldurun (Türkçe karakter/UTF-8).\nDoldurulmuş dosyayı seçip "İçe aktar" deyin.\nSonuç özetini (eklenen/atlanan/hatalı) kontrol edin.', 'İade-Değişim → CSV İçe Aktar', 'rma', 'csv ice aktar import ornek sablon excel', 'csv,import', 70),
+('logo-favicon-nasil-degistirilir', 'Logo ve favicon nasıl değiştirilir?', 'settings', 'Panel logosu ve favicon yükleme.', 'Ayarlar → Şirket Bilgileri ekranından logo ve favicon dosyalarını yükleyebilirsiniz. Favicon tüm panelde sekme ikonu olarak görünür.', 'Sol menüden "Genel Ayarlar → Şirket Bilgileri" bölümüne girin.\n"Logo & Favicon" kartına gelin.\nLogo için PNG/JPG/SVG, favicon için ICO/PNG/SVG seçin.\n"Kaydet" butonuna basın.', 'Ayarlar → Şirket Bilgileri → Logo & Favicon', 'settings', 'logo favicon yukle degistir gorsel', 'logo,favicon', 80),
+('rol-yetkisi-nasil-verilir', 'Kullanıcı yetkisi nasıl verilir?', 'roles', 'Rollere modül ve işlem bazlı yetki atama.', 'Ayarlar → Roller ekranında her modül için Görüntüle/Ekle/Düzenle/Sil gibi işlem yetkilerini checkbox ile atarsınız. Süper Admin tüm yetkilere sahiptir.', 'Sol menüden "Genel Ayarlar → Roller" bölümüne girin.\nDüzenlemek istediğiniz rolü açın.\nModül başlıkları altındaki işlem kutularını işaretleyin.\n"Tümünü seç/Kaldır" ile hızlı seçim yapın.\n"Kaydet" butonuna basın.', 'Ayarlar → Roller', 'settings', 'rol yetki izin permission kullanici checkbox', 'rol,yetki', 90),
+('sifre-kasasi-nasil-kullanilir', 'Şifre kasası nasıl kullanılır?', 'password_vault', 'Şifreleri güvenli saklama ve panel şifresiyle görüntüleme.', 'Şifre Kasası şifreleri AES-256 ile şifreli saklar. Bir şifreyi görmek için kendi panel şifrenizi yeniden girmeniz gerekir; her görüntüleme loglanır.', 'Sol menüden "Şifre Kasası" bölümüne girin.\n"Yeni Kayıt" ile başlık, kullanıcı adı ve şifreyi girin.\nKaydı açıp "Şifreyi Göster" butonuna basın.\nPanel şifrenizi girerek şifreyi güvenle görüntüleyin.', 'Şifre Kasası', 'password_vault', 'sifre kasa vault guvenli goster panel sifre', 'şifre,güvenlik', 100),
+('sevkiyat-nasil-olusturulur', 'Sevkiyat nasıl oluşturulur?', 'shipments', 'Teslimat/toplama sevkiyatı oluşturma ve sevkiyatçı atama.', 'Sevkiyat Takibi modülünde adres seçip sevkiyat oluşturur, bir sevkiyatçıya atarsınız. Durum değiştikçe yöneticiye WhatsApp bilgilendirme butonu çıkar.', 'Sol menüden "Sevkiyat Takibi" bölümüne girin.\n"Yeni Sevkiyat" butonuna tıklayın.\nMüşteri/adres, tip (teslimat/toplama) ve tarih girin.\nSevkiyatçı personel atayın.\n"Kaydet" butonuna basın.', 'Sevkiyat Takibi → Yeni Sevkiyat', 'shipments', 'sevkiyat olustur teslimat toplama sevkiyatci atama', 'sevkiyat,teslimat', 110),
+('sevkiyat-fotograf-nasil-yuklenir', 'Sevkiyatçı teslimat fotoğrafı nasıl yükler?', 'shipments', 'Sevkiyatçının teslimat/toplama fotoğrafı yüklemesi.', 'Sevkiyatçı kendi sevkiyatının detayında durumu günceller ve kamera ile teslimat/toplama fotoğrafı yükler. Fotoğraf sevkiyata bağlanır ve loglanır.', 'Size atanan sevkiyatın detayına girin.\nKonum linkini açıp adrese gidin.\nDurumu güncelleyin (ör. Teslim edildi).\n"Fotoğraf yükle" ile kamera/dosya seçip yükleyin.\nGerekirse teslimat notu yazıp tamamlayın.', 'Sevkiyat Takibi → (sevkiyat) → Fotoğraf', 'shipments', 'sevkiyat fotograf yukle teslimat kamera sevkiyatci', 'sevkiyat,fotoğraf', 120);
