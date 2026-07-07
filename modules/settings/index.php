@@ -34,6 +34,7 @@ $groups = [
         ['title' => 'İletişim Ayarları', 'icon' => 'phone', 'desc' => 'Telefon, WhatsApp, e-posta ve web sitesi bilgileri.', 'url' => url('modules/settings/company.php'), 'perm' => 'settings', 'kw' => 'iletisim telefon whatsapp eposta email web'],
         ['title' => 'Logo & Favicon', 'icon' => 'image', 'desc' => 'Panel logosu, login logosu, favicon ve PDF/form logosu.', 'soon' => true, 'kw' => 'logo favicon pdf form gorsel'],
         ['title' => 'Genel Panel Ayarları', 'icon' => 'sliders-horizontal', 'desc' => 'Panel başlığı, varsayılan dil ve genel görünüm ayarları.', 'soon' => true, 'kw' => 'panel dil gorunum tema baslik'],
+        ['title' => 'Ön Bellek Temizle', 'icon' => 'refresh-cw', 'perm' => 'settings', 'desc' => 'Geçici/önbellek dosyalarını güvenle temizleyin. Oturum ve veriler etkilenmez.', 'url' => url('modules/settings/cache.php'), 'kw' => 'onbellek cache temizle tmp gecici'],
     ],
     'Operasyon Ayarları' => [
         ['title' => 'Kargo Yöntemleri', 'icon' => 'truck', 'desc' => 'Kargo firmaları, logolar, desi ücretleri ve ücretsiz kargo limiti.', 'url' => url('modules/settings/shipping.php'), 'perm' => 'shipping', 'kw' => 'kargo desi ucret gonderi'],

@@ -43,6 +43,10 @@ function dashboard_widget_registry(): array
         'hr_today_birthdays'        => ['title' => 'Bugünkü Doğum Günleri',          'icon' => 'gift',           'type' => 'hrlist', 'group' => 'hr'],
         'hr_upcoming_birthdays'     => ['title' => 'Yaklaşan Doğum Günleri',         'icon' => 'gift',           'type' => 'hrlist', 'group' => 'hr'],
         'hr_work_anniversaries'     => ['title' => 'Çalışma Yıl Dönümleri',          'icon' => 'user-check',     'type' => 'hrlist', 'group' => 'hr'],
+        // Satış (Faz B/C)
+        'new_customers'             => ['title' => 'Yeni Müşteriler (7 gün)',        'icon' => 'users',          'type' => 'stat', 'group' => 'sales'],
+        'pending_quotes'            => ['title' => 'Bekleyen Teklifler',             'icon' => 'file-text',      'type' => 'stat', 'group' => 'sales'],
+        'open_orders'               => ['title' => 'Açık Siparişler',                'icon' => 'clipboard-list', 'type' => 'stat', 'group' => 'sales'],
     ];
 }
 
@@ -67,9 +71,12 @@ function dashboard_default_layout(): array
         ['id' => 'pending_customer_approval', 'visible' => true, 'size' => 'small',  'order' => 3],
         ['id' => 'pending_payment_service',   'visible' => true, 'size' => 'small',  'order' => 4],
         ['id' => 'open_rma',                  'visible' => true, 'size' => 'small',  'order' => 5],
-        ['id' => 'exchange_rates',            'visible' => true, 'size' => 'medium', 'order' => 6],
-        ['id' => 'latest_service_records',    'visible' => true, 'size' => 'wide',   'order' => 7],
-        ['id' => 'latest_rma_records',        'visible' => true, 'size' => 'wide',   'order' => 8],
+        ['id' => 'new_customers',             'visible' => true, 'size' => 'small',  'order' => 6],
+        ['id' => 'pending_quotes',            'visible' => true, 'size' => 'small',  'order' => 7],
+        ['id' => 'open_orders',               'visible' => true, 'size' => 'small',  'order' => 8],
+        ['id' => 'exchange_rates',            'visible' => true, 'size' => 'medium', 'order' => 9],
+        ['id' => 'latest_service_records',    'visible' => true, 'size' => 'wide',   'order' => 10],
+        ['id' => 'latest_rma_records',        'visible' => true, 'size' => 'wide',   'order' => 11],
     ];
 }
 
@@ -251,6 +258,22 @@ function get_latest_rma_records(int $limit = 5): array
     } catch (Throwable $e) { log_error('widget latest_rma: ' . $e->getMessage()); return []; }
 }
 
+function get_new_customers_count(): int
+{
+    try { return (int) db()->query("SELECT COUNT(*) FROM customers WHERE is_deleted = 0 AND created_at >= (CURDATE() - INTERVAL 7 DAY)")->fetchColumn(); }
+    catch (Throwable $e) { log_error('widget new_customers: ' . $e->getMessage()); return 0; }
+}
+function get_pending_quotes_count(): int
+{
+    try { return (int) db()->query("SELECT COUNT(*) FROM quotes WHERE is_deleted = 0 AND status IN ('draft','sent')")->fetchColumn(); }
+    catch (Throwable $e) { log_error('widget pending_quotes: ' . $e->getMessage()); return 0; }
+}
+function get_open_orders_count(): int
+{
+    try { return (int) db()->query("SELECT COUNT(*) FROM orders WHERE is_deleted = 0 AND status NOT IN ('delivered','cancelled')")->fetchColumn(); }
+    catch (Throwable $e) { log_error('widget open_orders: ' . $e->getMessage()); return 0; }
+}
+
 function get_dashboard_exchange_rates(): array
 {
     try {
@@ -281,6 +304,9 @@ function get_dashboard_widget_data(string $widgetId, int $userId): array
         case 'open_rma':                  return ['value' => get_open_rma_count(),                 'sub' => 'Devam eden iade/değişim'];
         case 'today_rma_records':         return ['value' => get_today_rma_count(),                'sub' => 'Bugün açılan iade/değişim'];
         case 'total_rma_loss':            return ['value' => fmt_money(get_total_rma_loss(), 2) . ' ₺', 'sub' => 'Toplam zarar tutarı'];
+        case 'new_customers':             return ['value' => get_new_customers_count(),            'sub' => 'Son 7 günde eklenen müşteri'];
+        case 'pending_quotes':            return ['value' => get_pending_quotes_count(),           'sub' => 'Taslak / gönderilmiş teklif'];
+        case 'open_orders':               return ['value' => get_open_orders_count(),              'sub' => 'Devam eden sipariş'];
         case 'latest_service_records':    return ['list'  => get_latest_service_records(6)];
         case 'latest_rma_records':        return ['list'  => get_latest_rma_records(6)];
         case 'exchange_rates':

@@ -128,7 +128,8 @@ layout_top('CSV İçe Aktar', 'rma');
             </div>
             <div class="form-actions">
                 <button type="submit" class="btn btn-primary"><?= icon('upload') ?>İçe aktar</button>
-                <a class="btn" href="<?= e(url('modules/rma/export.php')) ?>">Örnek/şablon indir</a>
+                <a class="btn" href="<?= e(url('modules/rma/sample-csv.php')) ?>"><?= icon('download') ?>Örnek CSV indir</a>
+                <a class="btn" href="<?= e(url('modules/rma/export.php')) ?>">Mevcut kayıtları dışa aktar</a>
             </div>
         </form>
     </div>

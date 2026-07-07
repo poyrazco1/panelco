@@ -1097,3 +1097,57 @@ CREATE TABLE IF NOT EXISTS `reconciliations` (
     KEY `idx_recon_customer` (`customer_id`),
     KEY `idx_recon_deleted` (`is_deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+/* =========================================================================
+   FAZ C — Primler + Envanter/Demirbaş (idempotent CREATE TABLE IF NOT EXISTS)
+   ====================================================================== */
+
+CREATE TABLE IF NOT EXISTS `commissions` (
+    `id`                   INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `personnel_id`         INT UNSIGNED NOT NULL,
+    `period_start`         DATE         DEFAULT NULL,
+    `period_end`           DATE         DEFAULT NULL,
+    `sales_amount`         DECIMAL(15,2) NOT NULL DEFAULT 0,
+    `profit_amount`        DECIMAL(15,2) NOT NULL DEFAULT 0,
+    `commission_rate`      DECIMAL(6,3)  NOT NULL DEFAULT 0,
+    `fixed_commission`     DECIMAL(15,2) NOT NULL DEFAULT 0,
+    `target_amount`        DECIMAL(15,2) NOT NULL DEFAULT 0,
+    `target_ratio`         DECIMAL(6,2)  NOT NULL DEFAULT 0,
+    `calculated_commission` DECIMAL(15,2) NOT NULL DEFAULT 0,
+    `currency`             VARCHAR(10)  NOT NULL DEFAULT 'TRY',
+    `description`          TEXT         DEFAULT NULL,
+    `is_deleted`           TINYINT(1)   NOT NULL DEFAULT 0,
+    `created_by`           INT UNSIGNED DEFAULT NULL,
+    `updated_by`           INT UNSIGNED DEFAULT NULL,
+    `created_at`           DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`           DATETIME     NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_commissions_personnel` (`personnel_id`),
+    KEY `idx_commissions_deleted` (`is_deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `inventory_items` (
+    `id`                   INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `name`                 VARCHAR(190) NOT NULL,
+    `category`             VARCHAR(40)  NOT NULL DEFAULT 'other',
+    `brand`                VARCHAR(120) DEFAULT NULL,
+    `model`                VARCHAR(120) DEFAULT NULL,
+    `serial_no`            VARCHAR(120) DEFAULT NULL,
+    `purchase_date`        DATE         DEFAULT NULL,
+    `invoice_no`           VARCHAR(80)  DEFAULT NULL,
+    `warranty_end`         DATE         DEFAULT NULL,
+    `assigned_personnel_id` INT UNSIGNED DEFAULT NULL,
+    `location`             VARCHAR(120) DEFAULT NULL,
+    `status`               VARCHAR(20)  NOT NULL DEFAULT 'active',
+    `description`          TEXT         DEFAULT NULL,
+    `file_path`            VARCHAR(255) DEFAULT NULL,
+    `is_deleted`           TINYINT(1)   NOT NULL DEFAULT 0,
+    `created_by`           INT UNSIGNED DEFAULT NULL,
+    `updated_by`           INT UNSIGNED DEFAULT NULL,
+    `created_at`           DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`           DATETIME     NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_inventory_category` (`category`),
+    KEY `idx_inventory_status` (`status`),
+    KEY `idx_inventory_deleted` (`is_deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -69,8 +69,16 @@ $items = [
          'prefix' => ['modules/attendance/print.php']]],
     ['attendance', 'Puantaj Raporları', 'modules/attendance/reports.php', 'file-text',
         ['prefix' => ['modules/attendance/reports.php']]],
+    ['commissions', 'Primler', 'modules/commissions/index.php', 'calculator',
+        ['prefix' => ['modules/commissions/']]],
     ['dashboard', 'Bildirim Merkezi',  'modules/notifications/index.php', 'bell',
         ['prefix' => ['modules/notifications/']]],
+
+    ['__group', 'Varlık & Araçlar', '', '', []],
+    ['inventory', 'Envanter / Demirbaş', 'modules/inventory/index.php', 'package-check',
+        ['prefix' => ['modules/inventory/']]],
+    ['reports', 'Raporlar', 'modules/reports/index.php', 'file-text',
+        ['prefix' => ['modules/reports/']]],
 
     ['__group', 'Ayarlar', '', '', []],
     ['settings', 'Genel Ayarlar', 'modules/settings/index.php', 'settings',
