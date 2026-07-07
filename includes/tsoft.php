@@ -422,3 +422,55 @@ function upsert_tsoft_product(array $normalized): array
     // Part 2: burada tsoft_products tablosuna INSERT ... ON DUPLICATE KEY UPDATE yapılacak.
     return ['ok' => false, 'action' => 'skipped', 'reason' => 'Kalıcı kayıt Part 2 kapsamında etkinleştirilecek (bu partta DB yazımı yok).', 'external_id' => $extId];
 }
+
+/**
+ * T-Soft ürün arama (teklif/sipariş formları + ürün modülü için ortak).
+ * $by: 'all' | 'code' | 'barcode' | 'name'.
+ * Sunucu tarafı filtre garanti olmadığından sonuçlar istemci tarafında da süzülür.
+ * T-Soft erişilemezse ['ok'=>false, 'error'=>kullanıcı-dostu mesaj] döner (uydurma veri yok).
+ *
+ * @return array{ok:bool, products:array<int,array>, error:?string}
+ */
+function tsoft_search_products(string $query, string $by = 'all', int $limit = 20): array
+{
+    $query = trim($query);
+    $limit = max(1, min(50, $limit));
+
+    $login = tsoft_login();
+    if (empty($login['ok']) || empty($login['token'])) {
+        return ['ok' => false, 'products' => [], 'error' => (string) ($login['error'] ?? 'T-Soft oturumu açılamadı.')];
+    }
+
+    $params = ['token' => $login['token'], 'limit' => max($limit, 50), 'start' => 0];
+    // Sunucu tarafı filtre denemesi (kod/barkod için yaygın alanlar)
+    if ($query !== '' && $by === 'code')    { $params['ProductCode'] = $query; }
+    if ($query !== '' && $by === 'barcode') { $params['Barcode'] = $query; }
+
+    $resp = tsoft_get_products_raw($params);
+    if (empty($resp['ok'])) {
+        return ['ok' => false, 'products' => [], 'error' => tsoft_user_error($resp)];
+    }
+
+    $rows = tsoft_parse_products_response($resp);
+    $norm = [];
+    foreach ($rows as $r) {
+        if (is_array($r)) { $norm[] = tsoft_normalize_product($r); }
+    }
+
+    // İstemci tarafı süzme (server filtre uygulanmamış olabilir; name/all için gerekli)
+    if ($query !== '') {
+        $q = mb_strtolower($query, 'UTF-8');
+        $norm = array_values(array_filter($norm, static function (array $p) use ($q, $by): bool {
+            $fields = [];
+            if ($by === 'code' || $by === 'all')    { $fields[] = (string) $p['code']; }
+            if ($by === 'barcode' || $by === 'all') { $fields[] = (string) $p['barcode']; }
+            if ($by === 'name' || $by === 'all')    { $fields[] = (string) $p['name']; }
+            foreach ($fields as $f) {
+                if ($f !== '' && mb_strpos(mb_strtolower($f, 'UTF-8'), $q) !== false) { return true; }
+            }
+            return false;
+        }));
+    }
+
+    return ['ok' => true, 'products' => array_slice($norm, 0, $limit), 'error' => null];
+}
