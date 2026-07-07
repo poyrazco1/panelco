@@ -1221,3 +1221,21 @@ body.att-modal-open { overflow: hidden; }
     .doc-sheet { border: 0; box-shadow: none; max-width: 100%; margin: 0; padding: 0; }
     a[href]:after { content: ""; }
 }
+
+/* =========================================================================
+   Müşteri / Tedarikçi — kategori sekmeleri + detay tanım listesi
+   ====================================================================== */
+.tab-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.tab-chip { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text); font-size: 13px; }
+.tab-chip:hover { background: var(--surface-2); text-decoration: none; }
+.tab-chip.is-active { background: var(--primary); border-color: var(--primary); color: #fff; }
+.tab-count { font-size: 11.5px; padding: 1px 7px; border-radius: 999px; background: var(--surface-2); color: var(--muted); }
+.tab-chip.is-active .tab-count { background: rgba(255,255,255,.2); color: #fff; }
+
+.detail-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+.dl { display: grid; grid-template-columns: 1fr; gap: 0; }
+.dl-row { display: grid; grid-template-columns: 180px 1fr; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13.5px; }
+.dl-row:last-child { border-bottom: 0; }
+.dl-k { color: var(--muted); }
+.dl-v { color: var(--text); word-break: break-word; }
+@media (max-width: 560px) { .dl-row { grid-template-columns: 1fr; gap: 2px; } .dl-k { font-size: 12px; } }

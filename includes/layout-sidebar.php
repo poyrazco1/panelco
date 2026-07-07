@@ -33,6 +33,12 @@ $items = [
     ['currency',  'Kur Çevirici', 'modules/currency/index.php',  'coins',
         ['prefix' => ['modules/currency/']]],
 
+    ['__group', 'Satış / Cari', '', '', []],
+    ['customers', 'Müşteriler',   'modules/customers/index.php', 'users',
+        ['prefix' => ['modules/customers/']]],
+    ['suppliers', 'Tedarikçiler', 'modules/suppliers/index.php', 'warehouse',
+        ['prefix' => ['modules/suppliers/']]],
+
     ['__group', 'Teknik Servis', '', '', []],
     ['service', 'Servis Kabul',          'modules/service/intake.php', 'clipboard-plus',
         ['exact' => ['modules/service/intake.php']]],
