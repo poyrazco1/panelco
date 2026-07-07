@@ -1261,3 +1261,7 @@ body.att-modal-open { overflow: hidden; }
 .quote-total-table tr.grand td { border-top: 2px solid var(--primary); border-bottom: 0; font-size: 15px; font-weight: 700; color: var(--primary); }
 
 .doc-party { font-size: 13px; color: #333; padding: 10px 0; border-bottom: 1px solid #eee; }
+
+/* Şifre kasası — şifre gösterme kutusu */
+.vault-secret { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 12px; background: var(--surface-3); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.vault-secret code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 14px; color: var(--text); word-break: break-all; }

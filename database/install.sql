@@ -1151,3 +1151,52 @@ CREATE TABLE IF NOT EXISTS `inventory_items` (
     KEY `idx_inventory_status` (`status`),
     KEY `idx_inventory_deleted` (`is_deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+/* =========================================================================
+   FAZ D — Şifre Kasası (şifreler AES-256-GCM ile şifreli saklanır)
+   ====================================================================== */
+
+CREATE TABLE IF NOT EXISTS `password_vault` (
+    `id`                 INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `title`              VARCHAR(190) NOT NULL,
+    `category`           VARCHAR(40)  NOT NULL DEFAULT 'other',
+    `username`           VARCHAR(190) DEFAULT NULL,
+    `secret_enc`         TEXT         DEFAULT NULL,   -- AES-256-GCM (base64: iv|tag|ciphertext)
+    `url`                VARCHAR(255) DEFAULT NULL,
+    `description`        TEXT         DEFAULT NULL,
+    `responsible_person` VARCHAR(150) DEFAULT NULL,
+    `last_changed_at`    DATETIME     DEFAULT NULL,
+    `change_period_days` INT UNSIGNED DEFAULT NULL,
+    `allowed_user_ids`   VARCHAR(255) DEFAULT NULL,   -- JSON dizi; boşsa tüm yetkililer görür
+    `file_path`          VARCHAR(255) DEFAULT NULL,
+    `is_deleted`         TINYINT(1)   NOT NULL DEFAULT 0,
+    `created_by`         INT UNSIGNED DEFAULT NULL,
+    `updated_by`         INT UNSIGNED DEFAULT NULL,
+    `created_at`         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`         DATETIME     NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_vault_category` (`category`),
+    KEY `idx_vault_deleted` (`is_deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `password_vault_history` (
+    `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `vault_id`   INT UNSIGNED NOT NULL,
+    `username`   VARCHAR(190) DEFAULT NULL,
+    `secret_enc` TEXT         DEFAULT NULL,
+    `changed_by` INT UNSIGNED DEFAULT NULL,
+    `changed_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_vault_hist_vault` (`vault_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `password_vault_access` (
+    `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `vault_id`   INT UNSIGNED NOT NULL,
+    `user_id`    INT UNSIGNED DEFAULT NULL,
+    `action`     VARCHAR(20)  NOT NULL DEFAULT 'reveal',
+    `ip`         VARCHAR(64)  DEFAULT NULL,
+    `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_vault_access_vault` (`vault_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

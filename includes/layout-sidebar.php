@@ -79,6 +79,8 @@ $items = [
         ['prefix' => ['modules/inventory/']]],
     ['reports', 'Raporlar', 'modules/reports/index.php', 'file-text',
         ['prefix' => ['modules/reports/']]],
+    ['password_vault', 'Şifre Kasası', 'modules/password-vault/index.php', 'shield',
+        ['prefix' => ['modules/password-vault/']]],
 
     ['__group', 'Ayarlar', '', '', []],
     ['settings', 'Genel Ayarlar', 'modules/settings/index.php', 'settings',

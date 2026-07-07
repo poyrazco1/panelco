@@ -58,5 +58,17 @@ if (!defined('MAIL_ALLOW_ACTOR_FROM')) { define('MAIL_ALLOW_ACTOR_FROM', false);
 // Placeholder sabiti — mail servisi bu değeri "yapılandırılmamış" olarak kabul eder.
 if (!defined('SMTP_PASSWORD_PLACEHOLDER')) { define('SMTP_PASSWORD_PLACEHOLDER', 'BURAYA_MAIL_SIFRESI_YAZILACAK'); }
 
+/* =========================================================================
+ |  ŞİFRE KASASI ŞİFRELEME ANAHTARI (Faz D — password_vault)
+ |  Kasadaki şifreler AES-256-GCM ile şifrelenir. Anahtar SUNUCUDA burada
+ |  saklanır; asla veritabanında/kod deposunda düz tutulmaz. Placeholder
+ |  kaldıkça kasa çalışmaz (şifreleme/çözme reddedilir).
+ |  Güçlü anahtar üretmek için: php -r "echo bin2hex(random_bytes(32));"
+ * ====================================================================== */
+if (!defined('VAULT_KEY'))             { define('VAULT_KEY', 'BURAYA_KASA_ANAHTARI_YAZILACAK'); }
+if (!defined('VAULT_KEY_PLACEHOLDER')) { define('VAULT_KEY_PLACEHOLDER', 'BURAYA_KASA_ANAHTARI_YAZILACAK'); }
+// Kasa dışa aktarma (export) — güvenlik gereği VARSAYILAN KAPALI.
+if (!defined('VAULT_ALLOW_EXPORT'))    { define('VAULT_ALLOW_EXPORT', false); }
+
 // Temel ayar: zaman dilimini uygula (log ve tarih tutarlılığı için)
 date_default_timezone_set(DEFAULT_TIMEZONE);
