@@ -1,0 +1,217 @@
+/* =========================================================================
+   PoyrazTech — Giriş / kimlik doğrulama sayfaları teması
+   Sade, kurumsal, açık gri. Neon/gradient/cam efekti yok.
+   Bu dosya kendi başına yeterlidir (app.css'e bağımlı değildir).
+   ========================================================================= */
+
+:root {
+    --bg:            #F5F6F8;
+    --surface:       #FFFFFF;
+    --surface-2:     #EEF0F3;
+    --border:        #E2E5EA;
+    --text:          #1F2937;
+    --muted:         #6B7280;
+    --primary:       #1F2A44;
+    --primary-hover: #18213A;
+    --danger-bg:     #FBEBEC;
+    --danger-fg:     #9B1C22;
+    --success-bg:    #E9F3EC;
+    --success-fg:    #276749;
+    --info-bg:       #ECF0F6;
+    --info-fg:       #2B3A55;
+    --radius:        8px;
+    --radius-sm:     6px;
+    --shadow:        0 1px 2px rgba(17, 24, 39, 0.05);
+    --shadow-soft:   0 1px 3px rgba(17, 24, 39, 0.06), 0 1px 2px rgba(17, 24, 39, 0.04);
+    --font:          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                     "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body { margin: 0; padding: 0; }
+
+body.auth-body {
+    font-family: var(--font);
+    font-size: 15px;
+    line-height: 1.5;
+    color: var(--text);
+    background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+}
+
+.auth-wrap {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+
+.auth-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-soft);
+    width: 100%;
+    max-width: 400px;
+    padding: 32px;
+}
+
+/* Başlık */
+.auth-head { text-align: center; margin-bottom: 22px; }
+.auth-logo {
+    width: 28px; height: 28px;
+    border-radius: 6px;
+    background: var(--primary);
+    margin: 0 auto 12px;
+}
+.auth-head h1 { font-size: 19px; margin: 0 0 4px; font-weight: 600; }
+.auth-head p { font-size: 14px; color: var(--muted); margin: 0; }
+
+/* Uyarı kutuları */
+.alert {
+    padding: 11px 13px;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    margin-bottom: 16px;
+    border: 1px solid transparent;
+    word-wrap: break-word;
+}
+.alert-error   { background: var(--danger-bg);  color: var(--danger-fg); }
+.alert-success { background: var(--success-bg); color: var(--success-fg); }
+.alert-info    { background: var(--info-bg);    color: var(--info-fg); }
+.alert a { color: inherit; font-weight: 600; }
+
+/* Form */
+.auth-form .field { margin-bottom: 16px; }
+.auth-form label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+.auth-form input[type="text"],
+.auth-form input[type="email"],
+.auth-form input[type="password"] {
+    width: 100%;
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 11px 12px;
+    transition: border-color .12s ease, box-shadow .12s ease;
+}
+.auth-form input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(31, 42, 68, 0.10);
+}
+.field-hint { font-size: 12px; color: var(--muted); margin-top: 5px; }
+
+/* Şifre alanı + göster/gizle */
+.pw { position: relative; }
+.pw input { padding-right: 76px; }
+.pw-toggle {
+    position: absolute;
+    top: 50%;
+    right: 6px;
+    transform: translateY(-50%);
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 10px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    line-height: 1;
+}
+.pw-toggle:hover { background: #E4E7EC; }
+
+/* "Beni hatırla" + "Şifremi unuttum" aynı satır */
+.auth-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 4px 0 18px;
+    flex-wrap: wrap;
+}
+.check {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    user-select: none;
+}
+.check input { width: 16px; height: 16px; margin: 0; }
+.auth-row a { font-size: 14px; color: var(--primary); text-decoration: none; }
+.auth-row a:hover { text-decoration: underline; }
+
+/* Buton */
+.btn-primary {
+    display: block;
+    width: 100%;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 11px 16px;
+    border: 1px solid var(--primary);
+    border-radius: var(--radius-sm);
+    background: var(--primary);
+    color: #fff;
+    cursor: pointer;
+    text-align: center;
+    text-decoration: none;
+    transition: background-color .12s ease;
+}
+.btn-primary:hover { background: var(--primary-hover); }
+
+.btn-link {
+    display: inline-block;
+    margin-top: 16px;
+    font-size: 14px;
+    color: var(--primary);
+    text-decoration: none;
+}
+.btn-link:hover { text-decoration: underline; }
+
+/* Alt bilgi + ikincil bağlantı */
+.auth-links { text-align: center; margin-top: 16px; }
+.auth-links a { font-size: 14px; color: var(--primary); text-decoration: none; }
+.auth-links a:hover { text-decoration: underline; }
+
+.auth-foot {
+    margin-top: 18px;
+    font-size: 12px;
+    color: var(--muted);
+    text-align: center;
+}
+
+/* Geliştirme kutusu (SMTP yokken reset bağlantısı) */
+.dev-note {
+    margin-top: 4px;
+    padding: 12px 13px;
+    background: var(--info-bg);
+    color: var(--info-fg);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    word-break: break-all;
+}
+.dev-note a { color: var(--info-fg); font-weight: 600; }
+
+/* Mobil */
+@media (max-width: 420px) {
+    .auth-card { padding: 24px; }
+    .auth-row { gap: 8px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+}

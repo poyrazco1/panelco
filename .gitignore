@@ -1,0 +1,5 @@
+# Loglar (mail-*.log, app-*.log vb.) — asla commit edilmez (KVKK/güvenlik).
+/logs/*.log
+
+# Geçici / scratch dosyaları
+scratch_*

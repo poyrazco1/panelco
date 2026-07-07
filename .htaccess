@@ -1,0 +1,28 @@
+# =========================================================================
+#  PoyrazTech — kök dizin güvenlik sertleştirmesi (Apache / Plesk)
+# =========================================================================
+Options -Indexes
+AddDefaultCharset UTF-8
+DirectoryIndex index.php
+
+# Nokta ile başlayan dosyalar (.htaccess, .git, ...)
+<FilesMatch "^\.">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# Hassas dosyalar + config.php'ye doğrudan HTTP erişimini engelle
+<FilesMatch "\.(sql|log|md|ini|sh)$|^config\.php$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
