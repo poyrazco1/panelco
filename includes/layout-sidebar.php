@@ -49,6 +49,13 @@ $items = [
     ['leads', 'Lead Yönetimi', 'modules/leads/index.php', 'user-check',
         ['prefix' => ['modules/leads/']]],
 
+    ['__group', 'Sevkiyat', '', '', []],
+    ['shipments', 'Sevkiyat Takibi', 'modules/shipments/index.php', 'truck',
+        ['prefix' => ['modules/shipments/'],
+         'not_prefix' => ['modules/shipments/addresses', 'modules/shipments/address-']]],
+    ['shipment_addresses', 'Sevkiyat Adresleri', 'modules/shipments/addresses.php', 'route',
+        ['prefix' => ['modules/shipments/addresses', 'modules/shipments/address-']]],
+
     ['__group', 'Teknik Servis', '', '', []],
     ['service', 'Servis Kabul',          'modules/service/intake.php', 'clipboard-plus',
         ['exact' => ['modules/service/intake.php']]],

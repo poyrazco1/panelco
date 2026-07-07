@@ -1293,3 +1293,9 @@ body.att-modal-open { overflow: hidden; }
 .help-suggest-box a:hover { background: var(--surface-2); text-decoration: none; }
 .help-suggest-box a:last-child { border-bottom: 0; }
 .help-suggest-box .hs-cat { color: var(--muted); font-size: 11.5px; }
+
+/* Sevkiyat fotoğraf galerisi */
+.ship-photos { display: flex; flex-wrap: wrap; gap: 12px; }
+.ship-photo { display: block; width: 150px; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; background: var(--surface-3); }
+.ship-photo img { display: block; width: 100%; height: 110px; object-fit: cover; }
+.ship-photo span { display: block; padding: 5px 8px; font-size: 11.5px; color: var(--muted); }

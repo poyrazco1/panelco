@@ -1323,3 +1323,162 @@ INSERT IGNORE INTO `help_articles` (`slug`, `title`, `category`, `short_desc`, `
 ('sifre-kasasi-nasil-kullanilir', 'Şifre kasası nasıl kullanılır?', 'password_vault', 'Şifreleri güvenli saklama ve panel şifresiyle görüntüleme.', 'Şifre Kasası şifreleri AES-256 ile şifreli saklar. Bir şifreyi görmek için kendi panel şifrenizi yeniden girmeniz gerekir; her görüntüleme loglanır.', 'Sol menüden "Şifre Kasası" bölümüne girin.\n"Yeni Kayıt" ile başlık, kullanıcı adı ve şifreyi girin.\nKaydı açıp "Şifreyi Göster" butonuna basın.\nPanel şifrenizi girerek şifreyi güvenle görüntüleyin.', 'Şifre Kasası', 'password_vault', 'sifre kasa vault guvenli goster panel sifre', 'şifre,güvenlik', 100),
 ('sevkiyat-nasil-olusturulur', 'Sevkiyat nasıl oluşturulur?', 'shipments', 'Teslimat/toplama sevkiyatı oluşturma ve sevkiyatçı atama.', 'Sevkiyat Takibi modülünde adres seçip sevkiyat oluşturur, bir sevkiyatçıya atarsınız. Durum değiştikçe yöneticiye WhatsApp bilgilendirme butonu çıkar.', 'Sol menüden "Sevkiyat Takibi" bölümüne girin.\n"Yeni Sevkiyat" butonuna tıklayın.\nMüşteri/adres, tip (teslimat/toplama) ve tarih girin.\nSevkiyatçı personel atayın.\n"Kaydet" butonuna basın.', 'Sevkiyat Takibi → Yeni Sevkiyat', 'shipments', 'sevkiyat olustur teslimat toplama sevkiyatci atama', 'sevkiyat,teslimat', 110),
 ('sevkiyat-fotograf-nasil-yuklenir', 'Sevkiyatçı teslimat fotoğrafı nasıl yükler?', 'shipments', 'Sevkiyatçının teslimat/toplama fotoğrafı yüklemesi.', 'Sevkiyatçı kendi sevkiyatının detayında durumu günceller ve kamera ile teslimat/toplama fotoğrafı yükler. Fotoğraf sevkiyata bağlanır ve loglanır.', 'Size atanan sevkiyatın detayına girin.\nKonum linkini açıp adrese gidin.\nDurumu güncelleyin (ör. Teslim edildi).\n"Fotoğraf yükle" ile kamera/dosya seçip yükleyin.\nGerekirse teslimat notu yazıp tamamlayın.', 'Sevkiyat Takibi → (sevkiyat) → Fotoğraf', 'shipments', 'sevkiyat fotograf yukle teslimat kamera sevkiyatci', 'sevkiyat,fotoğraf', 120);
+
+/* =========================================================================
+   EK PART 26 — Sevkiyat Takibi (adresler, sevkiyatlar, toplama, foto, rota)
+   ====================================================================== */
+
+CREATE TABLE IF NOT EXISTS `shipment_addresses` (
+    `id`             INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `company_name`   VARCHAR(190) NOT NULL,
+    `contact_name`   VARCHAR(150) DEFAULT NULL,
+    `phone`          VARCHAR(40)  DEFAULT NULL,
+    `whatsapp`       VARCHAR(40)  DEFAULT NULL,
+    `email`          VARCHAR(190) DEFAULT NULL,
+    `country`        VARCHAR(80)  DEFAULT NULL,
+    `city`           VARCHAR(80)  DEFAULT NULL,
+    `district`       VARCHAR(80)  DEFAULT NULL,
+    `neighborhood`   VARCHAR(120) DEFAULT NULL,
+    `address`        TEXT         DEFAULT NULL,
+    `location_url`   VARCHAR(500) DEFAULT NULL,
+    `lat`            VARCHAR(32)  DEFAULT NULL,
+    `lng`            VARCHAR(32)  DEFAULT NULL,
+    `address_type`   VARCHAR(20)  NOT NULL DEFAULT 'delivery',
+    `default_note`   VARCHAR(500) DEFAULT NULL,
+    `working_hours`  VARCHAR(190) DEFAULT NULL,
+    `vehicle_access` VARCHAR(120) DEFAULT NULL,
+    `floor_building` VARCHAR(120) DEFAULT NULL,
+    `has_elevator`   TINYINT(1)   NOT NULL DEFAULT 0,
+    `notes`          TEXT         DEFAULT NULL,
+    `is_active`      TINYINT(1)   NOT NULL DEFAULT 1,
+    `is_deleted`     TINYINT(1)   NOT NULL DEFAULT 0,
+    `created_by`     INT UNSIGNED DEFAULT NULL,
+    `updated_by`     INT UNSIGNED DEFAULT NULL,
+    `created_at`     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`     DATETIME     NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_ship_addr_city` (`city`),
+    KEY `idx_ship_addr_deleted` (`is_deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `shipments` (
+    `id`            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `shipment_no`   VARCHAR(40)  NOT NULL,
+    `shipment_date` DATE         DEFAULT NULL,
+    `planned_date`  DATE         DEFAULT NULL,
+    `customer_name` VARCHAR(190) DEFAULT NULL,
+    `address_id`    INT UNSIGNED DEFAULT NULL,
+    `shipment_type` VARCHAR(20)  NOT NULL DEFAULT 'delivery',
+    `related_type`  VARCHAR(20)  NOT NULL DEFAULT 'manual',
+    `related_ref`   VARCHAR(60)  DEFAULT NULL,
+    `courier_id`    INT UNSIGNED DEFAULT NULL,
+    `vehicle_info`  VARCHAR(120) DEFAULT NULL,
+    `priority`      VARCHAR(20)  NOT NULL DEFAULT 'normal',
+    `status`        VARCHAR(30)  NOT NULL DEFAULT 'planned',
+    `description`   TEXT         DEFAULT NULL,
+    `manager_note`  TEXT         DEFAULT NULL,
+    `courier_note`  TEXT         DEFAULT NULL,
+    `fail_reason`   VARCHAR(60)  DEFAULT NULL,
+    `route_date`    DATE         DEFAULT NULL,
+    `route_seq`     INT UNSIGNED DEFAULT NULL,
+    `route_time`    VARCHAR(40)  DEFAULT NULL,
+    `is_deleted`    TINYINT(1)   NOT NULL DEFAULT 0,
+    `created_by`    INT UNSIGNED DEFAULT NULL,
+    `updated_by`    INT UNSIGNED DEFAULT NULL,
+    `created_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`    DATETIME     NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_shipment_no` (`shipment_no`),
+    KEY `idx_shipments_status` (`status`),
+    KEY `idx_shipments_courier` (`courier_id`),
+    KEY `idx_shipments_deleted` (`is_deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `shipment_items` (
+    `id`           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `shipment_id`  INT UNSIGNED NOT NULL,
+    `name`         VARCHAR(255) NOT NULL,
+    `product_code` VARCHAR(80)  DEFAULT NULL,
+    `barcode`      VARCHAR(80)  DEFAULT NULL,
+    `qty`          DECIMAL(12,2) NOT NULL DEFAULT 1,
+    `note`         VARCHAR(255) DEFAULT NULL,
+    `sort`         INT UNSIGNED NOT NULL DEFAULT 0,
+    PRIMARY KEY (`id`),
+    KEY `idx_shipment_items_ship` (`shipment_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `shipment_collections` (
+    `id`            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `shipment_id`   INT UNSIGNED DEFAULT NULL,
+    `company_name`  VARCHAR(190) DEFAULT NULL,
+    `address_id`    INT UNSIGNED DEFAULT NULL,
+    `collection_date` DATE       DEFAULT NULL,
+    `package_count` INT UNSIGNED DEFAULT NULL,
+    `photo_required` TINYINT(1)  NOT NULL DEFAULT 0,
+    `note`          TEXT         DEFAULT NULL,
+    `status`        VARCHAR(30)  NOT NULL DEFAULT 'planned',
+    `is_deleted`    TINYINT(1)   NOT NULL DEFAULT 0,
+    `created_by`    INT UNSIGNED DEFAULT NULL,
+    `updated_by`    INT UNSIGNED DEFAULT NULL,
+    `created_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`    DATETIME     NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_ship_coll_ship` (`shipment_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `shipment_collection_items` (
+    `id`            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `collection_id` INT UNSIGNED NOT NULL,
+    `name`          VARCHAR(255) NOT NULL,
+    `product_code`  VARCHAR(80)  DEFAULT NULL,
+    `barcode`       VARCHAR(80)  DEFAULT NULL,
+    `qty`           DECIMAL(12,2) NOT NULL DEFAULT 1,
+    `taken_qty`     DECIMAL(12,2) NOT NULL DEFAULT 0,
+    `condition_note` VARCHAR(255) DEFAULT NULL,
+    `is_taken`      TINYINT(1)   NOT NULL DEFAULT 0,
+    `note`          VARCHAR(255) DEFAULT NULL,
+    `sort`          INT UNSIGNED NOT NULL DEFAULT 0,
+    PRIMARY KEY (`id`),
+    KEY `idx_ship_coll_items_coll` (`collection_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `shipment_photos` (
+    `id`            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `shipment_id`   INT UNSIGNED NOT NULL,
+    `collection_id` INT UNSIGNED DEFAULT NULL,
+    `file_path`     VARCHAR(255) NOT NULL,
+    `photo_type`    VARCHAR(20)  NOT NULL DEFAULT 'delivery',
+    `uploaded_by`   INT UNSIGNED DEFAULT NULL,
+    `created_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_ship_photos_ship` (`shipment_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `shipment_status_logs` (
+    `id`          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `shipment_id` INT UNSIGNED NOT NULL,
+    `old_status`  VARCHAR(30)  DEFAULT NULL,
+    `new_status`  VARCHAR(30)  NOT NULL,
+    `note`        VARCHAR(500) DEFAULT NULL,
+    `changed_by`  INT UNSIGNED DEFAULT NULL,
+    `created_at`  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_ship_status_logs_ship` (`shipment_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `shipment_route_plans` (
+    `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `plan_date`  DATE         DEFAULT NULL,
+    `courier_id` INT UNSIGNED DEFAULT NULL,
+    `notes`      VARCHAR(500) DEFAULT NULL,
+    `created_by` INT UNSIGNED DEFAULT NULL,
+    `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_ship_route_date` (`plan_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Sevkiyat ayarları (yönetici WhatsApp + mesaj şablonu) — app_settings
+INSERT IGNORE INTO `app_settings` (`setting_key`, `setting_value`) VALUES
+    ('shipment_manager_name', ''),
+    ('shipment_manager_whatsapp', ''),
+    ('shipment_wa_template', 'Merhaba, {sevkiyat_no} numaralı sevkiyat güncellendi.\n\nFirma: {firma_adi}\nTip: {sevkiyat_tipi}\nDurum: {durum}\nSevkiyatçı: {sevkiyatci_adi}\nAdres: {adres}\nNot: {not}\n\nPanelden kontrol edebilirsiniz: {panel_linki}');
