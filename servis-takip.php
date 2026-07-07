@@ -112,7 +112,13 @@ header('X-Content-Type-Options: nosniff');
         </div>
         <?php endif; ?>
 
-        <p class="p-foot"><?= e($companyName) ?> · Bu sayfa yalnızca süreç takibi içindir.</p>
+        <p class="p-foot">
+            <?= e($companyName) ?>
+            <?php if (!empty($company['company_address'])): ?> · <?= e((string) $company['company_address']) ?><?php endif; ?>
+            <?php if (!empty($companyPhone)): ?> · Tel: <?= e((string) $companyPhone) ?><?php endif; ?>
+            <?php if (!empty($company['company_website'])): ?> · <?= e((string) $company['company_website']) ?><?php endif; ?>
+            <br>Bu sayfa yalnızca süreç takibi içindir.
+        </p>
     </div>
 <?php endif; ?>
 </body>

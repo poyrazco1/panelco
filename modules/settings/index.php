@@ -45,6 +45,7 @@ $groups = [
         ['title' => 'Dış Tamirciler', 'icon' => 'wrench', 'desc' => 'Dışarıda çalışılan tamircilerin kaydı ve iletişimi.', 'url' => url('modules/service/repairers.php'), 'perm' => 'service', 'kw' => 'servis tamirci dis usta'],
         ['title' => 'Servis Durumları', 'icon' => 'list-checks', 'desc' => 'Servis kabul sürecindeki durum tanımları.', 'url' => url('modules/service/statuses.php'), 'perm' => 'service', 'kw' => 'servis durum status'],
         ['title' => 'Servis Koşulları', 'icon' => 'file-text', 'desc' => 'Servis teslim formundaki koşul metinleri.', 'url' => url('modules/service/terms.php'), 'perm' => 'service', 'kw' => 'servis kosul sozlesme metin'],
+        ['title' => 'Servis Mesaj Şablonları', 'icon' => 'message-circle', 'perm' => 'settings', 'desc' => 'Servis durum bilgilendirme için WhatsApp/e-posta şablonları ve SMS altyapı ayarları.', 'url' => url('modules/settings/service-messages.php'), 'kw' => 'servis mesaj sablon durum bilgilendirme whatsapp sms eposta'],
         ['title' => 'Servis Formu Ayarları', 'icon' => 'file-pen', 'desc' => 'Servis formu başlığı, logo gösterimi ve imza/onay ayarları.', 'soon' => true, 'kw' => 'servis form imza onay'],
     ],
     'İade-Değişim Ayarları' => [

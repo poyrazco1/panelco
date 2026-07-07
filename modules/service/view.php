@@ -251,6 +251,22 @@ layout_top('Servis: ' . $s['reference_code'], 'service');
                         <button type="submit" class="btn btn-sm"><?= (int) $s['public_tracking_enabled'] === 1 ? 'Takibi kapat' : 'Takibi aç' ?></button>
                     </form>
                 </div>
+                <?php
+                require_once __DIR__ . '/../../includes/service-messages.php';
+                $waStatus = can('service.whatsapp') ? service_status_whatsapp_link($s) : null;
+                ?>
+                <?php if (can('service.whatsapp') || can('service.mail')): ?>
+                <div class="row-actions" style="flex-wrap:wrap;gap:8px;margin-top:10px;border-top:1px solid var(--border);padding-top:10px">
+                    <span class="small muted" style="width:100%">Durum bilgilendirme (şablon: Ayarlar → Servis Mesaj Şablonları):</span>
+                    <?php if ($waStatus): ?><a class="btn btn-sm btn-wa" href="<?= e($waStatus) ?>" target="_blank" rel="noopener"><?= icon('message-circle') ?>Durumu WhatsApp'tan bildir</a><?php endif; ?>
+                    <?php if (can('service.mail') && !empty($s['customer_email'])): ?>
+                    <form method="post" action="<?= e(url('modules/service/notify.php')) ?>" style="display:inline">
+                        <?= csrf_field() ?><input type="hidden" name="id" value="<?= (int) $id ?>">
+                        <button type="submit" class="btn btn-sm"><?= icon('mail') ?>Durumu e-posta ile bildir</button>
+                    </form>
+                    <?php endif; ?>
+                </div>
+                <?php endif; ?>
             </div>
         </div>
 
