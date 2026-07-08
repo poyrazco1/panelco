@@ -296,6 +296,8 @@ table.table td.wrap { white-space: normal; }
 .alert-success { background: var(--success-bg); color: var(--success-fg); }
 .alert-error   { background: var(--error-bg); color: var(--error-fg); }
 .alert-info    { background: var(--info-bg); color: var(--info-fg); }
+.alert-warning { background: #FEF3C7; color: #92400E; border-color: #FDE68A; }
+[data-theme="dark"] .alert-warning { background: rgba(180,130,20,.18); color: #FCD34D; border-color: rgba(180,130,20,.35); }
 
 /* Anahtar/değer listesi */
 .kv { width: 100%; border-collapse: collapse; font-size: 14px; }
@@ -1758,3 +1760,56 @@ a.dash-meta-chip:hover { border-color: #C9CDD6; text-decoration: none; }
 
 [data-theme="dark"] .sel-chip-btn.is-sel, [data-theme="dark"] .selection-row.is-sel, [data-theme="dark"] .qfilter.is-on { background: rgba(59,130,246,.16); }
 @media (prefers-color-scheme: dark) { [data-theme="system"] .sel-chip-btn.is-sel, [data-theme="system"] .selection-row.is-sel, [data-theme="system"] .qfilter.is-on { background: rgba(59,130,246,.16); } }
+
+/* =========================================================================
+   EK PART 27 — Yurtdışı Müşteriler / Dış Ticaret CRM
+   Değişkenlerle çalışır → açık/koyu tema otomatik uyum sağlar.
+   ====================================================================== */
+.stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 18px; }
+.stat-row .stat-card { padding: 14px 16px; text-align: center; }
+.stat-row .stat-val { display: block; font-size: 24px; font-weight: 700; color: var(--text); line-height: 1.1; }
+.stat-row .stat-lbl { display: block; font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+.saved-filter-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
+
+.filter-panel { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); margin-bottom: 18px; }
+.filter-panel > summary { list-style: none; cursor: pointer; padding: 12px 16px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.filter-panel > summary::-webkit-details-marker { display: none; }
+.filter-panel[open] > summary { border-bottom: 1px solid var(--border); }
+.ic-filter-form { padding: 14px 16px; }
+.ic-filter-form select[multiple] { min-height: 92px; padding: 4px; }
+.ic-filter-form .form-group.grow { flex: 1 1 100%; }
+.filter-checks { gap: 18px; flex-wrap: wrap; }
+
+.save-filter-inline { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: -6px 0 16px; padding: 10px 14px; background: var(--surface-2); border-radius: var(--radius); }
+.save-filter-inline input[type="text"] { min-width: 260px; }
+
+.table-toolbar { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin-bottom: 10px; }
+tr.row-muted { opacity: .62; }
+
+.ic-view-grid { display: grid; grid-template-columns: 1fr 320px; gap: 20px; align-items: start; }
+.ic-view-side .card { margin-bottom: 16px; }
+/* Grid çocukları içeriğe göre taşmasın (tablo/uzun metin table-wrap içinde kayar) */
+.ic-view-main, .ic-view-side { min-width: 0; }
+@media (max-width: 900px) { .ic-view-grid { grid-template-columns: 1fr; } }
+
+.form-grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; align-items: start; margin-bottom: 8px; }
+.form-grid-2 > * { min-width: 0; }
+.form-grid-2 .card { margin-bottom: 0; }
+
+.check-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 4px 14px; }
+.inline-form { margin-top: 8px; }
+.inline-form.mt, .mt { margin-top: 12px; }
+
+.note-box { margin-top: 12px; padding: 10px 12px; background: var(--surface-2); border-radius: var(--radius-sm); font-size: 13px; }
+
+.chip-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.brand-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; background: var(--info-bg); color: var(--info-fg); border-radius: 14px; font-size: 13px; }
+.brand-chip em { font-style: normal; opacity: .75; font-size: 12px; }
+.chip-x { border: none; background: transparent; color: inherit; cursor: pointer; font-size: 15px; line-height: 1; padding: 0 2px; }
+
+.def-list { list-style: none; margin: 0; padding: 0; }
+.def-list li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--border); }
+.def-list li:last-child { border-bottom: none; }
+
+.timeline.sm li { font-size: 13px; }

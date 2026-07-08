@@ -47,6 +47,22 @@ function permission_action_labels(): array
         'collection_create'   => 'Toplama Ekle',
         'collection_edit'     => 'Toplama Düzenle',
         'collection_complete' => 'Toplama Tamamla',
+        // Yurtdışı müşteriler / dış ticaret işlemleri
+        'filter'              => 'Filtrele',
+        'message_mail'        => 'Mail Gönder',
+        'message_whatsapp'    => 'WhatsApp Linki',
+        'blacklist'           => 'Kara Liste',
+        'notes'               => 'Not Ekle',
+        'view_contacts'       => 'Kişileri Gör',
+        'create_contacts'     => 'Kişi Ekle',
+        'edit_contacts'       => 'Kişi Düzenle',
+        'delete_contacts'     => 'Kişi Sil',
+        'view_brands'         => 'Markaları Gör',
+        'edit_brands'         => 'Marka Düzenle',
+        'view_notes'          => 'Notları Gör',
+        'edit_notes'          => 'Not Düzenle',
+        'status_change'       => 'Durum Değiştir',
+        'relationship_change' => 'İlişki Değiştir',
     ];
 }
 
@@ -87,6 +103,9 @@ function module_action_registry(): array
         'attendance'      => ['Puantaj',               'İK / Finans', ['view','edit','export']],
         'settings'        => ['Ayarlar',               'Sistem',      ['view','edit','settings']],
         'forms'           => ['Form Merkezi',          'Form',        ['view','create','edit','delete','submit','submissions.view','submissions.manage','approve','external.manage','templates.manage','categories.manage']],
+        'international_customers' => ['Yurtdışı Müşteriler', 'Dış Ticaret', ['view','create','edit','delete','import','export','filter','message_mail','message_whatsapp','blacklist','notes','view_contacts','create_contacts','edit_contacts','delete_contacts','view_brands','edit_brands','view_notes','edit_notes','status_change','relationship_change']],
+        'product_lists'   => ['Ürün Listeleri',        'Dış Ticaret', ['view','create','edit','delete','export','pdf','mail','whatsapp','print']],
+        'message_templates' => ['Mesaj Şablonları',    'Dış Ticaret', ['view','create','edit','delete']],
     ];
 }
 
