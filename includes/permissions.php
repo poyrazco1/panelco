@@ -33,6 +33,13 @@ function permission_action_labels(): array
         // Sevkiyat modülü işlemleri
         'assign'              => 'Ata',
         'complete'            => 'Tamamla',
+        // Form Merkezi işlemleri
+        'submit'              => 'Doldur',
+        'submissions.view'    => 'Kayıtları Gör',
+        'submissions.manage'  => 'Kayıt Yönet',
+        'external.manage'     => 'Dış Link Yönet',
+        'templates.manage'    => 'Şablon Yönet',
+        'categories.manage'   => 'Kategori Yönet',
         'photo_upload'        => 'Fotoğraf Yükle',
         'reports'             => 'Raporlar',
         'route_plan'          => 'Rota Planı',
@@ -79,6 +86,7 @@ function module_action_registry(): array
         'leave'           => ['İzin / İK',             'İK / Finans', ['view','create','edit','delete','approve','export']],
         'attendance'      => ['Puantaj',               'İK / Finans', ['view','edit','export']],
         'settings'        => ['Ayarlar',               'Sistem',      ['view','edit','settings']],
+        'forms'           => ['Form Merkezi',          'Form',        ['view','create','edit','delete','submit','submissions.view','submissions.manage','approve','external.manage','templates.manage','categories.manage']],
     ];
 }
 

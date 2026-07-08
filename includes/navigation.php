@@ -86,6 +86,15 @@ function nav_sidebar_groups(): array
              'match' => ['prefix' => ['modules/commissions/']]],
         ],
 
+        'Form Merkezi' => [
+            ['perm' => 'forms.view', 'title' => 'Formlar', 'path' => 'modules/forms/index.php', 'icon' => 'file-pen',
+             'match' => ['prefix' => ['modules/forms/index.php', 'modules/forms/submit.php']]],
+            ['perm' => 'forms.submissions.view', 'title' => 'Form Kayıtları', 'path' => 'modules/forms/submissions.php', 'icon' => 'clipboard-list',
+             'match' => ['prefix' => ['modules/forms/submissions.php', 'modules/forms/submission-view.php']]],
+            ['perm' => 'forms.approve', 'title' => 'Onay Bekleyenler', 'path' => 'modules/forms/approvals.php', 'icon' => 'check-circle',
+             'match' => ['prefix' => ['modules/forms/approvals.php']]],
+        ],
+
         'Varlık & Araçlar' => [
             ['perm' => 'inventory', 'title' => 'Envanter / Demirbaş', 'path' => 'modules/inventory/index.php', 'icon' => 'package-check',
              'match' => ['prefix' => ['modules/inventory/']]],
@@ -204,6 +213,24 @@ function nav_settings_catalog(): array
                 ['title' => 'İade-Değişim Sebepleri', 'icon' => 'help-circle', 'status' => 'soon',
                  'desc' => 'Yanlış ürün gönderimi, hasarlı ürün, cayma hakkı, tedarikçi hatası vb.',
                  'kw' => 'iade degisim sebep neden reason'],
+            ],
+        ],
+
+        'Form Ayarları' => [
+            'icon' => 'file-pen',
+            'cards' => [
+                ['title' => 'Form Şablonları', 'icon' => 'file-pen', 'perm' => 'forms.templates.manage', 'url' => 'modules/forms/templates.php',
+                 'desc' => 'İç ve dış formların alanlarını, aktiflik durumunu ve onay gereksinimini yönetin.',
+                 'kw' => 'form şablon template iç dış alan field'],
+                ['title' => 'Form Kategorileri', 'icon' => 'folder', 'perm' => 'forms.categories.manage', 'url' => 'modules/forms/categories.php',
+                 'desc' => 'Formları şirket içi, müşteri, teknik servis, sevkiyat, İK ve muhasebe kategorilerine ayırın.',
+                 'kw' => 'form kategori category'],
+                ['title' => 'Dış Form Linkleri', 'icon' => 'link', 'perm' => 'forms.external.manage', 'url' => 'modules/forms/external-links.php',
+                 'desc' => 'Müşterilere gönderilecek tokenlı dış form linklerini oluşturun ve yönetin.',
+                 'kw' => 'dış form public token link müşteri'],
+                ['title' => 'Form Mesaj Şablonları', 'icon' => 'message-circle', 'perm' => 'forms.templates.manage', 'url' => 'modules/forms/message-templates.php',
+                 'desc' => 'Form alındı, onaylandı, reddedildi gibi WhatsApp/e-posta mesaj metinlerini yönetin.',
+                 'kw' => 'form mesaj whatsapp eposta şablon'],
             ],
         ],
 
