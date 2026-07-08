@@ -98,7 +98,8 @@ function get_shipment_addresses(array $f = []): array
     if (isset($f['active']) && $f['active'] !== '') { $where[] = 'is_active = :a'; $params[':a'] = (int) $f['active']; }
     if (!empty($f['type']) && isset(shipment_address_types()[$f['type']])) { $where[] = "(address_type = :t OR address_type = 'both')"; $params[':t'] = $f['type']; }
     if (!empty($f['city'])) { $where[] = 'city LIKE :city'; $params[':city'] = '%' . $f['city'] . '%'; }
-    if (!empty($f['search'])) { $where[] = '(company_name LIKE :q OR contact_name LIKE :q OR phone LIKE :q OR district LIKE :q)'; $params[':q'] = '%' . $f['search'] . '%'; }
+    if (!empty($f['district'])) { $where[] = 'district LIKE :dist'; $params[':dist'] = '%' . $f['district'] . '%'; }
+    if (!empty($f['search'])) { $where[] = '(company_name LIKE :q OR contact_name LIKE :q OR phone LIKE :q OR whatsapp LIKE :q OR district LIKE :q)'; $params[':q'] = '%' . $f['search'] . '%'; }
     try {
         $st = db()->prepare('SELECT * FROM shipment_addresses WHERE ' . implode(' AND ', $where) . ' ORDER BY company_name ASC LIMIT 1000');
         $st->execute($params);
@@ -528,4 +529,668 @@ function set_collection_status(int $id, string $status, ?int $userId): bool
     if (!isset(collection_statuses()[$status])) { return false; }
     try { return db()->prepare('UPDATE shipment_collections SET status=:s, updated_by=:uby WHERE id=:id AND is_deleted=0')->execute([':s' => $status, ':uby' => $userId, ':id' => $id]); }
     catch (Throwable $e) { log_error('set_collection_status: ' . $e->getMessage()); return false; }
+}
+
+/* =========================================================================
+ |  ROTA TABANLI MODEL (Adres Defteri + Günlük Rota + Duraklar + Kanıt)
+ |  Ana kayıt mantığı "tek tek sevkiyat" değil "rota ve rota durakları"dır.
+ |  Sürücü (sevkiyatçı) = panel kullanıcısı; rota driver_user_id ile atanır.
+ |  Sürücü yalnızca kendi rotalarını görür. Tüm işlemler hataya dayanıklıdır.
+ * ====================================================================== */
+
+/* ---- Rota durumları ---- */
+function ship_route_statuses(): array
+{
+    return [
+        'draft'     => 'Taslak',
+        'planned'   => 'Planlandı',
+        'on_way'    => 'Yolda',
+        'partial'   => 'Kısmen Tamamlandı',
+        'completed' => 'Tamamlandı',
+        'cancelled' => 'İptal',
+    ];
+}
+function ship_route_status_label(string $k): string { return ship_route_statuses()[$k] ?? $k; }
+function ship_route_status_class(string $k): string
+{
+    return match ($k) {
+        'completed'         => 'badge-success',
+        'on_way'            => 'badge-leave',
+        'planned'           => 'badge-info',
+        'partial'           => 'badge-leave',
+        'cancelled'         => 'badge-muted',
+        default             => 'badge-muted',
+    };
+}
+
+/* ---- Durak durumları ---- */
+function ship_stop_statuses(): array
+{
+    return [
+        'pending'             => 'Bekliyor',
+        'en_route'            => 'Gidiliyor',
+        'delivered'           => 'Teslim Edildi',
+        'collected'           => 'Toplandı',
+        'delivered_collected' => 'Teslim Edildi + Toplandı',
+        'not_found'           => 'Adreste Bulunamadı',
+        'cancelled'           => 'İptal',
+    ];
+}
+function ship_stop_status_label(string $k): string { return ship_stop_statuses()[$k] ?? $k; }
+function ship_stop_status_class(string $k): string
+{
+    return match ($k) {
+        'delivered', 'collected', 'delivered_collected' => 'badge-success',
+        'en_route'   => 'badge-leave',
+        'not_found'  => 'badge-danger',
+        'cancelled'  => 'badge-muted',
+        default      => 'badge-muted', // pending
+    };
+}
+/** Durak "tamamlandı" sayılan durumlar. */
+function ship_stop_done_statuses(): array { return ['delivered', 'collected', 'delivered_collected']; }
+/** Durak "sorunlu" sayılan durumlar. */
+function ship_stop_problem_statuses(): array { return ['not_found']; }
+
+/* ---- İşlem tipleri (durak) ---- */
+function ship_stop_operations(): array { return ['delivery' => 'Teslimat', 'collection' => 'Toplama', 'both' => 'Teslimat + Toplama']; }
+function ship_stop_operation_label(string $k): string { return ship_stop_operations()[$k] ?? $k; }
+
+/** İşlem tipine göre önerilen "tamamlandı" durumu. */
+function ship_operation_done_status(string $op): string
+{
+    return match ($op) {
+        'collection' => 'collected',
+        'both'       => 'delivered_collected',
+        default      => 'delivered',
+    };
+}
+
+/* ---- Görünürlük / roller ---- */
+/** Yönetici/sevkiyat yöneticisi: tüm rotaları görür ve yönetir. */
+function ship_can_manage(): bool
+{
+    $perms = function_exists('current_permissions') ? current_permissions() : [];
+    return in_array('all', $perms, true) || can('shipments.assign') || can('shipments.reports')
+        || can('shipments.route_plan') || can('shipments.create') || can('shipments.edit');
+}
+/** Aktif sürücü kullanıcı id'si (rotalar bu kullanıcıya atanır). */
+function ship_current_driver_user_id(): int { return (int) (current_user_id() ?? 0); }
+
+/** Sürücü seçenekleri: panel kullanıcısına bağlı aktif personel [user_id => Ad]. */
+function ship_driver_options(): array
+{
+    $out = [];
+    try {
+        $st = db()->query('SELECT p.user_id, p.full_name FROM personnel p
+                           WHERE p.user_id IS NOT NULL AND p.is_active = 1
+                           ORDER BY p.full_name ASC');
+        foreach ($st->fetchAll() as $r) { $out[(int) $r['user_id']] = (string) $r['full_name']; }
+    } catch (Throwable $e) { log_error('ship_driver_options: ' . $e->getMessage()); }
+    return $out;
+}
+/** user_id → sürücü adı (yoksa users tablosundan). */
+function ship_driver_name(?int $userId): string
+{
+    if (!$userId) { return ''; }
+    static $cache = [];
+    if (isset($cache[$userId])) { return $cache[$userId]; }
+    try {
+        $st = db()->prepare('SELECT COALESCE(p.full_name, u.full_name, u.username) AS n
+                             FROM users u LEFT JOIN personnel p ON p.user_id = u.id WHERE u.id = :id LIMIT 1');
+        $st->execute([':id' => $userId]);
+        return $cache[$userId] = (string) ($st->fetchColumn() ?: '');
+    } catch (Throwable $e) { return ''; }
+}
+
+/* =========================================================================
+ |  ROTALAR
+ * ====================================================================== */
+/**
+ * Rota listesi. Sürücü yalnızca kendi rotalarını görür.
+ * Filtreler: date, date_from, date_to, driver_user_id, status, today(bool)
+ */
+function get_routes(array $f = []): array
+{
+    $where = ['r.deleted_at IS NULL'];
+    $params = [];
+    if (!ship_can_manage()) {
+        $where[] = 'r.driver_user_id = :own';
+        $params[':own'] = ship_current_driver_user_id() ?: -1;
+    } elseif (!empty($f['driver_user_id'])) {
+        $where[] = 'r.driver_user_id = :drv'; $params[':drv'] = (int) $f['driver_user_id'];
+    }
+    if (!empty($f['today'])) { $where[] = 'r.route_date = CURDATE()'; }
+    if (!empty($f['date'])) { $where[] = 'r.route_date = :d'; $params[':d'] = $f['date']; }
+    if (!empty($f['date_from'])) { $where[] = 'r.route_date >= :df'; $params[':df'] = $f['date_from']; }
+    if (!empty($f['date_to'])) { $where[] = 'r.route_date <= :dt'; $params[':dt'] = $f['date_to']; }
+    if (!empty($f['status']) && isset(ship_route_statuses()[$f['status']])) { $where[] = 'r.status = :st'; $params[':st'] = $f['status']; }
+    if (isset($f['completed']) && $f['completed'] === true) { $where[] = "r.status = 'completed'"; }
+    try {
+        $sql = 'SELECT r.*,
+                       (SELECT COUNT(*) FROM shipment_route_stops s WHERE s.route_id = r.id AND s.deleted_at IS NULL) AS stop_total,
+                       (SELECT COUNT(*) FROM shipment_route_stops s WHERE s.route_id = r.id AND s.deleted_at IS NULL AND s.status IN ("delivered","collected","delivered_collected")) AS stop_done,
+                       (SELECT COUNT(*) FROM shipment_route_stops s WHERE s.route_id = r.id AND s.deleted_at IS NULL AND s.status = "not_found") AS stop_problem
+                FROM shipment_routes r
+                WHERE ' . implode(' AND ', $where) . '
+                ORDER BY r.route_date DESC, r.id DESC LIMIT 500';
+        $st = db()->prepare($sql);
+        $st->execute($params);
+        $rows = $st->fetchAll();
+        foreach ($rows as &$r) { $r['driver_name'] = ship_driver_name($r['driver_user_id'] ? (int) $r['driver_user_id'] : null); }
+        return $rows;
+    } catch (Throwable $e) { log_error('get_routes: ' . $e->getMessage()); return []; }
+}
+
+/** Tek rota (görünürlük kontrollü). */
+function get_route(int $id): ?array
+{
+    if ($id <= 0) { return null; }
+    try {
+        $st = db()->prepare('SELECT * FROM shipment_routes WHERE id = :id AND deleted_at IS NULL LIMIT 1');
+        $st->execute([':id' => $id]);
+        $r = $st->fetch();
+        if (!$r) { return null; }
+        if (!ship_can_manage() && (int) $r['driver_user_id'] !== ship_current_driver_user_id()) { return null; }
+        $r['driver_name'] = ship_driver_name($r['driver_user_id'] ? (int) $r['driver_user_id'] : null);
+        return $r;
+    } catch (Throwable $e) { log_error('get_route: ' . $e->getMessage()); return null; }
+}
+
+/** Rota durakları (adres bilgisiyle birleşik, sıraya göre). */
+function get_route_stops(int $routeId): array
+{
+    if ($routeId <= 0) { return []; }
+    try {
+        $st = db()->prepare('SELECT s.*, a.company_name, a.contact_name, a.phone, a.whatsapp, a.city, a.district,
+                                    a.neighborhood, a.address, a.location_url, a.lat, a.lng
+                             FROM shipment_route_stops s
+                             LEFT JOIN shipment_addresses a ON a.id = s.address_id
+                             WHERE s.route_id = :rid AND s.deleted_at IS NULL
+                             ORDER BY s.stop_order ASC, s.id ASC');
+        $st->execute([':rid' => $routeId]);
+        return $st->fetchAll();
+    } catch (Throwable $e) { log_error('get_route_stops: ' . $e->getMessage()); return []; }
+}
+
+/** Tek durak (rota + adres bilgisiyle, görünürlük kontrollü). */
+function get_route_stop(int $stopId): ?array
+{
+    if ($stopId <= 0) { return null; }
+    try {
+        $st = db()->prepare('SELECT s.*, r.route_name, r.driver_user_id, r.route_date, r.status AS route_status,
+                                    a.company_name, a.contact_name, a.phone, a.whatsapp, a.city, a.district,
+                                    a.neighborhood, a.address, a.location_url, a.lat, a.lng
+                             FROM shipment_route_stops s
+                             INNER JOIN shipment_routes r ON r.id = s.route_id
+                             LEFT JOIN shipment_addresses a ON a.id = s.address_id
+                             WHERE s.id = :id AND s.deleted_at IS NULL AND r.deleted_at IS NULL LIMIT 1');
+        $st->execute([':id' => $stopId]);
+        $s = $st->fetch();
+        if (!$s) { return null; }
+        if (!ship_can_manage() && (int) $s['driver_user_id'] !== ship_current_driver_user_id()) { return null; }
+        return $s;
+    } catch (Throwable $e) { log_error('get_route_stop: ' . $e->getMessage()); return null; }
+}
+
+/** Rota başlık alanlarını girişten üretir. */
+function ship_route_header_fields(array $in): array
+{
+    $status = (string) ($in['status'] ?? 'draft');
+    if (!isset(ship_route_statuses()[$status])) { $status = 'draft'; }
+    return [
+        'route_name'     => trim((string) ($in['route_name'] ?? '')),
+        'route_date'     => trim((string) ($in['route_date'] ?? '')) ?: null,
+        'driver_user_id' => (int) ($in['driver_user_id'] ?? 0) ?: null,
+        'start_point'    => trim((string) ($in['start_point'] ?? '')) ?: null,
+        'end_point'      => trim((string) ($in['end_point'] ?? '')) ?: null,
+        'note'           => trim((string) ($in['note'] ?? '')) ?: null,
+        'status'         => $status,
+    ];
+}
+
+/**
+ * Rota + durakları tek işlemde oluşturur (transactional).
+ * $stops: her biri ['address_id','operation_type','reference_no','stop_note'] (sırayla).
+ * Sürücü atanmışsa rota 'planned', değilse 'draft'.
+ */
+function create_route(array $h, array $stops, ?int $userId): int
+{
+    if (($h['route_name'] ?? '') === '') { $h['route_name'] = 'Rota ' . date('d.m.Y H:i'); }
+    $status = !empty($h['driver_user_id']) ? 'planned' : 'draft';
+    try {
+        $pdo = db(); $pdo->beginTransaction();
+        $st = $pdo->prepare('INSERT INTO shipment_routes (route_name,route_date,driver_user_id,start_point,end_point,status,note,created_by,updated_by)
+                             VALUES (:name,:date,:drv,:start,:end,:status,:note,:cby,:uby)');
+        $st->execute([
+            ':name' => $h['route_name'], ':date' => $h['route_date'], ':drv' => $h['driver_user_id'],
+            ':start' => $h['start_point'], ':end' => $h['end_point'], ':status' => $status,
+            ':note' => $h['note'], ':cby' => $userId, ':uby' => $userId,
+        ]);
+        $routeId = (int) $pdo->lastInsertId();
+        ship_route_insert_stops($pdo, $routeId, $stops, $userId);
+        $pdo->commit();
+        route_log($routeId, null, '', $status, 'Rota oluşturuldu', $userId);
+        return $routeId;
+    } catch (Throwable $e) {
+        if (db()->inTransaction()) { db()->rollBack(); }
+        log_error('create_route: ' . $e->getMessage());
+        return 0;
+    }
+}
+
+/** Durakları verilen sırayla ekler (PDO transaction içinde çağrılır). */
+function ship_route_insert_stops(PDO $pdo, int $routeId, array $stops, ?int $userId): void
+{
+    $st = $pdo->prepare('INSERT INTO shipment_route_stops (route_id,address_id,stop_order,operation_type,status,reference_no,stop_note,created_by,updated_by)
+                         VALUES (:rid,:addr,:ord,:op,:status,:ref,:note,:cby,:uby)');
+    $order = 1;
+    foreach ($stops as $s) {
+        $addr = (int) ($s['address_id'] ?? 0);
+        if ($addr <= 0) { continue; }
+        $op = (string) ($s['operation_type'] ?? 'delivery');
+        if (!isset(ship_stop_operations()[$op])) { $op = 'delivery'; }
+        $st->execute([
+            ':rid' => $routeId, ':addr' => $addr, ':ord' => $order++, ':op' => $op, ':status' => 'pending',
+            ':ref' => trim((string) ($s['reference_no'] ?? '')) ?: null,
+            ':note' => trim((string) ($s['stop_note'] ?? '')) ?: null,
+            ':cby' => $userId, ':uby' => $userId,
+        ]);
+    }
+}
+
+/** Rota başlığını günceller. */
+function update_route(int $id, array $h, ?int $userId): bool
+{
+    try {
+        $st = db()->prepare('UPDATE shipment_routes SET route_name=:name,route_date=:date,driver_user_id=:drv,start_point=:start,end_point=:end,note=:note,updated_by=:uby WHERE id=:id AND deleted_at IS NULL');
+        return $st->execute([
+            ':name' => $h['route_name'] ?: ('Rota ' . date('d.m.Y')), ':date' => $h['route_date'], ':drv' => $h['driver_user_id'],
+            ':start' => $h['start_point'], ':end' => $h['end_point'], ':note' => $h['note'], ':uby' => $userId, ':id' => $id,
+        ]);
+    } catch (Throwable $e) { log_error('update_route: ' . $e->getMessage()); return false; }
+}
+
+/** Rotanın duraklarını yeni listeyle değiştirir (düzenleme). */
+function route_replace_stops(int $routeId, array $stops, ?int $userId): bool
+{
+    try {
+        $pdo = db(); $pdo->beginTransaction();
+        $pdo->prepare('UPDATE shipment_route_stops SET deleted_at = NOW(), updated_by = :uby WHERE route_id = :rid AND deleted_at IS NULL')
+            ->execute([':uby' => $userId, ':rid' => $routeId]);
+        ship_route_insert_stops($pdo, $routeId, $stops, $userId);
+        $pdo->commit();
+        return true;
+    } catch (Throwable $e) { if (db()->inTransaction()) { db()->rollBack(); } log_error('route_replace_stops: ' . $e->getMessage()); return false; }
+}
+
+/** Durak sırasını günceller: [stopId => order]. */
+function route_reorder_stops(int $routeId, array $orderMap, ?int $userId): bool
+{
+    try {
+        $pdo = db(); $pdo->beginTransaction();
+        $st = $pdo->prepare('UPDATE shipment_route_stops SET stop_order = :ord, updated_by = :uby WHERE id = :id AND route_id = :rid AND deleted_at IS NULL');
+        foreach ($orderMap as $stopId => $ord) {
+            $st->execute([':ord' => (int) $ord, ':uby' => $userId, ':id' => (int) $stopId, ':rid' => $routeId]);
+        }
+        $pdo->commit();
+        return true;
+    } catch (Throwable $e) { if (db()->inTransaction()) { db()->rollBack(); } log_error('route_reorder_stops: ' . $e->getMessage()); return false; }
+}
+
+/** Rotaya sürücü atar (durum planned olur). */
+function assign_route_driver(int $id, int $driverUserId, ?int $userId): bool
+{
+    try {
+        $cur = get_route($id);
+        if (!$cur) { return false; }
+        $newStatus = (string) $cur['status'] === 'draft' ? 'planned' : (string) $cur['status'];
+        db()->prepare('UPDATE shipment_routes SET driver_user_id=:drv, status=:st, updated_by=:uby WHERE id=:id AND deleted_at IS NULL')
+            ->execute([':drv' => $driverUserId ?: null, ':st' => $newStatus, ':uby' => $userId, ':id' => $id]);
+        if ($newStatus !== (string) $cur['status']) { route_log($id, null, (string) $cur['status'], $newStatus, 'Sürücü atandı', $userId); }
+        return true;
+    } catch (Throwable $e) { log_error('assign_route_driver: ' . $e->getMessage()); return false; }
+}
+
+/** Rota durumunu doğrudan ayarlar (iptal vb.). */
+function set_route_status(int $id, string $status, ?string $note, ?int $userId): bool
+{
+    if (!isset(ship_route_statuses()[$status])) { return false; }
+    try {
+        $cur = get_route($id);
+        if (!$cur) { return false; }
+        $extra = '';
+        if ($status === 'completed') { $extra = ', completed_at = NOW()'; }
+        if ($status === 'on_way' && empty($cur['started_at'])) { $extra .= ', started_at = NOW()'; }
+        db()->prepare("UPDATE shipment_routes SET status=:s{$extra}, updated_by=:uby WHERE id=:id AND deleted_at IS NULL")
+            ->execute([':s' => $status, ':uby' => $userId, ':id' => $id]);
+        route_log($id, null, (string) $cur['status'], $status, $note, $userId);
+        return true;
+    } catch (Throwable $e) { log_error('set_route_status: ' . $e->getMessage()); return false; }
+}
+
+/** Rotayı sil (soft). */
+function delete_route(int $id, ?int $userId): bool
+{
+    try { return db()->prepare('UPDATE shipment_routes SET deleted_at = NOW(), updated_by = :uby WHERE id = :id')->execute([':uby' => $userId, ':id' => $id]); }
+    catch (Throwable $e) { log_error('delete_route: ' . $e->getMessage()); return false; }
+}
+
+/**
+ * Durak durumunu günceller: durak + log + rota genel durumu otomatik hesap.
+ * Sürücü yalnızca kendi rotasının durağını güncelleyebilir (get_route_stop kontrolü).
+ */
+function set_stop_status(int $stopId, string $status, ?string $driverNote, ?int $userId): bool
+{
+    if (!isset(ship_stop_statuses()[$status])) { return false; }
+    $stop = get_route_stop($stopId);
+    if (!$stop) { return false; }
+    try {
+        $done = in_array($status, ship_stop_done_statuses(), true) || $status === 'cancelled';
+        $completedSql = $done ? 'NOW()' : 'NULL';
+        db()->prepare("UPDATE shipment_route_stops
+                       SET status = :s,
+                           driver_note = CASE WHEN :note_set = 1 THEN :note ELSE driver_note END,
+                           completed_at = " . ($status === 'pending' ? 'NULL' : ($done ? 'NOW()' : 'completed_at')) . ",
+                           updated_by = :uby
+                       WHERE id = :id AND deleted_at IS NULL")
+            ->execute([
+                ':s' => $status,
+                ':note_set' => ($driverNote !== null && $driverNote !== '') ? 1 : 0,
+                ':note' => (string) $driverNote,
+                ':uby' => $userId, ':id' => $stopId,
+            ]);
+        route_log((int) $stop['route_id'], $stopId, (string) $stop['status'], $status, $driverNote, $userId);
+        recompute_route_status((int) $stop['route_id'], $userId);
+        return true;
+    } catch (Throwable $e) { log_error('set_stop_status: ' . $e->getMessage()); return false; }
+}
+
+/**
+ * Rota genel durumunu duraklara göre yeniden hesaplar.
+ *  - Tüm aktif duraklar tamamlandı → completed
+ *  - Bir kısmı tamamlandı veya sorunlu → partial
+ *  - Hiçbiri tamamlanmadı ama yolda durak var → on_way
+ *  - Aksi halde → planned
+ * İptal edilmiş rota otomatik değişmez.
+ */
+function recompute_route_status(int $routeId, ?int $userId = null): void
+{
+    try {
+        $route = db()->prepare('SELECT status, started_at FROM shipment_routes WHERE id = :id AND deleted_at IS NULL LIMIT 1');
+        $route->execute([':id' => $routeId]);
+        $cur = $route->fetch();
+        if (!$cur || (string) $cur['status'] === 'cancelled') { return; }
+
+        $st = db()->prepare('SELECT status FROM shipment_route_stops WHERE route_id = :rid AND deleted_at IS NULL AND status <> "cancelled"');
+        $st->execute([':rid' => $routeId]);
+        $statuses = $st->fetchAll(PDO::FETCH_COLUMN);
+        $total = count($statuses);
+        if ($total === 0) { return; }
+
+        $done = 0; $problem = 0; $enRoute = 0;
+        foreach ($statuses as $s) {
+            if (in_array($s, ['delivered', 'collected', 'delivered_collected'], true)) { $done++; }
+            elseif ($s === 'not_found') { $problem++; }
+            elseif ($s === 'en_route') { $enRoute++; }
+        }
+
+        if ($done === $total) { $new = 'completed'; }
+        elseif ($done > 0 || $problem > 0) { $new = 'partial'; }
+        elseif ($enRoute > 0) { $new = 'on_way'; }
+        else { $new = 'planned'; }
+
+        if ($new === (string) $cur['status']) { return; }
+
+        $extra = '';
+        if ($new === 'completed') { $extra = ', completed_at = NOW()'; }
+        if (in_array($new, ['on_way', 'partial'], true) && empty($cur['started_at'])) { $extra .= ', started_at = NOW()'; }
+        db()->prepare("UPDATE shipment_routes SET status = :s{$extra}, updated_by = :uby WHERE id = :id AND deleted_at IS NULL")
+            ->execute([':s' => $new, ':uby' => $userId, ':id' => $routeId]);
+        route_log($routeId, null, (string) $cur['status'], $new, 'Otomatik durum güncellemesi', $userId);
+    } catch (Throwable $e) { log_error('recompute_route_status: ' . $e->getMessage()); }
+}
+
+/** Rota/durak durum logu. */
+function route_log(int $routeId, ?int $stopId, string $old, string $new, ?string $note, ?int $userId): void
+{
+    try {
+        db()->prepare('INSERT INTO shipment_status_logs (route_id, stop_id, old_status, new_status, note, changed_by) VALUES (:r,:s,:o,:n,:note,:by)')
+            ->execute([':r' => $routeId ?: null, ':s' => $stopId, ':o' => $old ?: null, ':n' => $new, ':note' => $note ?: null, ':by' => $userId]);
+    } catch (Throwable $e) { log_error('route_log: ' . $e->getMessage()); }
+}
+/** Rota durum geçmişi (rota + duraklar). */
+function route_status_history(int $routeId): array
+{
+    try {
+        $st = db()->prepare('SELECT l.*, u.full_name FROM shipment_status_logs l LEFT JOIN users u ON u.id = l.changed_by WHERE l.route_id = :rid ORDER BY l.id DESC LIMIT 100');
+        $st->execute([':rid' => $routeId]);
+        return $st->fetchAll();
+    } catch (Throwable $e) { return []; }
+}
+
+/* =========================================================================
+ |  GOOGLE MAPS ROTA LİNKİ (API'siz — directions linki)
+ * ====================================================================== */
+/** Bir adres/durak için tekli konum linki. */
+function ship_stop_maps_link(array $a): ?string
+{
+    if (!empty($a['location_url'])) { return (string) $a['location_url']; }
+    if (!empty($a['lat']) && !empty($a['lng'])) { return 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode($a['lat'] . ',' . $a['lng']); }
+    $parts = array_filter([$a['address'] ?? '', $a['neighborhood'] ?? '', $a['district'] ?? '', $a['city'] ?? '']);
+    if ($parts) { return 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode(implode(' ', $parts)); }
+    return null;
+}
+/** Bir durak için harita "noktası" (enlem/boylam varsa onu, yoksa adres metni). */
+function ship_stop_point(array $a): string
+{
+    if (!empty($a['lat']) && !empty($a['lng'])) { return $a['lat'] . ',' . $a['lng']; }
+    $parts = array_filter([$a['address'] ?? '', $a['neighborhood'] ?? '', $a['district'] ?? '', $a['city'] ?? '']);
+    return $parts ? implode(' ', $parts) : '';
+}
+/**
+ * Rota için Google Maps directions linki üretir.
+ * Başlangıç + sıralı duraklar + bitiş. Enlem/boylam varsa öncelikli.
+ * @return array{url:?string, warn:bool}  warn: durak sayısı Google limitini aşıyorsa
+ */
+function ship_route_maps_link(array $route, array $stops): array
+{
+    $pts = [];
+    foreach ($stops as $s) {
+        $p = ship_stop_point($s);
+        if ($p !== '') { $pts[] = $p; }
+    }
+    $start = trim((string) ($route['start_point'] ?? ''));
+    $end   = trim((string) ($route['end_point'] ?? ''));
+
+    // Başlangıç/bitiş noktalarını (varsa) ekle.
+    $origin = $start !== '' ? $start : ($pts ? array_shift($pts) : '');
+    $dest   = $end !== '' ? $end : ($pts ? array_pop($pts) : $origin);
+    if ($origin === '' && $dest === '' && !$pts) { return ['url' => null, 'warn' => false]; }
+
+    $url = 'https://www.google.com/maps/dir/?api=1';
+    if ($origin !== '') { $url .= '&origin=' . rawurlencode($origin); }
+    $url .= '&destination=' . rawurlencode($dest !== '' ? $dest : $origin);
+    // Google Maps waypoints ~23 ile sınırlıdır.
+    $warn = count($pts) > 23;
+    if ($pts) { $url .= '&waypoints=' . rawurlencode(implode('|', array_slice($pts, 0, 23))); }
+    $url .= '&travelmode=driving';
+    return ['url' => $url, 'warn' => $warn];
+}
+
+/* =========================================================================
+ |  TESLİMAT / TOPLAMA KANITI (fotoğraf)
+ * ====================================================================== */
+/** Fotoğraf yükleme ayarları (Genel Ayarlar > Sevkiyat Ayarları'ndan). */
+function ship_proof_config(): array
+{
+    $maxMb = (int) app_setting_get('shipment_photo_max_mb', '8');
+    if ($maxMb <= 0 || $maxMb > 32) { $maxMb = 8; }
+    $typesRaw = (string) app_setting_get('shipment_photo_types', 'jpg,jpeg,png,webp');
+    $types = array_values(array_filter(array_map(static fn($t) => strtolower(trim($t)), explode(',', $typesRaw))));
+    if (!$types) { $types = ['jpg', 'jpeg', 'png', 'webp']; }
+    return ['max_bytes' => $maxMb * 1024 * 1024, 'max_mb' => $maxMb, 'types' => $types];
+}
+/**
+ * Yüklenen kanıt fotoğrafını doğrular ve uploads/shipment-proof/ altına kaydeder.
+ * @return array{ok:bool, error:?string, path:?string, name:?string, mime:?string, size:?int}
+ */
+function ship_handle_proof(string $field): array
+{
+    $cfg = ship_proof_config();
+    $fail = static fn(string $m) => ['ok' => false, 'error' => $m, 'path' => null, 'name' => null, 'mime' => null, 'size' => null];
+    if (empty($_FILES[$field]) || ($_FILES[$field]['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) { return $fail('Fotoğraf seçilmedi.'); }
+    $f = $_FILES[$field];
+    if ($f['error'] !== UPLOAD_ERR_OK) { return $fail('Yükleme sırasında hata oluştu.'); }
+    if ($f['size'] <= 0 || $f['size'] > $cfg['max_bytes']) { return $fail('Fotoğraf en fazla ' . $cfg['max_mb'] . ' MB olabilir.'); }
+    $ext = strtolower((string) pathinfo((string) $f['name'], PATHINFO_EXTENSION));
+    if (!in_array($ext, $cfg['types'], true)) { return $fail('İzin verilen dosya tipleri: ' . implode(', ', $cfg['types']) . '.'); }
+    // Gerçek içerik türü görsel mi?
+    if (function_exists('finfo_open')) {
+        $fi = finfo_open(FILEINFO_MIME_TYPE); $mime = (string) finfo_file($fi, (string) $f['tmp_name']); finfo_close($fi);
+        if ($mime !== '' && strpos($mime, 'image/') !== 0) { return $fail('Dosya bir görsel değil.'); }
+    } else { $mime = (string) ($f['type'] ?? ''); }
+    $dir = APP_ROOT . '/uploads/shipment-proof';
+    if (!is_dir($dir)) { @mkdir($dir, 0775, true); }
+    // Güvenlik: klasörde PHP/script çalışmasını engelle (fresh deploy'da .htaccess yoksa yaz).
+    $ht = $dir . '/.htaccess';
+    if (!is_file($ht)) {
+        @file_put_contents($ht, "php_flag engine off\n<FilesMatch \"(?i)\\.(php|phtml|php3|php4|php5|php7|php8|pht|phar|cgi|pl|py|sh)$\">\n    Require all denied\n</FilesMatch>\nRemoveHandler .php .phtml .phar\nAddType text/plain .php .phtml .phar\n");
+    }
+    $safe = 'proof-' . date('Ymd-His') . '-' . bin2hex(random_bytes(5)) . '.' . $ext;
+    $rel = 'uploads/shipment-proof/' . $safe;
+    if (!move_uploaded_file((string) $f['tmp_name'], APP_ROOT . '/' . $rel)) { return $fail('Fotoğraf kaydedilemedi.'); }
+    return ['ok' => true, 'error' => null, 'path' => $rel, 'name' => (string) $f['name'], 'mime' => $mime ?? null, 'size' => (int) $f['size']];
+}
+/** Kanıt kaydını DB'ye yazar. */
+function ship_add_proof(?int $routeId, ?int $stopId, array $file, ?string $note, ?int $userId): bool
+{
+    try {
+        return db()->prepare('INSERT INTO shipment_proofs (route_id, stop_id, uploaded_by, file_path, original_name, mime_type, file_size, note) VALUES (:r,:s,:by,:path,:name,:mime,:size,:note)')
+            ->execute([
+                ':r' => $routeId ?: null, ':s' => $stopId ?: null, ':by' => $userId, ':path' => $file['path'],
+                ':name' => $file['name'] ?? null, ':mime' => $file['mime'] ?? null, ':size' => $file['size'] ?? null,
+                ':note' => ($note !== null && $note !== '') ? $note : null,
+            ]);
+    } catch (Throwable $e) { log_error('ship_add_proof: ' . $e->getMessage()); return false; }
+}
+function get_stop_proofs(int $stopId): array
+{
+    try { $st = db()->prepare('SELECT * FROM shipment_proofs WHERE stop_id = :id ORDER BY id DESC'); $st->execute([':id' => $stopId]); return $st->fetchAll(); }
+    catch (Throwable $e) { return []; }
+}
+function get_route_proofs(int $routeId): array
+{
+    try { $st = db()->prepare('SELECT * FROM shipment_proofs WHERE route_id = :id ORDER BY id DESC'); $st->execute([':id' => $routeId]); return $st->fetchAll(); }
+    catch (Throwable $e) { return []; }
+}
+function stop_proof_count(int $stopId): int
+{
+    try { $st = db()->prepare('SELECT COUNT(*) FROM shipment_proofs WHERE stop_id = :id'); $st->execute([':id' => $stopId]); return (int) $st->fetchColumn(); }
+    catch (Throwable $e) { return 0; }
+}
+
+/* =========================================================================
+ |  ROTA MERKEZİ ÖZETİ + RAPORLAR
+ * ====================================================================== */
+/** Sevkiyat Takibi ana ekranı özet kartları (görünürlüğe göre). */
+function ship_route_center_summary(): array
+{
+    $out = ['today_routes' => 0, 'pending_stops' => 0, 'done_stops' => 0, 'problem_stops' => 0];
+    $scope = ''; $params = [];
+    if (!ship_can_manage()) { $scope = ' AND r.driver_user_id = :own'; $params[':own'] = ship_current_driver_user_id() ?: -1; }
+    try {
+        $q = db()->prepare("SELECT COUNT(*) FROM shipment_routes r WHERE r.deleted_at IS NULL AND r.route_date = CURDATE()$scope");
+        $q->execute($params); $out['today_routes'] = (int) $q->fetchColumn();
+
+        $base = "SELECT COUNT(*) FROM shipment_route_stops s INNER JOIN shipment_routes r ON r.id = s.route_id
+                 WHERE s.deleted_at IS NULL AND r.deleted_at IS NULL AND r.route_date = CURDATE()$scope";
+        $p = db()->prepare($base . " AND s.status IN ('pending','en_route')"); $p->execute($params); $out['pending_stops'] = (int) $p->fetchColumn();
+        $d = db()->prepare($base . " AND s.status IN ('delivered','collected','delivered_collected')"); $d->execute($params); $out['done_stops'] = (int) $d->fetchColumn();
+        $pr = db()->prepare($base . " AND s.status = 'not_found'"); $pr->execute($params); $out['problem_stops'] = (int) $pr->fetchColumn();
+    } catch (Throwable $e) { log_error('ship_route_center_summary: ' . $e->getMessage()); }
+    return $out;
+}
+
+/**
+ * Durak bazlı rapor (rota + adres + sürücü birleşik). Filtreler:
+ * date_from, date_to, driver_user_id, status, city, district, operation_type, has_photo(''|'1'|'0'), collection_only(bool)
+ */
+function ship_stop_report(array $f = []): array
+{
+    $where = ['s.deleted_at IS NULL', 'r.deleted_at IS NULL'];
+    $params = [];
+    if (!ship_can_manage()) { $where[] = 'r.driver_user_id = :own'; $params[':own'] = ship_current_driver_user_id() ?: -1; }
+    elseif (!empty($f['driver_user_id'])) { $where[] = 'r.driver_user_id = :drv'; $params[':drv'] = (int) $f['driver_user_id']; }
+    if (!empty($f['date_from'])) { $where[] = 'r.route_date >= :df'; $params[':df'] = $f['date_from']; }
+    if (!empty($f['date_to']))   { $where[] = 'r.route_date <= :dt'; $params[':dt'] = $f['date_to']; }
+    if (!empty($f['status']) && isset(ship_stop_statuses()[$f['status']])) { $where[] = 's.status = :st'; $params[':st'] = $f['status']; }
+    if (!empty($f['operation_type']) && isset(ship_stop_operations()[$f['operation_type']])) { $where[] = 's.operation_type = :op'; $params[':op'] = $f['operation_type']; }
+    if (!empty($f['collection_only'])) { $where[] = "s.operation_type IN ('collection','both')"; }
+    if (!empty($f['city'])) { $where[] = 'a.city LIKE :city'; $params[':city'] = '%' . $f['city'] . '%'; }
+    if (!empty($f['district'])) { $where[] = 'a.district LIKE :dist'; $params[':dist'] = '%' . $f['district'] . '%'; }
+    if (isset($f['has_photo']) && $f['has_photo'] !== '') {
+        $where[] = $f['has_photo'] === '1'
+            ? 'EXISTS (SELECT 1 FROM shipment_proofs pp WHERE pp.stop_id = s.id)'
+            : 'NOT EXISTS (SELECT 1 FROM shipment_proofs pp WHERE pp.stop_id = s.id)';
+    }
+    try {
+        $sql = 'SELECT s.id, s.route_id, s.stop_order, s.operation_type, s.status, s.reference_no, s.stop_note, s.driver_note, s.completed_at,
+                       r.route_name, r.route_date, r.driver_user_id,
+                       a.company_name, a.contact_name, a.phone, a.city, a.district, a.address,
+                       (SELECT COUNT(*) FROM shipment_proofs pp WHERE pp.stop_id = s.id) AS photo_count
+                FROM shipment_route_stops s
+                INNER JOIN shipment_routes r ON r.id = s.route_id
+                LEFT JOIN shipment_addresses a ON a.id = s.address_id
+                WHERE ' . implode(' AND ', $where) . '
+                ORDER BY r.route_date DESC, r.id DESC, s.stop_order ASC LIMIT 5000';
+        $st = db()->prepare($sql); $st->execute($params);
+        $rows = $st->fetchAll();
+        foreach ($rows as &$r) { $r['driver_name'] = ship_driver_name($r['driver_user_id'] ? (int) $r['driver_user_id'] : null); }
+        return $rows;
+    } catch (Throwable $e) { log_error('ship_stop_report: ' . $e->getMessage()); return []; }
+}
+
+/* ---- Genişletilmiş sevkiyat ayarları (rota varsayılanları) ---- */
+function ship_route_settings(): array
+{
+    return [
+        'manager_name'     => (string) app_setting_get('shipment_manager_name', ''),
+        'manager_whatsapp' => (string) app_setting_get('shipment_manager_whatsapp', ''),
+        'wa_template'      => (string) app_setting_get('shipment_wa_template', ''),
+        'default_start'    => (string) app_setting_get('shipment_default_start', ''),
+        'default_end'      => (string) app_setting_get('shipment_default_end', ''),
+        'photo_max_mb'     => (string) app_setting_get('shipment_photo_max_mb', '8'),
+        'photo_types'      => (string) app_setting_get('shipment_photo_types', 'jpg,jpeg,png,webp'),
+    ];
+}
+
+/** Yöneticiye durak/rota durum bilgilendirme WhatsApp linki (tıklanabilir; otomatik değil). */
+function ship_wa_manager_link_for_stop(array $stop, array $route): ?string
+{
+    $set = ship_route_settings();
+    $phone = trim((string) $set['manager_whatsapp']);
+    if ($phone === '') { return null; }
+    if (!function_exists('build_whatsapp_message_link')) { require_once __DIR__ . '/notifications.php'; }
+    $addr = trim(((string) ($stop['address'] ?? '')) . ' ' . ((string) ($stop['district'] ?? '')) . ' ' . ((string) ($stop['city'] ?? '')));
+    $msg = "Sevkiyat durum bildirimi\n"
+         . 'Rota: ' . (string) ($route['route_name'] ?? '') . "\n"
+         . 'Firma: ' . (string) ($stop['company_name'] ?? '') . "\n"
+         . 'İşlem: ' . ship_stop_operation_label((string) ($stop['operation_type'] ?? '')) . "\n"
+         . 'Durum: ' . ship_stop_status_label((string) ($stop['status'] ?? '')) . "\n"
+         . 'Adres: ' . $addr;
+    return build_whatsapp_message_link($phone, $msg);
+}
+
+/** Telefon araması için tel: linki (rakamlar). */
+function ship_tel_link(?string $phone): ?string
+{
+    $d = preg_replace('/[^\d+]/', '', (string) $phone);
+    return ($d === '' || $d === null) ? null : 'tel:' . $d;
+}
+/** Müşteriyi WhatsApp'tan açma linki (numara). */
+function ship_wa_contact_link(?string $phone): ?string
+{
+    if (!function_exists('build_whatsapp_message_link')) { require_once __DIR__ . '/notifications.php'; }
+    return build_whatsapp_message_link($phone, '');
 }

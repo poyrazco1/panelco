@@ -5,7 +5,13 @@ require_once __DIR__ . '/../../includes/permissions.php';
 require_once __DIR__ . '/../../includes/shipments.php';
 auth_boot();
 require_permission('shipment_addresses.view');
-$f = ['search' => trim((string) ($_GET['q'] ?? '')), 'city' => trim((string) ($_GET['city'] ?? '')), 'type' => (string) ($_GET['type'] ?? '')];
+$f = [
+    'search'   => trim((string) ($_GET['q'] ?? '')),
+    'city'     => trim((string) ($_GET['city'] ?? '')),
+    'district' => trim((string) ($_GET['district'] ?? '')),
+    'type'     => (string) ($_GET['type'] ?? ''),
+    'active'   => isset($_GET['active']) && $_GET['active'] !== '' ? (string) $_GET['active'] : '',
+];
 $rows = get_shipment_addresses($f);
 layout_top('Sevkiyat Adresleri', 'shipments');
 ?>
@@ -17,6 +23,8 @@ layout_top('Sevkiyat Adresleri', 'shipments');
 <form method="get" action="<?= e(url('modules/shipments/addresses.php')) ?>" class="toolbar">
     <div class="form-group"><label for="q">Ara</label><input type="text" id="q" name="q" value="<?= e($f['search']) ?>" placeholder="Firma, yetkili, telefon, ilçe"></div>
     <div class="form-group"><label for="city">İl</label><input type="text" id="city" name="city" value="<?= e($f['city']) ?>"></div>
+    <div class="form-group"><label for="district">İlçe</label><input type="text" id="district" name="district" value="<?= e($f['district']) ?>"></div>
+    <div class="form-group"><label for="active">Durum</label><select id="active" name="active"><option value="">Tümü</option><option value="1"<?= $f['active'] === '1' ? ' selected' : '' ?>>Aktif</option><option value="0"<?= $f['active'] === '0' ? ' selected' : '' ?>>Pasif</option></select></div>
     <div class="form-group"><label for="type">Tip</label><select id="type" name="type"><option value="">Tümü</option>
         <?php foreach (shipment_address_types() as $k => $l): ?><option value="<?= e($k) ?>"<?= $f['type'] === $k ? ' selected' : '' ?>><?= e($l) ?></option><?php endforeach; ?></select></div>
     <div class="form-group"><button type="submit" class="btn btn-sm"><?= icon('filter') ?>Filtrele</button></div>

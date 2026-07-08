@@ -1,70 +1,147 @@
 <?php
 declare(strict_types=1);
-/** modules/shipments/index.php — Sevkiyat listesi + özet + filtre (sevkiyatçı yalnız kendi). */
+
+/**
+ * modules/shipments/index.php — Sevkiyat Takibi = ROTA MERKEZİ.
+ * Üstte 4 özet kart, altında sekmeler (Bugünkü / Tüm / Toplama / Tamamlanan).
+ * Rota oluşturma ve raporlar ayrı sayfalara linklidir. Sürücü yalnızca kendi
+ * rotalarını görür. Ayar/tanım kalabalığı bu ekrana konmaz.
+ */
 require_once __DIR__ . '/../../includes/permissions.php';
 require_once __DIR__ . '/../../includes/shipments.php';
+
 auth_boot();
 require_permission('shipments.view');
-$seeAll = shipment_can_see_all();
-$f = [
-    'status' => (string) ($_GET['status'] ?? ''), 'type' => (string) ($_GET['type'] ?? ''),
-    'courier_id' => $seeAll ? (int) ($_GET['courier_id'] ?? 0) : 0,
-    'date_from' => (string) ($_GET['date_from'] ?? ''), 'date_to' => (string) ($_GET['date_to'] ?? ''),
-    'search' => trim((string) ($_GET['q'] ?? '')),
-];
-$rows = get_shipments($f);
-$sum = $seeAll ? shipment_summary() : null;
-$couriers = $seeAll ? get_personnel_options(false) : [];
+
+$manage = ship_can_manage();
+$tab = (string) ($_GET['tab'] ?? 'today');
+$allowedTabs = ['today', 'all', 'collection', 'completed'];
+if (!in_array($tab, $allowedTabs, true)) { $tab = 'today'; }
+
+$sum = ship_route_center_summary();
+$drivers = $manage ? ship_driver_options() : [];
+$fDriver = $manage ? (int) ($_GET['driver_user_id'] ?? 0) : 0;
+
+// Sekmeye göre rota listesi
+$filter = [];
+if ($fDriver) { $filter['driver_user_id'] = $fDriver; }
+if ($tab === 'today') { $filter['today'] = true; }
+elseif ($tab === 'completed') { $filter['completed'] = true; }
+$routes = ($tab === 'collection') ? [] : get_routes($filter);
+
+// Toplama sekmesi: içinde toplama işlemi olan durakların bulunduğu rotalar
+$collectionStops = ($tab === 'collection') ? ship_stop_report(['collection_only' => true]) : [];
+
+/** Rota ilerleme kartı. */
+function ship_render_route_card(array $r, bool $manage): void
+{
+    $total = (int) $r['stop_total']; $done = (int) $r['stop_done']; $problem = (int) $r['stop_problem'];
+    $pct = $total > 0 ? (int) round($done / $total * 100) : 0;
+    ?>
+    <div class="route-card">
+        <div class="route-card-top">
+            <div class="route-card-title">
+                <a href="<?= e(url('modules/shipments/route-view.php?id=' . (int) $r['id'])) ?>"><strong><?= e((string) $r['route_name']) ?></strong></a>
+                <span class="badge <?= e(ship_route_status_class((string) $r['status'])) ?>"><?= e(ship_route_status_label((string) $r['status'])) ?></span>
+            </div>
+            <div class="route-card-meta">
+                <span><?= icon('calendar-days', 'icon-xs') ?> <?= e($r['route_date'] ? fmt_date((string) $r['route_date']) : '—') ?></span>
+                <span><?= icon('user-check', 'icon-xs') ?> <?= e($r['driver_name'] !== '' ? $r['driver_name'] : 'Atanmadı') ?></span>
+            </div>
+        </div>
+        <div class="route-progress">
+            <div class="route-progress-bar"><span style="width:<?= $pct ?>%"></span></div>
+            <div class="route-progress-text">
+                <span><strong><?= $done ?>/<?= $total ?></strong> durak tamamlandı</span>
+                <?php if ($problem > 0): ?><span class="route-problem"><?= icon('triangle-alert', 'icon-xs') ?> <?= $problem ?> sorunlu</span><?php endif; ?>
+            </div>
+        </div>
+        <div class="route-card-actions">
+            <?php if ($total > 0): ?><a class="btn btn-sm" href="<?= e(url('modules/shipments/route-map.php?id=' . (int) $r['id'])) ?>" target="_blank" rel="noopener"><?= icon('route') ?>Haritada Aç</a><?php endif; ?>
+            <a class="btn btn-sm" href="<?= e(url('modules/shipments/route-view.php?id=' . (int) $r['id'])) ?>"><?= icon('eye') ?>Detay</a>
+            <?php if ($manage && can('shipments.edit')): ?><a class="btn btn-sm" href="<?= e(url('modules/shipments/route-create.php?id=' . (int) $r['id'])) ?>"><?= icon('pencil') ?>Düzenle</a><?php endif; ?>
+            <a class="btn btn-sm btn-primary" href="<?= e(url('modules/shipments/route-driver.php?id=' . (int) $r['id'])) ?>"><?= icon('truck') ?>Sevkiyatçı Ekranı</a>
+        </div>
+    </div>
+    <?php
+}
+
 layout_top('Sevkiyat Takibi', 'shipments');
 ?>
-<div class="page-head"><h1 class="page-title">Sevkiyat Takibi</h1><div class="page-actions">
-    <?php if (can('shipment_addresses.view')): ?><a class="btn btn-sm" href="<?= e(url('modules/shipments/addresses.php')) ?>"><?= icon('route') ?>Adresler</a><?php endif; ?>
-    <?php if (can('shipments.route_plan')): ?><a class="btn btn-sm" href="<?= e(url('modules/shipments/route-plan.php')) ?>"><?= icon('route') ?>Rota Planı</a><?php endif; ?>
-    <?php if (can('shipments.collection_view')): ?><a class="btn btn-sm" href="<?= e(url('modules/shipments/collection.php')) ?>"><?= icon('package-check') ?>Toplama</a><?php endif; ?>
-    <?php if (can('shipments.reports')): ?><a class="btn btn-sm" href="<?= e(url('modules/shipments/reports.php')) ?>"><?= icon('file-text') ?>Raporlar</a><?php endif; ?>
-    <?php if (can('shipments.create')): ?><a class="btn btn-primary btn-sm" href="<?= e(url('modules/shipments/create.php')) ?>"><?= icon('plus') ?>Yeni Sevkiyat</a><?php endif; ?>
-</div></div>
-<?= render_flashes() ?>
-<?php if (!$seeAll): ?><div class="alert alert-info">Yalnızca size atanan sevkiyatları görüyorsunuz.</div><?php endif; ?>
-<?php if ($sum): ?>
-<div class="rma-stats">
-    <div class="rma-stat"><div class="rs-label">Toplam</div><div class="rs-value"><?= (int) $sum['total'] ?></div></div>
-    <div class="rma-stat is-closed"><div class="rs-label">Tamamlanan</div><div class="rs-value"><?= (int) $sum['completed'] ?></div></div>
-    <div class="rma-stat is-loss"><div class="rs-label">Başarısız</div><div class="rs-value"><?= (int) $sum['failed'] ?></div></div>
-    <div class="rma-stat is-open"><div class="rs-label">Bekleyen</div><div class="rs-value"><?= (int) $sum['pending'] ?></div></div>
-    <div class="rma-stat"><div class="rs-label">Toplama</div><div class="rs-value"><?= (int) $sum['collections'] ?></div></div>
+<div class="page-head">
+    <h1 class="page-title">Sevkiyat Takibi</h1>
+    <div class="page-actions">
+        <?php if (can('shipment_addresses.view')): ?><a class="btn btn-sm" href="<?= e(url('modules/shipments/addresses.php')) ?>"><?= icon('warehouse') ?>Adresler</a><?php endif; ?>
+        <?php if (can('shipments.create')): ?><a class="btn btn-primary btn-sm" href="<?= e(url('modules/shipments/route-create.php')) ?>"><?= icon('plus') ?>Rota Oluştur</a><?php endif; ?>
+    </div>
 </div>
-<?php endif; ?>
+<?= render_flashes() ?>
+<?php if (!$manage): ?><div class="alert alert-info">Yalnızca size atanmış rotaları görüyorsunuz. Görevlerinizi <strong>Sevkiyatçı Ekranı</strong>ndan yürütebilirsiniz.</div><?php endif; ?>
+
+<!-- Özet kartlar -->
+<div class="ship-summary">
+    <div class="ship-sum-card"><span class="ship-sum-ic icon-circle"><?= icon('truck', 'icon-sm') ?></span><span class="ship-sum-body"><span class="ship-sum-val"><?= (int) $sum['today_routes'] ?></span><span class="ship-sum-lbl">Bugünkü Rotalar</span></span></div>
+    <div class="ship-sum-card"><span class="ship-sum-ic icon-circle"><?= icon('clock', 'icon-sm') ?></span><span class="ship-sum-body"><span class="ship-sum-val"><?= (int) $sum['pending_stops'] ?></span><span class="ship-sum-lbl">Bekleyen Duraklar</span></span></div>
+    <div class="ship-sum-card"><span class="ship-sum-ic icon-circle"><?= icon('check-circle', 'icon-sm') ?></span><span class="ship-sum-body"><span class="ship-sum-val"><?= (int) $sum['done_stops'] ?></span><span class="ship-sum-lbl">Tamamlanan Duraklar</span></span></div>
+    <div class="ship-sum-card ship-sum-warn"><span class="ship-sum-ic icon-circle"><?= icon('triangle-alert', 'icon-sm') ?></span><span class="ship-sum-body"><span class="ship-sum-val"><?= (int) $sum['problem_stops'] ?></span><span class="ship-sum-lbl">Sorunlu Duraklar</span></span></div>
+</div>
+
+<!-- Sekmeler -->
+<?php $tabUrl = static fn(string $t) => e(url('modules/shipments/index.php?tab=' . $t . ($fDriver ? '&driver_user_id=' . $fDriver : ''))); ?>
+<div class="tab-row">
+    <a class="tab-chip<?= $tab === 'today' ? ' is-active' : '' ?>" href="<?= $tabUrl('today') ?>">Bugünkü Rotalar</a>
+    <a class="tab-chip<?= $tab === 'all' ? ' is-active' : '' ?>" href="<?= $tabUrl('all') ?>">Tüm Rotalar</a>
+    <?php if (can('shipments.create')): ?><a class="tab-chip" href="<?= e(url('modules/shipments/route-create.php')) ?>"><?= icon('plus', 'icon-xs') ?> Rota Oluştur</a><?php endif; ?>
+    <a class="tab-chip<?= $tab === 'collection' ? ' is-active' : '' ?>" href="<?= $tabUrl('collection') ?>">Toplama İşleri</a>
+    <a class="tab-chip<?= $tab === 'completed' ? ' is-active' : '' ?>" href="<?= $tabUrl('completed') ?>">Tamamlananlar</a>
+    <?php if (can('shipments.reports')): ?><a class="tab-chip" href="<?= e(url('modules/shipments/reports.php')) ?>"><?= icon('file-text', 'icon-xs') ?> Raporlar</a><?php endif; ?>
+</div>
+
+<?php if ($manage && $drivers): ?>
 <form method="get" action="<?= e(url('modules/shipments/index.php')) ?>" class="toolbar">
-    <div class="form-group"><label for="q">Ara</label><input type="text" id="q" name="q" value="<?= e($f['search']) ?>" placeholder="Sevkiyat no, müşteri"></div>
-    <div class="form-group"><label for="status">Durum</label><select id="status" name="status"><option value="">Tümü</option>
-        <?php foreach (shipment_statuses() as $k => $l): ?><option value="<?= e($k) ?>"<?= $f['status'] === $k ? ' selected' : '' ?>><?= e($l) ?></option><?php endforeach; ?></select></div>
-    <div class="form-group"><label for="type">Tip</label><select id="type" name="type"><option value="">Tümü</option>
-        <?php foreach (shipment_types() as $k => $l): ?><option value="<?= e($k) ?>"<?= $f['type'] === $k ? ' selected' : '' ?>><?= e($l) ?></option><?php endforeach; ?></select></div>
-    <?php if ($seeAll): ?>
-    <div class="form-group"><label for="courier_id">Sevkiyatçı</label><select id="courier_id" name="courier_id"><option value="0">Tümü</option>
-        <?php foreach ($couriers as $cid => $cn): ?><option value="<?= (int) $cid ?>"<?= $f['courier_id'] === (int) $cid ? ' selected' : '' ?>><?= e($cn) ?></option><?php endforeach; ?></select></div>
-    <?php endif; ?>
-    <div class="form-group"><button type="submit" class="btn btn-sm"><?= icon('filter') ?>Filtrele</button></div>
+    <input type="hidden" name="tab" value="<?= e($tab) ?>">
+    <div class="form-group"><label for="driver_user_id">Sevkiyatçı</label>
+        <select id="driver_user_id" name="driver_user_id" onchange="this.form.submit()">
+            <option value="0">Tümü</option>
+            <?php foreach ($drivers as $uid => $dn): ?><option value="<?= (int) $uid ?>"<?= $fDriver === (int) $uid ? ' selected' : '' ?>><?= e($dn) ?></option><?php endforeach; ?>
+        </select>
+    </div>
 </form>
-<?php if (!$rows): ?><div class="card"><div class="card-body"><div class="empty">Sevkiyat bulunamadı.</div></div></div>
-<?php else: ?>
-<div class="table-wrap"><table class="table">
-    <thead><tr><th>No</th><th>Müşteri</th><th>İl / İlçe</th><th>Tip</th><th>Sevkiyatçı</th><th>Öncelik</th><th>Durum</th><th class="nowrap">İşlem</th></tr></thead>
-    <tbody>
-    <?php foreach ($rows as $r): ?>
-        <tr>
-            <td><a href="<?= e(url('modules/shipments/view.php?id=' . (int) $r['id'])) ?>"><strong><?= e($r['shipment_no']) ?></strong></a></td>
-            <td><?= e((string) ($r['customer_name'] ?? '')) ?: '—' ?></td>
-            <td><?= e(trim((string) ($r['addr_city'] ?? '') . ' / ' . (string) ($r['addr_district'] ?? ''), ' /')) ?: '—' ?></td>
-            <td><?= e(shipment_type_label((string) $r['shipment_type'])) ?></td>
-            <td><?= e((string) ($r['courier_name'] ?? '')) ?: '—' ?></td>
-            <td><?php $p = (string) $r['priority']; ?><span class="badge <?= $p === 'critical' ? 'badge-danger' : ($p === 'urgent' ? 'badge-leave' : 'badge-muted') ?>"><?= e(shipment_priorities()[$p] ?? $p) ?></span></td>
-            <td><span class="badge <?= e(shipment_status_class((string) $r['status'])) ?>"><?= e(shipment_status_label((string) $r['status'])) ?></span></td>
-            <td class="nowrap"><a class="btn btn-xs" href="<?= e(url('modules/shipments/view.php?id=' . (int) $r['id'])) ?>"><?= icon('eye', 'icon-xs') ?></a></td>
-        </tr>
-    <?php endforeach; ?>
-    </tbody>
-</table></div>
 <?php endif; ?>
+
+<?php if ($tab === 'collection'): ?>
+    <?php if (!$collectionStops): ?>
+        <div class="empty-state empty-compact"><p>Toplama işi bulunmuyor.</p></div>
+    <?php else: ?>
+        <div class="table-wrap"><table class="table">
+            <thead><tr><th>Tarih</th><th>Rota</th><th>Firma</th><th>Sevkiyatçı</th><th>Durum</th><th>Not</th><th>Foto</th></tr></thead>
+            <tbody>
+            <?php foreach ($collectionStops as $s): ?>
+                <tr>
+                    <td class="nowrap"><?= e($s['route_date'] ? fmt_date((string) $s['route_date']) : '—') ?></td>
+                    <td><a href="<?= e(url('modules/shipments/route-view.php?id=' . (int) $s['route_id'])) ?>"><?= e((string) $s['route_name']) ?></a></td>
+                    <td><?= e((string) ($s['company_name'] ?? '—')) ?></td>
+                    <td><?= e($s['driver_name'] !== '' ? $s['driver_name'] : '—') ?></td>
+                    <td><span class="badge <?= e(ship_stop_status_class((string) $s['status'])) ?>"><?= e(ship_stop_status_label((string) $s['status'])) ?></span></td>
+                    <td><?= e((string) ($s['driver_note'] ?? $s['stop_note'] ?? '')) ?: '—' ?></td>
+                    <td><?= (int) $s['photo_count'] > 0 ? '<span class="badge badge-success">Var</span>' : '<span class="badge badge-muted">Yok</span>' ?></td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table></div>
+    <?php endif; ?>
+<?php else: ?>
+    <?php if (!$routes): ?>
+        <div class="empty-state">
+            <?= icon('truck', 'icon-lg') ?>
+            <p><?= $tab === 'today' ? 'Bugün planlanmış rota yok.' : ($tab === 'completed' ? 'Tamamlanmış rota yok.' : 'Rota bulunmuyor.') ?></p>
+            <?php if (can('shipments.create')): ?><a class="btn btn-primary btn-sm" href="<?= e(url('modules/shipments/route-create.php')) ?>"><?= icon('plus') ?>Yeni Rota Oluştur</a><?php endif; ?>
+        </div>
+    <?php else: ?>
+        <div class="route-list">
+            <?php foreach ($routes as $r) { ship_render_route_card($r, $manage); } ?>
+        </div>
+    <?php endif; ?>
+<?php endif; ?>
+
 <?php layout_bottom();

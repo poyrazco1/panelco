@@ -1436,3 +1436,126 @@ a.dash-meta-chip:hover { border-color: #C9CDD6; text-decoration: none; }
     [data-theme="system"] .quick-ic { background: var(--surface-2); color: var(--primary); }
     [data-theme="system"] .kpi-warn .kpi-value { color: var(--text); }
 }
+
+/* =========================================================================
+   SEVKİYAT — Rota merkezi, rota kartları, 3 adımlı sihirbaz, durak listesi,
+   sevkiyatçı mobil ekranı. Mevcut token'lar kullanılır.
+   ========================================================================= */
+
+/* Özet kartlar (4 → 2 → 1) */
+.ship-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 18px; }
+.ship-summary-sm { grid-template-columns: repeat(3, 1fr); max-width: 620px; }
+.ship-sum-card { display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; box-shadow: 0 1px 2px rgba(16,24,40,.04); }
+.ship-sum-ic { flex: 0 0 auto; width: 40px; height: 40px; border-radius: 10px; background: var(--surface-2); color: var(--primary); }
+.ship-sum-body { display: flex; flex-direction: column; min-width: 0; }
+.ship-sum-val { font-size: 22px; font-weight: 700; line-height: 1.1; }
+.ship-sum-lbl { font-size: 12px; color: var(--muted); }
+.ship-sum-warn .ship-sum-ic { background: #FBEAEA; color: #a12525; }
+.ship-sum-warn .ship-sum-val { color: #a12525; }
+@media (max-width: 900px) { .ship-summary { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 520px) { .ship-summary, .ship-summary-sm { grid-template-columns: 1fr; } }
+
+/* Rota kartları */
+.route-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+@media (max-width: 900px) { .route-list { grid-template-columns: 1fr; } }
+.route-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.route-card-top { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.route-card-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 15px; }
+.route-card-meta { display: flex; gap: 14px; flex-wrap: wrap; color: var(--muted); font-size: 12.5px; }
+.route-card-meta .icon { vertical-align: -2px; }
+.route-progress-bar { height: 8px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+.route-progress-bar span { display: block; height: 100%; background: var(--success-fg); border-radius: 999px; transition: width .2s ease; }
+.route-progress-text { display: flex; justify-content: space-between; gap: 10px; margin-top: 6px; font-size: 12.5px; color: var(--muted); }
+.route-problem { color: #a12525; }
+.route-card-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Sihirbaz adımları */
+.wiz-steps { display: flex; gap: 8px; list-style: none; margin: 0 0 18px; padding: 0; flex-wrap: wrap; }
+.wiz-step { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border: 1px solid var(--border); border-radius: 999px; font-size: 13px; color: var(--muted); background: var(--surface); }
+.wiz-step.is-active { border-color: var(--primary); color: var(--primary); font-weight: 600; }
+.wiz-step.is-done { color: var(--success-fg); }
+.wiz-num { width: 20px; height: 20px; border-radius: 999px; background: var(--surface-2); display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+.wiz-step.is-active .wiz-num { background: var(--primary); color: #fff; }
+.wiz-panel { display: none; }
+.wiz-panel.is-active { display: block; }
+.wiz-nav { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+.form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+.form-grid .form-col-full { grid-column: 1 / -1; }
+@media (max-width: 640px) { .form-grid { grid-template-columns: 1fr; } }
+.input-inline { padding: 7px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); font-size: 13px; max-width: 260px; }
+
+/* Durak seçimi (adım 2) */
+.stop-pick-list { display: flex; flex-direction: column; gap: 8px; }
+.stop-pick { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; background: var(--surface); }
+.stop-pick.is-picked { border-color: var(--primary); background: var(--surface-3); }
+.stop-pick-check { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; margin: 0; }
+.stop-pick-check input { margin-top: 3px; }
+.stop-pick-main { display: flex; flex-direction: column; min-width: 0; }
+.stop-pick-name { font-weight: 600; font-size: 13.5px; }
+.stop-pick-meta { font-size: 12px; color: var(--muted); }
+.stop-pick-fields { display: none; grid-template-columns: 160px 1fr 1fr; gap: 8px; margin-top: 10px; }
+.stop-pick.is-picked .stop-pick-fields { display: grid; }
+@media (max-width: 640px) { .stop-pick-fields { grid-template-columns: 1fr; } }
+.stop-pick-empty { color: var(--muted); padding: 16px; text-align: center; }
+
+/* Sıralama (adım 3) */
+.stop-order-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.stop-order-row { display: flex; align-items: center; gap: 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; background: var(--surface); }
+.so-handle { color: var(--muted); font-size: 16px; }
+.so-body { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
+.so-name { font-weight: 600; font-size: 13.5px; }
+.so-meta { font-size: 12px; color: var(--muted); }
+.so-actions { display: flex; gap: 4px; }
+.stop-order-empty { color: var(--muted); padding: 16px; text-align: center; }
+
+/* Rota detay */
+.route-detail-grid { display: grid; grid-template-columns: 340px 1fr; gap: 18px; align-items: start; margin-bottom: 18px; }
+@media (max-width: 900px) { .route-detail-grid { grid-template-columns: 1fr; } }
+.route-assign-form { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+.route-assign-form .form-group { margin: 0; flex: 1 1 180px; }
+
+.stop-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.stop-item { border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; background: var(--surface); }
+.stop-item-head { display: flex; align-items: flex-start; gap: 10px; }
+.stop-num { flex: 0 0 auto; width: 26px; height: 26px; border-radius: 999px; background: var(--primary); color: #fff; font-weight: 700; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; }
+.stop-item-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.stop-item-info { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 8px 0; font-size: 12.5px; color: var(--muted); }
+.stop-item-notes { font-size: 12.5px; margin-bottom: 8px; }
+.stop-item-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.stop-proofs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.stop-proof-thumb { width: 72px; height: 72px; border-radius: var(--radius-sm); overflow: hidden; border: 1px solid var(--border); display: block; }
+.stop-proof-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.stop-update { margin-top: 6px; }
+.stop-update > summary { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; list-style: none; margin-bottom: 8px; }
+.stop-update > summary::-webkit-details-marker { display: none; }
+.stop-update-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; padding: 10px; background: var(--surface-3); border-radius: var(--radius-sm); }
+.stop-update-form .form-group { margin: 0; flex: 1 1 160px; }
+.ship-history { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.ship-history li { padding: 6px 0; border-bottom: 1px solid var(--border); }
+
+/* Sevkiyatçı mobil ekranı */
+.driver-wrap { max-width: 620px; margin: 0 auto; }
+.driver-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.driver-title { font-size: 20px; margin: 0 0 2px; }
+.driver-sub { color: var(--muted); font-size: 13px; margin: 0 0 14px; }
+.driver-stops { display: flex; flex-direction: column; gap: 14px; }
+.driver-stop { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); padding: 14px; box-shadow: var(--shadow); }
+.driver-stop.is-next { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(31,42,68,.08); }
+.driver-stop.is-done { opacity: .7; }
+.driver-stop-head { display: flex; gap: 10px; align-items: flex-start; }
+.driver-stop-num { flex: 0 0 auto; width: 30px; height: 30px; border-radius: 999px; background: var(--primary); color: #fff; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+.driver-stop-title { min-width: 0; }
+.driver-stop-title strong { font-size: 15.5px; }
+.driver-stop-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.driver-stop-addr { margin: 10px 0; font-size: 13.5px; }
+.driver-actions-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px; }
+.driver-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font-weight: 600; font-size: 14px; cursor: pointer; text-align: center; }
+.driver-btn:hover { background: var(--surface-2); text-decoration: none; }
+.driver-btn-done { background: var(--success-bg); color: var(--success-fg); border-color: transparent; margin-top: 4px; }
+.driver-btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); margin-top: 6px; }
+.driver-more { margin-top: 8px; }
+.driver-more > summary { cursor: pointer; padding: 8px 0; font-size: 13.5px; color: var(--primary); font-weight: 600; }
+.driver-form { display: flex; flex-direction: column; gap: 8px; padding: 10px; background: var(--surface-3); border-radius: var(--radius-sm); margin-top: 4px; }
+.driver-form label { font-size: 12.5px; color: var(--muted); font-weight: 600; }
+.driver-form select, .driver-form input, .driver-form textarea { width: 100%; }
+@media (max-width: 420px) { .driver-actions-row { grid-template-columns: 1fr; } }

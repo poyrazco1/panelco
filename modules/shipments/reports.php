@@ -1,7 +1,11 @@
 <?php
 declare(strict_types=1);
 
-/** modules/shipments/reports.php — Sevkiyat raporları + kartlar + CSV. */
+/**
+ * modules/shipments/reports.php — Rota/durak raporu + CSV.
+ * Durak bazlı liste: tarih, rota, sevkiyatçı, firma, işlem tipi, durum,
+ * tamamlanma saati, fotoğraf, not. Filtreler + CSV dışa aktarma.
+ */
 require_once __DIR__ . '/../../includes/permissions.php';
 require_once __DIR__ . '/../../includes/shipments.php';
 
@@ -9,88 +13,105 @@ auth_boot();
 require_permission('shipments.reports');
 
 $f = [
-    'date_from' => (string) ($_GET['date_from'] ?? ''), 'date_to' => (string) ($_GET['date_to'] ?? ''),
-    'courier_id' => (int) ($_GET['courier_id'] ?? 0), 'status' => (string) ($_GET['status'] ?? ''),
-    'city' => trim((string) ($_GET['city'] ?? '')), 'type' => (string) ($_GET['type'] ?? ''),
+    'date_from'      => (string) ($_GET['date_from'] ?? ''),
+    'date_to'        => (string) ($_GET['date_to'] ?? ''),
+    'driver_user_id' => (int) ($_GET['driver_user_id'] ?? 0),
+    'status'         => (string) ($_GET['status'] ?? ''),
+    'city'           => trim((string) ($_GET['city'] ?? '')),
+    'district'       => trim((string) ($_GET['district'] ?? '')),
+    'operation_type' => (string) ($_GET['operation_type'] ?? ''),
+    'has_photo'      => (string) ($_GET['has_photo'] ?? ''),
 ];
-$rows = get_shipments($f);
+$rows = ship_stop_report($f);
 
 // CSV export
 if (($_GET['export'] ?? '') === 'csv') {
     header('Content-Type: text/csv; charset=UTF-8');
-    header('Content-Disposition: attachment; filename="sevkiyat-rapor-' . date('Y-m-d') . '.csv"');
+    header('Content-Disposition: attachment; filename="sevkiyat-rota-rapor-' . date('Y-m-d') . '.csv"');
     $out = fopen('php://output', 'w'); fwrite($out, "\xEF\xBB\xBF");
-    fputcsv($out, ['Sevkiyat No', 'Tarih', 'Müşteri', 'İl', 'İlçe', 'Tip', 'Sevkiyatçı', 'Öncelik', 'Durum'], ';');
+    fputcsv($out, ['Tarih', 'Rota', 'Sevkiyatçı', 'Firma', 'İl', 'İlçe', 'İşlem Tipi', 'Durum', 'Tamamlanma', 'Fotoğraf', 'Not'], ';');
     foreach ($rows as $r) {
-        fputcsv($out, [(string) $r['shipment_no'], (string) ($r['shipment_date'] ?? ''), (string) ($r['customer_name'] ?? ''), (string) ($r['addr_city'] ?? ''), (string) ($r['addr_district'] ?? ''), shipment_type_label((string) $r['shipment_type']), (string) ($r['courier_name'] ?? ''), (shipment_priorities()[$r['priority']] ?? $r['priority']), shipment_status_label((string) $r['status'])], ';');
+        fputcsv($out, [
+            (string) ($r['route_date'] ?? ''),
+            (string) ($r['route_name'] ?? ''),
+            (string) ($r['driver_name'] ?? ''),
+            (string) ($r['company_name'] ?? ''),
+            (string) ($r['city'] ?? ''),
+            (string) ($r['district'] ?? ''),
+            ship_stop_operation_label((string) $r['operation_type']),
+            ship_stop_status_label((string) $r['status']),
+            (string) ($r['completed_at'] ?? ''),
+            ((int) $r['photo_count'] > 0 ? 'Var' : 'Yok'),
+            (string) ($r['driver_note'] ?? $r['stop_note'] ?? ''),
+        ], ';');
     }
     fclose($out); exit;
 }
 
-// Kart sayıları (filtrelenmiş küme üzerinden)
-$cards = ['total' => count($rows), 'completed' => 0, 'failed' => 0, 'pending' => 0];
-$byCourier = [];
+$exportQs = http_build_query(array_merge(array_filter($f), ['export' => 'csv']));
+$drivers = ship_driver_options();
+
+// Özet
+$sumDone = 0; $sumProblem = 0;
 foreach ($rows as $r) {
-    $st = (string) $r['status'];
-    if (in_array($st, ['delivered', 'collected'], true)) { $cards['completed']++; }
-    elseif ($st === 'failed') { $cards['failed']++; }
-    elseif ($st !== 'cancelled') { $cards['pending']++; }
-    $cn = (string) ($r['courier_name'] ?? '—');
-    $byCourier[$cn] = $byCourier[$cn] ?? ['total' => 0, 'done' => 0];
-    $byCourier[$cn]['total']++;
-    if (in_array($st, ['delivered', 'collected'], true)) { $byCourier[$cn]['done']++; }
+    if (in_array((string) $r['status'], ship_stop_done_statuses(), true)) { $sumDone++; }
+    elseif (in_array((string) $r['status'], ship_stop_problem_statuses(), true)) { $sumProblem++; }
 }
-$exportQs = http_build_query(array_merge($f, ['export' => 'csv']));
-$couriers = get_personnel_options(false);
 
 layout_top('Sevkiyat Raporları', 'shipments');
 ?>
-<div class="page-head"><h1 class="page-title">Sevkiyat Raporları</h1><div class="page-actions">
-    <a class="btn btn-sm" href="<?= e(url('modules/shipments/index.php')) ?>">← Sevkiyatlar</a>
-    <a class="btn btn-sm" href="<?= e(url('modules/shipments/reports.php?' . $exportQs)) ?>"><?= icon('download') ?>CSV</a>
-    <a class="btn btn-sm" href="javascript:window.print()"><?= icon('printer') ?>Yazdır</a>
-</div></div>
+<div class="page-head">
+    <h1 class="page-title">Sevkiyat Raporları</h1>
+    <div class="page-actions">
+        <a class="btn btn-sm" href="<?= e(url('modules/shipments/index.php')) ?>">← Sevkiyat Takibi</a>
+        <a class="btn btn-sm" href="<?= e(url('modules/shipments/reports.php?' . $exportQs)) ?>"><?= icon('download') ?>CSV</a>
+    </div>
+</div>
+<?= render_flashes() ?>
 
 <form method="get" action="<?= e(url('modules/shipments/reports.php')) ?>" class="toolbar">
     <div class="form-group"><label for="date_from">Başlangıç</label><input type="date" id="date_from" name="date_from" value="<?= e($f['date_from']) ?>"></div>
     <div class="form-group"><label for="date_to">Bitiş</label><input type="date" id="date_to" name="date_to" value="<?= e($f['date_to']) ?>"></div>
-    <div class="form-group"><label for="courier_id">Sevkiyatçı</label><select id="courier_id" name="courier_id"><option value="0">Tümü</option>
-        <?php foreach ($couriers as $cid => $cn): ?><option value="<?= (int) $cid ?>"<?= $f['courier_id'] === (int) $cid ? ' selected' : '' ?>><?= e($cn) ?></option><?php endforeach; ?></select></div>
+    <div class="form-group"><label for="driver_user_id">Sevkiyatçı</label><select id="driver_user_id" name="driver_user_id"><option value="0">Tümü</option>
+        <?php foreach ($drivers as $uid => $dn): ?><option value="<?= (int) $uid ?>"<?= $f['driver_user_id'] === (int) $uid ? ' selected' : '' ?>><?= e($dn) ?></option><?php endforeach; ?></select></div>
     <div class="form-group"><label for="status">Durum</label><select id="status" name="status"><option value="">Tümü</option>
-        <?php foreach (shipment_statuses() as $k => $l): ?><option value="<?= e($k) ?>"<?= $f['status'] === $k ? ' selected' : '' ?>><?= e($l) ?></option><?php endforeach; ?></select></div>
+        <?php foreach (ship_stop_statuses() as $k => $l): ?><option value="<?= e($k) ?>"<?= $f['status'] === $k ? ' selected' : '' ?>><?= e($l) ?></option><?php endforeach; ?></select></div>
+    <div class="form-group"><label for="operation_type">İşlem</label><select id="operation_type" name="operation_type"><option value="">Tümü</option>
+        <?php foreach (ship_stop_operations() as $k => $l): ?><option value="<?= e($k) ?>"<?= $f['operation_type'] === $k ? ' selected' : '' ?>><?= e($l) ?></option><?php endforeach; ?></select></div>
     <div class="form-group"><label for="city">İl</label><input type="text" id="city" name="city" value="<?= e($f['city']) ?>"></div>
-    <div class="form-group"><label for="type">Tip</label><select id="type" name="type"><option value="">Tümü</option>
-        <?php foreach (shipment_types() as $k => $l): ?><option value="<?= e($k) ?>"<?= $f['type'] === $k ? ' selected' : '' ?>><?= e($l) ?></option><?php endforeach; ?></select></div>
+    <div class="form-group"><label for="district">İlçe</label><input type="text" id="district" name="district" value="<?= e($f['district']) ?>"></div>
+    <div class="form-group"><label for="has_photo">Fotoğraf</label><select id="has_photo" name="has_photo">
+        <option value="">Tümü</option><option value="1"<?= $f['has_photo'] === '1' ? ' selected' : '' ?>>Var</option><option value="0"<?= $f['has_photo'] === '0' ? ' selected' : '' ?>>Yok</option></select></div>
     <div class="form-group"><button type="submit" class="btn btn-sm"><?= icon('filter') ?>Uygula</button></div>
 </form>
 
-<div class="rma-stats">
-    <div class="rma-stat"><div class="rs-label">Toplam</div><div class="rs-value"><?= (int) $cards['total'] ?></div></div>
-    <div class="rma-stat is-closed"><div class="rs-label">Tamamlanan</div><div class="rs-value"><?= (int) $cards['completed'] ?></div></div>
-    <div class="rma-stat is-loss"><div class="rs-label">Başarısız</div><div class="rs-value"><?= (int) $cards['failed'] ?></div></div>
-    <div class="rma-stat is-open"><div class="rs-label">Bekleyen</div><div class="rs-value"><?= (int) $cards['pending'] ?></div></div>
+<div class="ship-summary ship-summary-sm">
+    <div class="ship-sum-card"><span class="ship-sum-body"><span class="ship-sum-val"><?= count($rows) ?></span><span class="ship-sum-lbl">Toplam Durak</span></span></div>
+    <div class="ship-sum-card"><span class="ship-sum-body"><span class="ship-sum-val"><?= $sumDone ?></span><span class="ship-sum-lbl">Tamamlanan</span></span></div>
+    <div class="ship-sum-card ship-sum-warn"><span class="ship-sum-body"><span class="ship-sum-val"><?= $sumProblem ?></span><span class="ship-sum-lbl">Sorunlu</span></span></div>
 </div>
 
-<div class="card" style="max-width:640px"><div class="card-header"><h2>Sevkiyatçı Performansı</h2></div><div class="card-body">
-    <?php if (!$byCourier): ?><div class="empty">Kayıt yok.</div>
-    <?php else: ?>
-    <div class="table-wrap"><table class="table"><thead><tr><th>Sevkiyatçı</th><th>Toplam</th><th>Tamamlanan</th><th>Oran</th></tr></thead><tbody>
-        <?php foreach ($byCourier as $cn => $st): $rate = $st['total'] > 0 ? round($st['done'] / $st['total'] * 100) : 0; ?>
-            <tr><td><?= e($cn) ?></td><td><?= (int) $st['total'] ?></td><td><?= (int) $st['done'] ?></td><td><?= (int) $rate ?> %</td></tr>
-        <?php endforeach; ?>
-    </tbody></table></div>
-    <?php endif; ?>
-</div></div>
-
+<?php if (!$rows): ?>
+<div class="empty-state empty-compact"><p>Bu filtrelere uygun kayıt bulunmuyor.</p></div>
+<?php else: ?>
 <div class="table-wrap"><table class="table">
-    <thead><tr><th>No</th><th>Tarih</th><th>Müşteri</th><th>İl/İlçe</th><th>Tip</th><th>Sevkiyatçı</th><th>Durum</th></tr></thead>
+    <thead><tr><th>Tarih</th><th>Rota</th><th>Sevkiyatçı</th><th>Firma</th><th>İl/İlçe</th><th>İşlem</th><th>Durum</th><th>Tamamlanma</th><th>Foto</th><th>Not</th></tr></thead>
     <tbody>
     <?php foreach ($rows as $r): ?>
-        <tr><td><?= e($r['shipment_no']) ?></td><td class="nowrap"><?= e((string) ($r['shipment_date'] ?? '')) ?></td><td><?= e((string) ($r['customer_name'] ?? '')) ?></td>
-            <td><?= e(trim((string) ($r['addr_city'] ?? '') . ' / ' . (string) ($r['addr_district'] ?? ''), ' /')) ?></td>
-            <td><?= e(shipment_type_label((string) $r['shipment_type'])) ?></td><td><?= e((string) ($r['courier_name'] ?? '')) ?></td>
-            <td><span class="badge <?= e(shipment_status_class((string) $r['status'])) ?>"><?= e(shipment_status_label((string) $r['status'])) ?></span></td></tr>
+        <tr>
+            <td class="nowrap"><?= e($r['route_date'] ? fmt_date((string) $r['route_date']) : '—') ?></td>
+            <td><a href="<?= e(url('modules/shipments/route-view.php?id=' . (int) $r['route_id'])) ?>"><?= e((string) $r['route_name']) ?></a></td>
+            <td><?= e($r['driver_name'] !== '' ? $r['driver_name'] : '—') ?></td>
+            <td><?= e((string) ($r['company_name'] ?? '—')) ?></td>
+            <td><?= e(trim((string) ($r['city'] ?? '') . ' / ' . (string) ($r['district'] ?? ''), ' /')) ?: '—' ?></td>
+            <td><?= e(ship_stop_operation_label((string) $r['operation_type'])) ?></td>
+            <td><span class="badge <?= e(ship_stop_status_class((string) $r['status'])) ?>"><?= e(ship_stop_status_label((string) $r['status'])) ?></span></td>
+            <td class="nowrap"><?= e((string) ($r['completed_at'] ?? '')) ?: '—' ?></td>
+            <td><?= (int) $r['photo_count'] > 0 ? '<span class="badge badge-success">Var</span>' : '<span class="badge badge-muted">Yok</span>' ?></td>
+            <td><?= e((string) ($r['driver_note'] ?? $r['stop_note'] ?? '')) ?: '—' ?></td>
+        </tr>
     <?php endforeach; ?>
     </tbody>
 </table></div>
+<?php endif; ?>
 <?php layout_bottom();
