@@ -2,11 +2,16 @@
 declare(strict_types=1);
 /**
  * includes/layout-sidebar.php — sol menü (yetkiye göre süzülür).
- * Öğe: ['perm','etiket','path','ikon','match']. Grup: ['__group','Başlık','','',[]].
  *
- * Aktif menü, sayfanın MODÜL ANAHTARINA göre DEĞİL, çalışan dosyanın gerçek
+ * Menü İÇERİĞİ artık burada tanımlanmaz; TEK KAYNAK includes/navigation.php
+ * → nav_sidebar_groups(). Bu dosya yalnızca yetki süzme + render + aktiflik
+ * mantığını içerir. Böylece aynı menü bilgisi farklı dosyalarda tekrarlanmaz.
+ *
+ * Aktif menü, sayfanın modül anahtarına göre DEĞİL, çalışan dosyanın gerçek
  * göreli yoluna göre belirlenir. Böylece aynı anda tek menü aktif olur.
  */
+
+require_once __DIR__ . '/navigation.php';
 
 // Çalışan sayfanın APP_ROOT'a göre göreli yolu (ör. modules/service/index.php)
 $curScript = str_replace('\\', '/', (string) realpath($_SERVER['SCRIPT_FILENAME'] ?? ''));
@@ -26,99 +31,14 @@ $navActiveMatch = static function (array $m) use ($curRel): bool {
     return false;
 };
 
-$items = [
-    ['__group', 'Genel', '', '', []],
-    ['dashboard', 'Genel Bakış',  'dashboard.php',               'layout-dashboard',
-        ['exact' => ['dashboard.php']]],
-    ['currency',  'Kur Çevirici', 'modules/currency/index.php',  'coins',
-        ['prefix' => ['modules/currency/']]],
-
-    ['__group', 'Satış / Cari', '', '', []],
-    ['customers', 'Müşteriler',   'modules/customers/index.php', 'users',
-        ['prefix' => ['modules/customers/']]],
-    ['suppliers', 'Tedarikçiler', 'modules/suppliers/index.php', 'warehouse',
-        ['prefix' => ['modules/suppliers/']]],
-    ['quotes', 'Teklifler', 'modules/quotes/index.php', 'file-text',
-        ['prefix' => ['modules/quotes/']]],
-    ['orders', 'Siparişler', 'modules/orders/index.php', 'clipboard-list',
-        ['prefix' => ['modules/orders/']]],
-    ['reconciliation', 'Mutabakat', 'modules/reconciliation/index.php', 'file-pen',
-        ['prefix' => ['modules/reconciliation/']]],
-    ['tsoft_products', 'T-Soft Ürünler', 'modules/tsoft-products/index.php', 'store',
-        ['prefix' => ['modules/tsoft-products/']]],
-    ['leads', 'Lead Yönetimi', 'modules/leads/index.php', 'user-check',
-        ['prefix' => ['modules/leads/']]],
-
-    ['__group', 'Sevkiyat', '', '', []],
-    ['shipments', 'Sevkiyat Takibi', 'modules/shipments/index.php', 'truck',
-        ['prefix' => ['modules/shipments/'],
-         'not_prefix' => ['modules/shipments/addresses', 'modules/shipments/address-']]],
-    ['shipment_addresses', 'Sevkiyat Adresleri', 'modules/shipments/addresses.php', 'route',
-        ['prefix' => ['modules/shipments/addresses', 'modules/shipments/address-']]],
-
-    ['__group', 'Teknik Servis', '', '', []],
-    ['service', 'Servis Kabul',          'modules/service/intake.php', 'clipboard-plus',
-        ['exact' => ['modules/service/intake.php']]],
-    ['service', 'Servis Kayıtları',      'modules/service/index.php',  'clipboard-list',
-        ['prefix' => ['modules/service/'],
-         'not'    => ['modules/service/intake.php'],
-         'not_prefix' => ['modules/service/repairer', 'modules/service/_repairer',
-                          'modules/service/statuses', 'modules/service/terms']]],
-    ['rma', 'İade-Değişim Yönetimi',     'modules/rma/index.php',      'rotate-ccw',
-        ['prefix' => ['modules/rma/']]],
-
-    ['__group', 'İK / Personel', '', '', []],
-    ['leave', 'Yıllık İzin Takibi', 'modules/leave/index.php', 'calendar-check',
-        ['exact'  => ['modules/leave/index.php'],
-         'prefix' => ['modules/leave/history.php', 'modules/leave/balance-adjust.php']]],
-    ['leave', 'İzin Talepleri',     'modules/leave/requests.php', 'clipboard-list',
-        ['prefix' => ['modules/leave/requests.php', 'modules/leave/request-']]],
-    ['attendance', 'Puantaj',          'modules/attendance/index.php',   'calendar-days',
-        ['exact'  => ['modules/attendance/index.php'],
-         'prefix' => ['modules/attendance/print.php']]],
-    ['attendance', 'Puantaj Raporları', 'modules/attendance/reports.php', 'file-text',
-        ['prefix' => ['modules/attendance/reports.php']]],
-    ['commissions', 'Primler', 'modules/commissions/index.php', 'calculator',
-        ['prefix' => ['modules/commissions/']]],
-    ['dashboard', 'Bildirim Merkezi',  'modules/notifications/index.php', 'bell',
-        ['prefix' => ['modules/notifications/']]],
-
-    ['__group', 'Varlık & Araçlar', '', '', []],
-    ['inventory', 'Envanter / Demirbaş', 'modules/inventory/index.php', 'package-check',
-        ['prefix' => ['modules/inventory/']]],
-    ['reports', 'Raporlar', 'modules/reports/index.php', 'file-text',
-        ['prefix' => ['modules/reports/']]],
-    ['file_manager', 'Dosya Yöneticisi', 'modules/file-manager/index.php', 'file-down',
-        ['prefix' => ['modules/file-manager/']]],
-    ['password_vault', 'Şifre Kasası', 'modules/password-vault/index.php', 'shield',
-        ['prefix' => ['modules/password-vault/']]],
-
-    ['__group', 'Ayarlar', '', '', []],
-    ['help', 'Yardım Merkezi', 'modules/help/index.php', 'help-circle',
-        ['prefix' => ['modules/help/']]],
-    ['integrations', 'Entegrasyonlar', 'modules/integrations/index.php', 'plug',
-        ['prefix' => ['modules/integrations/']]],
-    ['settings', 'Genel Ayarlar', 'modules/settings/index.php', 'settings',
-        ['prefix' => ['modules/settings/',
-                      // Ayar niteliğindeki servis alt sayfaları da Genel Ayarlar'ı aktif etsin
-                      'modules/service/repairer', 'modules/service/_repairer',
-                      'modules/service/statuses', 'modules/service/terms']]],
-];
-
-// Grup başlığını yalnızca altında yetkili öğe varsa göster
-$visible = [];
-$n = count($items);
-for ($i = 0; $i < $n; $i++) {
-    $key = $items[$i][0];
-    if ($key === '__group') {
-        $has = false;
-        for ($j = $i + 1; $j < $n && $items[$j][0] !== '__group'; $j++) {
-            if (can($items[$j][0])) { $has = true; break; }
-        }
-        if ($has) { $visible[] = $items[$i]; }
-    } elseif (can($key)) {
-        $visible[] = $items[$i];
+// Yetkiye göre süz: grubu yalnızca altında yetkili öğe varsa göster.
+$groups = [];
+foreach (nav_sidebar_groups() as $groupName => $items) {
+    $shown = [];
+    foreach ($items as $it) {
+        if (can((string) $it['perm'])) { $shown[] = $it; }
     }
+    if ($shown) { $groups[$groupName] = $shown; }
 }
 ?>
 <aside class="sidebar" id="sidebar" aria-label="Ana menü">
@@ -128,18 +48,17 @@ for ($i = 0; $i < $n; $i++) {
     </div>
     <nav class="sidebar-nav">
         <ul>
-            <?php foreach ($visible as $it): ?>
-                <?php if ($it[0] === '__group'): ?>
-                    <li class="nav-group"><?= e($it[1]) ?></li>
-                <?php else: ?>
-                    <?php $isActive = $navActiveMatch($it[4] ?? []); ?>
+            <?php foreach ($groups as $groupName => $items): ?>
+                <li class="nav-group"><?= e($groupName) ?></li>
+                <?php foreach ($items as $it): ?>
+                    <?php $isActive = $navActiveMatch($it['match'] ?? []); ?>
                     <li>
-                        <a href="<?= e(url($it[2])) ?>" class="nav-link<?= $isActive ? ' is-active' : '' ?>"<?= $isActive ? ' aria-current="page"' : '' ?>>
-                            <?= icon($it[3] ?? 'settings') ?>
-                            <span class="nav-text"><?= e($it[1]) ?></span>
+                        <a href="<?= e(url($it['path'])) ?>" class="nav-link<?= $isActive ? ' is-active' : '' ?>"<?= $isActive ? ' aria-current="page"' : '' ?>>
+                            <?= icon($it['icon'] ?? 'settings') ?>
+                            <span class="nav-text"><?= e($it['title']) ?></span>
                         </a>
                     </li>
-                <?php endif; ?>
+                <?php endforeach; ?>
             <?php endforeach; ?>
         </ul>
     </nav>
