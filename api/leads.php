@@ -70,8 +70,85 @@ $data = lead_fields_from_input([
 $errors = lead_validate($data);
 if ($errors) { $fail(implode(' ', $errors), 422, $ip); }
 
+/* -------------------------------------------------------------------------
+ |  TARAMA MODU (opsiyonel, geriye dönük uyumlu):
+ |  scan_id gönderilirse tarama sayaçları + kalite filtreleri + zengin alanlar
+ |  uygulanır. scan_id yoksa DAVRANIŞ AYNEN ESKİSİ GİBİDİR.
+ * ---------------------------------------------------------------------- */
+$scanId = (int) ($body['scan_id'] ?? 0);
+$scan = null; $filters = [];
+if ($scanId > 0) {
+    require_once __DIR__ . '/../includes/lead-scan.php';
+    $scan = lead_scan_find($scanId);
+    if ($scan) {
+        $filters = (array) ($scan['config']['filters'] ?? []);
+        lead_scan_bump($scanId, 'found');
+    } else { $scanId = 0; } // geçersiz scan → normal moda düş
+}
+
+$phone = trim((string) $data['phone']);
+$rating = isset($body['google_rating']) && $body['google_rating'] !== '' ? (float) $body['google_rating'] : null;
+$reviews = isset($body['review_count']) && $body['review_count'] !== '' ? (int) $body['review_count'] : null;
+
+// Kalite filtreleri (yalnızca tarama modunda; sonuç sayaçlarını doğru tutmak için)
+if ($scanId > 0) {
+    $minRating = (float) ($scan['config']['min_rating'] ?? 0);
+    $minReviews = (int) ($scan['config']['min_reviews'] ?? 0);
+    $skip = static function (string $why) use ($scanId, $ip) {
+        lead_scan_bump($scanId, $why === 'duplicate' ? 'duplicate' : 'skipped');
+        leads_api_log($ip, 'ok');
+        echo json_encode(['ok' => true, 'id' => 0, 'result' => $why], JSON_UNESCAPED_UNICODE);
+        exit;
+    };
+    try {
+        if (!empty($filters['dedupe_phone']) && $phone !== '') {
+            $c = db()->prepare('SELECT COUNT(*) FROM leads WHERE is_deleted = 0 AND phone = :p'); $c->execute([':p' => $phone]);
+            if ((int) $c->fetchColumn() > 0) { $skip('duplicate'); }
+        }
+        if (!empty($filters['dedupe_company'])) {
+            $c = db()->prepare('SELECT COUNT(*) FROM leads WHERE is_deleted = 0 AND company_name = :n'); $c->execute([':n' => $company]);
+            if ((int) $c->fetchColumn() > 0) { $skip('duplicate'); }
+        }
+        if (!empty($filters['skip_blacklist'])) {
+            $c = db()->prepare("SELECT COUNT(*) FROM leads WHERE is_deleted = 0 AND status = 'blacklist' AND (company_name = :n OR (phone <> '' AND phone = :p))");
+            $c->execute([':n' => $company, ':p' => $phone]);
+            if ((int) $c->fetchColumn() > 0) { $skip('blacklist'); }
+        }
+    } catch (Throwable $e) { log_error('scan dedupe: ' . $e->getMessage()); }
+    if (!empty($filters['has_phone']) && $phone === '') { $skip('no_phone'); }
+    if ($minRating > 0 && ($rating === null || $rating < $minRating)) { $skip('low_rating'); }
+    if ($minReviews > 0 && ($reviews === null || $reviews < $minReviews)) { $skip('low_reviews'); }
+}
+
 $id = create_lead($data, null);
-if ($id <= 0) { $fail('Kayıt oluşturulamadı.', 500, $ip); }
+if ($id <= 0) {
+    if ($scanId > 0) { lead_scan_bump($scanId, 'error'); }
+    $fail('Kayıt oluşturulamadı.', 500, $ip);
+}
+
+// Zengin alanları + tarama bağlantısını ekle (çekirdek create_lead'e dokunmadan)
+if ($scanId > 0 || $rating !== null || $reviews !== null) {
+    try {
+        db()->prepare('UPDATE leads SET google_rating = :gr, review_count = :rc, address = :addr, has_website = :hw,
+                       package = :pkg, priority = :prio, scan_id = :sid WHERE id = :id')
+            ->execute([
+                ':gr' => $rating, ':rc' => $reviews,
+                ':addr' => trim((string) ($body['address'] ?? '')) ?: null,
+                ':hw' => ((string) $data['website'] !== '' ? 1 : 0),
+                ':pkg' => $scan ? ($scan['package'] ?: null) : (trim((string) ($body['package'] ?? '')) ?: null),
+                ':prio' => $scan ? (string) ($scan['config']['priority'] ?? 'normal') : (string) ($body['priority'] ?? 'normal'),
+                ':sid' => $scanId ?: null, ':id' => $id,
+            ]);
+    } catch (Throwable $e) { log_error('lead enrich: ' . $e->getMessage()); }
+    if ($scanId > 0) {
+        lead_scan_bump($scanId, 'saved');
+        // hedefe ulaşıldıysa taramayı tamamla
+        $prog = lead_scan_progress($scanId);
+        if ((int) $prog['target'] > 0 && (int) $prog['saved'] >= (int) $prog['target'] && $prog['status'] === 'running') {
+            lead_scan_set_status($scanId, 'done', null);
+        }
+    }
+}
 
 leads_api_log($ip, 'ok');
-echo json_encode(['ok' => true, 'id' => $id], JSON_UNESCAPED_UNICODE);
+echo json_encode(['ok' => true, 'id' => $id, 'result' => 'saved'], JSON_UNESCAPED_UNICODE);

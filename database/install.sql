@@ -1248,13 +1248,20 @@ CREATE TABLE IF NOT EXISTS `leads` (
     `website`              VARCHAR(190) DEFAULT NULL,
     `instagram`            VARCHAR(190) DEFAULT NULL,
     `maps_url`             VARCHAR(500) DEFAULT NULL,
+    `google_rating`        DECIMAL(2,1) DEFAULT NULL,
+    `review_count`         INT UNSIGNED DEFAULT NULL,
+    `has_website`          TINYINT(1)   DEFAULT NULL,
     `sector`               VARCHAR(120) DEFAULT NULL,
     `city`                 VARCHAR(80)  DEFAULT NULL,
     `district`             VARCHAR(80)  DEFAULT NULL,
+    `address`              VARCHAR(500) DEFAULT NULL,
     `source`               VARCHAR(80)  DEFAULT NULL,
+    `package`              VARCHAR(80)  DEFAULT NULL,
     `notes`                TEXT         DEFAULT NULL,
     `status`               VARCHAR(30)  NOT NULL DEFAULT 'new',
+    `priority`             VARCHAR(20)  NOT NULL DEFAULT 'normal',
     `assigned_personnel_id` INT UNSIGNED DEFAULT NULL,
+    `scan_id`              INT UNSIGNED DEFAULT NULL,
     `last_message_at`      DATETIME     DEFAULT NULL,
     `is_deleted`           TINYINT(1)   NOT NULL DEFAULT 0,
     `created_by`           INT UNSIGNED DEFAULT NULL,
@@ -1276,10 +1283,39 @@ CREATE TABLE IF NOT EXISTS `lead_api_log` (
     KEY `idx_lead_api_time` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Lead ayarları (API token + WhatsApp şablonu)
+-- Lead Tarama işleri (scan wizard)
+CREATE TABLE IF NOT EXISTS `lead_scans` (
+    `id`                    INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `name`                  VARCHAR(190) DEFAULT NULL,
+    `config_json`           LONGTEXT     DEFAULT NULL,
+    `combos_count`          INT UNSIGNED NOT NULL DEFAULT 0,
+    `target_limit`          INT UNSIGNED NOT NULL DEFAULT 0,
+    `found_count`           INT UNSIGNED NOT NULL DEFAULT 0,
+    `saved_count`           INT UNSIGNED NOT NULL DEFAULT 0,
+    `duplicate_count`       INT UNSIGNED NOT NULL DEFAULT 0,
+    `skipped_count`         INT UNSIGNED NOT NULL DEFAULT 0,
+    `error_count`           INT UNSIGNED NOT NULL DEFAULT 0,
+    `status`                VARCHAR(20)  NOT NULL DEFAULT 'draft',
+    `package`               VARCHAR(80)  DEFAULT NULL,
+    `source`                VARCHAR(80)  DEFAULT NULL,
+    `assigned_personnel_id` INT UNSIGNED DEFAULT NULL,
+    `created_by`            INT UNSIGNED DEFAULT NULL,
+    `updated_by`            INT UNSIGNED DEFAULT NULL,
+    `started_at`            DATETIME     DEFAULT NULL,
+    `completed_at`          DATETIME     DEFAULT NULL,
+    `created_at`            DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`            DATETIME     NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    `deleted_at`            DATETIME     DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    KEY `idx_lead_scans_status` (`status`),
+    KEY `idx_lead_scans_deleted` (`deleted_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Lead ayarları (API token + WhatsApp şablonu + tarama varsayılanı)
 INSERT IGNORE INTO `app_settings` (`setting_key`, `setting_value`) VALUES
     ('leads_api_token', ''),
-    ('lead_wa_template', 'Merhaba {yetkili}, {firma} olarak sizinle iletişime geçmek istiyoruz.');
+    ('lead_wa_template', 'Merhaba {yetkili}, {firma} olarak sizinle iletişime geçmek istiyoruz.'),
+    ('lead_scan_target_default', '100');
 
 /* =========================================================================
    EK PART 25 — Yardım Merkezi / Panel Kullanım Rehberi

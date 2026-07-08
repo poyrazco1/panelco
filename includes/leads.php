@@ -53,6 +53,7 @@ function get_leads(array $f = []): array
     $where = ['is_deleted = 0'];
     $params = [];
     if (!empty($f['status']) && isset(lead_statuses()[$f['status']])) { $where[] = 'status = :st'; $params[':st'] = $f['status']; }
+    if (!empty($f['scan_id'])) { $where[] = 'scan_id = :scan'; $params[':scan'] = (int) $f['scan_id']; }
     if (!empty($f['search'])) { $where[] = '(company_name LIKE :q OR contact_name LIKE :q OR phone LIKE :q OR city LIKE :q OR sector LIKE :q)'; $params[':q'] = '%' . $f['search'] . '%'; }
     try {
         $st = db()->prepare('SELECT * FROM leads WHERE ' . implode(' AND ', $where) . ' ORDER BY id DESC LIMIT 1000');
