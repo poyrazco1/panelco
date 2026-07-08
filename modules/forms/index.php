@@ -73,7 +73,13 @@ layout_top('Form Merkezi', 'forms');
         </div>
         <?php if (!empty($t['description'])): ?><p class="form-cat-desc"><?= e((string) $t['description']) ?></p><?php endif; ?>
         <div class="form-cat-actions">
-            <?php if ($isInternal && can('forms.submit') && (int) $t['is_active'] === 1): ?>
+            <?php
+            // Bazı formlar mevcut modül ekranına yönlendirilir (duplicate sistem kurulmaz).
+            $redirectPath = form_center_redirect_open_path((string) $t['form_key']);
+            ?>
+            <?php if ($redirectPath !== null && can('leave.create')): ?>
+                <a class="btn btn-sm btn-primary" href="<?= e(url($redirectPath)) ?>"><?= icon('calendar-check') ?>Formu Aç</a>
+            <?php elseif ($isInternal && can('forms.submit') && (int) $t['is_active'] === 1): ?>
                 <a class="btn btn-sm btn-primary" href="<?= e(url('modules/forms/submit.php?id=' . $tid)) ?>"><?= icon('file-pen') ?>Formu Aç</a>
             <?php endif; ?>
             <?php if (can('forms.submissions.view')): ?><a class="btn btn-sm" href="<?= e(url('modules/forms/submissions.php?template_id=' . $tid)) ?>"><?= icon('clipboard-list') ?>Kayıtları Gör</a><?php endif; ?>

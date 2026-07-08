@@ -427,6 +427,18 @@ function form_center_create_submission(array $template, array $data, array $meta
         $id = (int) db()->lastInsertId();
         form_center_log($id, '', $status, $requiresApproval ? 'Gönderildi (onay bekliyor)' : 'Gönderildi',
             !empty($meta['submitted_by_user_id']) ? (int) $meta['submitted_by_user_id'] : null);
+
+        // Bildirim Merkezi: yeni form (ve onay bekliyorsa) yöneticilere düşer.
+        $formName = (string) ($template['form_name'] ?? 'Form');
+        $who = $contact['customer_name'] ?: ($contact['company_name'] ?: 'Bir kullanıcı');
+        $admins = form_center_admin_user_ids();
+        if ($requiresApproval) {
+            form_center_notify($admins, 'form_approval', 'Onay bekleyen form',
+                $formName . ' — ' . $no . ' onay bekliyor.', $id);
+        } else {
+            form_center_notify($admins, 'form_new', 'Yeni form gönderimi',
+                $formName . ' — ' . $no . ' (' . $who . ')', $id);
+        }
         return $id;
     } catch (Throwable $e) { log_error('form_center_create_submission: ' . $e->getMessage()); return 0; }
 }
@@ -460,7 +472,7 @@ function form_center_submissions(array $f = []): array
     if (!empty($f['phone'])) { $where[] = 's.phone LIKE :ph'; $params[':ph'] = '%' . $f['phone'] . '%'; }
     if (!empty($f['customer'])) { $where[] = '(s.customer_name LIKE :cu OR s.company_name LIKE :cu)'; $params[':cu'] = '%' . $f['customer'] . '%'; }
     if (!empty($f['search'])) { $where[] = '(s.submission_no LIKE :q OR s.customer_name LIKE :q OR s.company_name LIKE :q OR s.phone LIKE :q)'; $params[':q'] = '%' . $f['search'] . '%'; }
-    if (!empty($f['pending_approval'])) { $where[] = "s.approval_status = 'pending'"; }
+    if (!empty($f['pending_approval'])) { $where[] = "s.approval_status = 'pending' AND s.converted_at IS NULL"; }
     try {
         $st = db()->prepare('SELECT s.*, t.form_name, t.form_type, t.category_id, c.name AS category_name,
                                     u.full_name AS submitter_name, au.full_name AS assignee_name
@@ -528,7 +540,7 @@ function form_center_counts(): array
             $scope = ' AND (submitted_by_user_id = ' . ($uid ?: -1) . ' OR assigned_user_id = ' . ($uid ?: -1) . ')';
         }
         $out['submissions'] = (int) db()->query('SELECT COUNT(*) FROM form_submissions WHERE deleted_at IS NULL' . $scope)->fetchColumn();
-        $out['pending_approval'] = (int) db()->query("SELECT COUNT(*) FROM form_submissions WHERE deleted_at IS NULL AND approval_status = 'pending'" . $scope)->fetchColumn();
+        $out['pending_approval'] = (int) db()->query("SELECT COUNT(*) FROM form_submissions WHERE deleted_at IS NULL AND approval_status = 'pending' AND converted_at IS NULL" . $scope)->fetchColumn();
         $out['new'] = (int) db()->query("SELECT COUNT(*) FROM form_submissions WHERE deleted_at IS NULL AND status = 'new'" . $scope)->fetchColumn();
     } catch (Throwable $e) { log_error('form_center_counts: ' . $e->getMessage()); }
     return $out;
@@ -566,6 +578,11 @@ function form_center_assign_submission(int $id, int $assigneeUserId, ?int $userI
         db()->prepare('UPDATE form_submissions SET assigned_user_id = :a, updated_at = NOW() WHERE id = :id AND deleted_at IS NULL')
             ->execute([':a' => $assigneeUserId ?: null, ':id' => $id]);
         form_center_log($id, (string) $cur['status'], (string) $cur['status'], $assigneeUserId ? 'Kullanıcıya atandı' : 'Atama kaldırıldı', $userId);
+        // Bildirim: atanan kullanıcıya düşer.
+        if ($assigneeUserId > 0 && $assigneeUserId !== $userId) {
+            form_center_notify([$assigneeUserId], 'form_assigned', 'Size form atandı',
+                (string) ($cur['form_name'] ?? 'Form') . ' — ' . (string) ($cur['submission_no'] ?? '') . ' size atandı.', $id);
+        }
         return true;
     } catch (Throwable $e) { log_error('form_center_assign_submission: ' . $e->getMessage()); return false; }
 }
@@ -761,7 +778,289 @@ function form_center_wa_link(array $submission, string $which = 'received'): ?st
         '{firma}'    => (string) ($submission['company_name'] ?? ''),
         '{form_adi}' => (string) ($submission['form_name'] ?? ''),
         '{talep_no}' => (string) ($submission['submission_no'] ?? ''),
+        '{ad}'       => (string) ($submission['customer_name'] ?? ($submission['company_name'] ?? '')),
+        '{durum}'    => form_status_label((string) ($submission['status'] ?? '')),
         '{sebep}'    => (string) ($submission['rejection_reason'] ?? ''),
     ];
     return build_whatsapp_message_link($phone, strtr($tpl, $vars));
+}
+
+/* =========================================================================
+ |  BİLDİRİMLER (Bildirim Merkezi — user_notifications)
+ |  Yeni form / onay bekleyen / atama durumlarında ilgili kullanıcılara düşer.
+ * ====================================================================== */
+/** Sistem (Yönetici / Süper Admin) rolüne sahip aktif kullanıcı id'leri. */
+function form_center_admin_user_ids(): array
+{
+    try {
+        return array_map('intval', db()->query(
+            'SELECT u.id FROM users u INNER JOIN roles r ON r.id = u.role_id
+             WHERE u.is_active = 1 AND r.is_system = 1'
+        )->fetchAll(PDO::FETCH_COLUMN));
+    } catch (Throwable $e) { log_error('form_center_admin_user_ids: ' . $e->getMessage()); return []; }
+}
+
+/** Belirtilen kullanıcılara Bildirim Merkezi kaydı ekler (dedupe: UNIQUE anahtar). */
+function form_center_notify(array $userIds, string $type, string $title, string $message, ?int $relatedId): void
+{
+    $userIds = array_values(array_unique(array_filter(array_map('intval', $userIds), static fn($v) => $v > 0)));
+    if (!$userIds) { return; }
+    if (function_exists('notif_ensure_schema')) { notif_ensure_schema(); }
+    try {
+        $ins = db()->prepare('INSERT IGNORE INTO user_notifications
+            (user_id, notification_type, title, message, related_type, related_id, notification_date)
+            VALUES (:uid,:type,:title,:msg,:rtype,:rid,:ndate)');
+        $today = date('Y-m-d');
+        foreach ($userIds as $uid) {
+            $ins->execute([':uid' => $uid, ':type' => $type, ':title' => $title, ':msg' => $message,
+                           ':rtype' => 'form_submission', ':rid' => $relatedId, ':ndate' => $today]);
+        }
+    } catch (Throwable $e) { log_error('form_center_notify: ' . $e->getMessage()); }
+}
+
+/* =========================================================================
+ |  MODÜLE DÖNÜŞTÜRME (mevcut modüllere bağlanır; duplicate engellenir)
+ * ====================================================================== */
+/**
+ * Bir form için hedef modül tanımı (form_key'e göre). Yoksa null.
+ * @return ?array{module,label,perm,icon}
+ */
+function form_center_conversion_target(string $formKey): ?array
+{
+    $map = [
+        'lead_teklif_talep'        => ['module' => 'leads',     'label' => 'Lead Kaydına Dönüştür',         'perm' => 'leads.create',   'icon' => 'user-check'],
+        'teknik_servis_on_basvuru' => ['module' => 'service',   'label' => 'Servis Kaydına Dönüştür',        'perm' => 'service.create', 'icon' => 'clipboard-plus'],
+        'iade_degisim_talep'       => ['module' => 'rma',       'label' => 'İade-Değişim Kaydına Dönüştür', 'perm' => 'rma.create',     'icon' => 'rotate-ccw'],
+        'izin_talep'               => ['module' => 'leave',     'label' => 'İzin Talebine Aktar',            'perm' => 'leave.create',   'icon' => 'calendar-check'],
+        'sevkiyat_teslim'          => ['module' => 'shipments', 'label' => 'Sevkiyat Kaydıyla İlişkilendir','perm' => 'shipments.edit', 'icon' => 'truck'],
+        'urun_toplama'             => ['module' => 'shipments', 'label' => 'Sevkiyat Kaydıyla İlişkilendir','perm' => 'shipments.edit', 'icon' => 'truck'],
+    ];
+    return $map[$formKey] ?? null;
+}
+
+/**
+ * Bazı formlar Form Merkezi yerine mevcut modül ekranına yönlendirilir
+ * (duplicate sistem kurulmaz). form_key => açılış URL yolu.
+ */
+function form_center_redirect_open_path(string $formKey): ?string
+{
+    return match ($formKey) {
+        'izin_talep' => 'modules/leave/request-form.php',
+        default      => null,
+    };
+}
+
+/** Kayıt daha önce dönüştürülmüş mü? */
+function form_center_is_converted(array $submission): bool
+{
+    return !empty($submission['converted_at']) || !empty($submission['related_record_id']);
+}
+
+/** Dönüşümü form_submissions'a işler (transaction) + log + status. */
+function form_center_mark_converted(int $submissionId, string $module, int $recordId, ?int $userId): bool
+{
+    try {
+        $pdo = db();
+        $pdo->beginTransaction();
+        $cur = $pdo->prepare('SELECT status FROM form_submissions WHERE id = :id AND deleted_at IS NULL FOR UPDATE');
+        $cur->execute([':id' => $submissionId]);
+        $row = $cur->fetch();
+        if (!$row) { $pdo->rollBack(); return false; }
+        $old = (string) $row['status'];
+        $new = 'in_progress';
+        $pdo->prepare('UPDATE form_submissions
+            SET related_module = :m, related_record_id = :rid, converted_at = NOW(), converted_by = :by,
+                status = :st, updated_at = NOW()
+            WHERE id = :id AND deleted_at IS NULL')
+            ->execute([':m' => $module, ':rid' => $recordId, ':by' => $userId, ':st' => $new, ':id' => $submissionId]);
+        $pdo->commit();
+        form_center_log($submissionId, $old, $new, 'Modüle dönüştürüldü: ' . $module . ' #' . $recordId, $userId);
+        return true;
+    } catch (Throwable $e) {
+        if (db()->inTransaction()) { db()->rollBack(); }
+        log_error('form_center_mark_converted: ' . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Form kaydını ilgili modüle dönüştürür. Duplicate engellenir; hata olursa
+ * form kaydı bozulmaz (hedef kaydı ayrı helper'ının transaction'ı ile atomik,
+ * form_submissions güncellemesi ayrı transaction).
+ * @return array{ok:bool, error:?string, module:?string, record_id:?int, url:?string}
+ */
+function form_center_convert_submission(int $submissionId, ?int $userId): array
+{
+    $fail = static fn(string $m) => ['ok' => false, 'error' => $m, 'module' => null, 'record_id' => null, 'url' => null];
+    $s = form_center_submission_find($submissionId);
+    if (!$s) { return $fail('Kayıt bulunamadı veya yetkiniz yok.'); }
+    if (form_center_is_converted($s)) {
+        return $fail('Bu kayıt zaten dönüştürülmüş (' . (string) ($s['related_module'] ?? '') . ' #' . (int) $s['related_record_id'] . ').');
+    }
+    $tpl = form_center_template_find((int) $s['form_template_id']);
+    $formKey = (string) ($tpl['form_key'] ?? '');
+    $target = form_center_conversion_target($formKey);
+    if (!$target) { return $fail('Bu form için modüle dönüştürme tanımlı değil.'); }
+    if (!can($target['perm'])) { return $fail('Bu dönüştürme için yetkiniz yok.'); }
+
+    $data = json_decode((string) ($s['data_json'] ?? '{}'), true) ?: [];
+
+    try {
+        switch ($target['module']) {
+            case 'leads':     $recordId = form_convert_to_lead($s, $data, $userId); $url = 'modules/leads/view.php?id='; break;
+            case 'service':   $recordId = form_convert_to_service($s, $data, $userId); $url = 'modules/service/view.php?id='; break;
+            case 'rma':       $recordId = form_convert_to_rma($s, $data, $userId); $url = 'modules/rma/view.php?id='; break;
+            case 'leave':     $recordId = form_convert_to_leave($s, $data, $userId); $url = 'modules/leave/request-view.php?id='; break;
+            default:          return $fail('Bu modül için otomatik dönüştürme yok. Manuel ilişkilendirme kullanın.');
+        }
+    } catch (Throwable $e) {
+        return $fail($e->getMessage() ?: 'Dönüştürme sırasında hata oluştu.');
+    }
+    if ($recordId <= 0) { return $fail('Hedef kayıt oluşturulamadı.'); }
+
+    if (!form_center_mark_converted($submissionId, $target['module'], $recordId, $userId)) {
+        return $fail('Kayıt oluşturuldu (#' . $recordId . ') ancak forma işlenemedi. Yöneticinize bildirin.');
+    }
+    log_activity('form_convert', 'form_submission', $submissionId, null, 'success',
+        'Form #' . (string) $s['submission_no'] . ' → ' . $target['module'] . ' #' . $recordId);
+    return ['ok' => true, 'error' => null, 'module' => $target['module'], 'record_id' => $recordId, 'url' => $url . $recordId];
+}
+
+/* ---- Modül-özel dönüştürücüler (mevcut helper'ları kullanır) ---- */
+function form_convert_to_lead(array $s, array $data, ?int $userId): int
+{
+    require_once __DIR__ . '/leads.php';
+    $company = trim((string) ($data['firma'] ?? '')) ?: trim((string) ($data['ad_soyad'] ?? ''));
+    if ($company === '') { throw new RuntimeException('Firma/Ad Soyad boş; lead oluşturulamaz.'); }
+    $notesParts = array_filter([
+        !empty($data['talep_konusu']) ? 'Talep: ' . $data['talep_konusu'] : '',
+        (string) ($data['aciklama'] ?? ''),
+        'Form: ' . (string) ($s['submission_no'] ?? ''),
+    ]);
+    $lead = lead_fields_from_input([
+        'company_name' => $company,
+        'contact_name' => (string) ($data['ad_soyad'] ?? ''),
+        'phone'        => (string) ($data['telefon'] ?? ($s['phone'] ?? '')),
+        'email'        => (string) ($data['email'] ?? ($s['email'] ?? '')),
+        'notes'        => implode("\n", $notesParts),
+        'source'       => 'Form Merkezi',
+        'status'       => 'new',
+    ]);
+    return create_lead($lead, $userId);
+}
+
+function form_convert_to_service(array $s, array $data, ?int $userId): int
+{
+    require_once __DIR__ . '/service.php';
+    $name = trim((string) ($data['ad_firma'] ?? '')) ?: trim((string) ($s['customer_name'] ?? ''));
+    if ($name === '') { throw new RuntimeException('Ad/Firma boş; servis kaydı oluşturulamaz.'); }
+    $res = create_service_record([
+        'customer_name'       => $name,
+        'customer_phone'      => (string) ($data['telefon'] ?? ($s['phone'] ?? '')),
+        'device_type'         => (string) ($data['urun_tipi'] ?? ''),
+        'brand_name'          => (string) ($data['marka_model'] ?? ''),
+        'device_model'        => (string) ($data['marka_model'] ?? ''),
+        'serial_no'           => (string) ($data['seri_no'] ?? ''),
+        'problem_description' => trim((string) ($data['ariza'] ?? '') . "\n\n(Form: " . (string) ($s['submission_no'] ?? '') . ')'),
+        'quantity'            => 1,
+    ]);
+    return (int) ($res['id'] ?? 0);
+}
+
+function form_convert_to_rma(array $s, array $data, ?int $userId): int
+{
+    require_once __DIR__ . '/rma.php';
+    $name = trim((string) ($data['ad_firma'] ?? '')) ?: trim((string) ($s['customer_name'] ?? ''));
+    if ($name === '') { throw new RuntimeException('Ad/Firma boş; iade-değişim kaydı oluşturulamaz.'); }
+    // İşlem tipi etiketini anahtara çevir (İade/Değişim/İptal → iade/degisim/iptal)
+    $labelToKey = [];
+    foreach (rma_process_types() as $k => $l) { $labelToKey[mb_strtolower($l, 'UTF-8')] = $k; }
+    $ptRaw = mb_strtolower(trim((string) ($data['islem_tipi'] ?? '')), 'UTF-8');
+    $processType = $labelToKey[$ptRaw] ?? 'iade';
+    $descParts = array_filter([
+        (string) ($data['aciklama'] ?? ''),
+        !empty($data['fatura_no']) ? 'Fatura No: ' . $data['fatura_no'] : '',
+        'Form: ' . (string) ($s['submission_no'] ?? ''),
+    ]);
+    return create_rma_record([
+        'customer_name'  => $name,
+        'customer_phone' => (string) ($data['telefon'] ?? ($s['phone'] ?? '')),
+        'platform'       => (string) ($data['platform'] ?? ''),
+        'product_model'  => (string) ($data['urun_modeli'] ?? ''),
+        'process_type'   => $processType,
+        'description'    => implode("\n", $descParts),
+        'quantity'       => 1,
+    ]);
+}
+
+function form_convert_to_leave(array $s, array $data, ?int $userId): int
+{
+    require_once __DIR__ . '/leave.php';
+    require_once __DIR__ . '/personnel.php';
+    $submitter = (int) ($s['submitted_by_user_id'] ?? 0);
+    if ($submitter <= 0) { throw new RuntimeException('Dış/anonim form izin talebine dönüştürülemez.'); }
+    $pers = function_exists('get_personnel_by_user_id') ? get_personnel_by_user_id($submitter) : null;
+    if (!$pers) { throw new RuntimeException('Gönderen kullanıcı bir personele bağlı değil; izin talebi oluşturulamaz.'); }
+    // İzin türü etiketini leave_types ile eşleştir
+    $typeLabel = trim((string) ($data['izin_turu'] ?? ''));
+    $leaveTypeId = 0;
+    try {
+        $st = db()->prepare('SELECT id FROM leave_types WHERE name = :n AND is_active = 1 LIMIT 1');
+        $st->execute([':n' => $typeLabel]);
+        $leaveTypeId = (int) ($st->fetchColumn() ?: 0);
+        if ($leaveTypeId <= 0) {
+            $leaveTypeId = (int) (db()->query('SELECT id FROM leave_types WHERE is_active = 1 ORDER BY sort_order, id LIMIT 1')->fetchColumn() ?: 0);
+        }
+    } catch (Throwable $e) { /* fallback below */ }
+    if ($leaveTypeId <= 0) { throw new RuntimeException('Uygun izin türü bulunamadı. Önce izin türlerini tanımlayın.'); }
+    $res = create_leave_request([
+        'personnel_id'  => (int) $pers['id'],
+        'leave_type_id' => $leaveTypeId,
+        'start_date'    => (string) ($data['baslangic'] ?? ''),
+        'end_date'      => (string) ($data['bitis'] ?? ''),
+        'description'   => trim((string) ($data['aciklama'] ?? '') . ' (Form: ' . (string) ($s['submission_no'] ?? '') . ')'),
+    ]);
+    if (empty($res['ok'])) { throw new RuntimeException(implode(' ', $res['errors'] ?? ['İzin talebi oluşturulamadı.'])); }
+    return (int) $res['id'];
+}
+
+/* ---- Sevkiyat: manuel ilişkilendirme (rota durağı) ---- */
+/** İlişkilendirme için son rota durakları (yönetici seçer). */
+function form_center_shipment_stop_options(int $limit = 100): array
+{
+    try {
+        $st = db()->query('SELECT s.id, s.operation_type, r.route_name, r.route_date, a.company_name
+                           FROM shipment_route_stops s
+                           INNER JOIN shipment_routes r ON r.id = s.route_id
+                           LEFT JOIN shipment_addresses a ON a.id = s.address_id
+                           WHERE s.deleted_at IS NULL AND r.deleted_at IS NULL
+                           ORDER BY r.route_date DESC, r.id DESC, s.stop_order ASC LIMIT ' . (int) $limit);
+        return $st->fetchAll();
+    } catch (Throwable $e) { log_error('form_center_shipment_stop_options: ' . $e->getMessage()); return []; }
+}
+
+/** Formu bir sevkiyat durağıyla ilişkilendirir; form eklerini shipment_proofs'a kopyalar. */
+function form_center_relate_shipment(int $submissionId, int $stopId, ?int $userId): array
+{
+    $fail = static fn(string $m) => ['ok' => false, 'error' => $m];
+    $s = form_center_submission_find($submissionId);
+    if (!$s) { return $fail('Kayıt bulunamadı.'); }
+    if (form_center_is_converted($s)) { return $fail('Bu kayıt zaten ilişkilendirilmiş.'); }
+    require_once __DIR__ . '/shipments.php';
+    $stop = function_exists('get_route_stop') ? get_route_stop($stopId) : null;
+    if (!$stop) { return $fail('Seçilen sevkiyat durağı bulunamadı.'); }
+    if (!form_center_mark_converted($submissionId, 'shipments', $stopId, $userId)) { return $fail('İlişkilendirme kaydedilemedi.'); }
+    // Form eklerini sevkiyat kanıtı olarak da ilişkilendir (kopya kayıt)
+    try {
+        foreach (form_center_submission_uploads($submissionId) as $up) {
+            db()->prepare('INSERT INTO shipment_proofs (route_id, stop_id, uploaded_by, file_path, original_name, mime_type, file_size, note)
+                           VALUES (:r,:s,:by,:path,:name,:mime,:size,:note)')
+                ->execute([':r' => (int) $stop['route_id'], ':s' => $stopId, ':by' => $userId,
+                           ':path' => (string) $up['file_path'], ':name' => (string) ($up['original_name'] ?? ''),
+                           ':mime' => (string) ($up['mime_type'] ?? ''), ':size' => (int) ($up['file_size'] ?? 0),
+                           ':note' => 'Form: ' . (string) ($s['submission_no'] ?? '')]);
+        }
+    } catch (Throwable $e) { log_error('form_center_relate_shipment proofs: ' . $e->getMessage()); }
+    log_activity('form_relate_shipment', 'form_submission', $submissionId, null, 'success', 'Form sevkiyat durağıyla ilişkilendirildi #' . $stopId);
+    return ['ok' => true, 'error' => null, 'stop_id' => $stopId, 'route_id' => (int) $stop['route_id']];
 }

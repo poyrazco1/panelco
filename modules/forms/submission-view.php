@@ -22,6 +22,21 @@ $uploads = form_center_submission_uploads($id);
 $logs = $manage ? form_center_submission_logs($id) : [];
 $waReceived = form_center_wa_link($s, 'received');
 
+// Modüle dönüştürme bilgisi (form_key'e göre)
+$template = form_center_template_find((int) $s['form_template_id']);
+$formKey = (string) ($template['form_key'] ?? '');
+$convTarget = form_center_conversion_target($formKey);
+$isConverted = form_center_is_converted($s);
+$convModule = (string) ($s['related_module'] ?? '');
+$convRecordId = (int) ($s['related_record_id'] ?? 0);
+$convUrlMap = [
+    'leads' => 'modules/leads/view.php?id=', 'service' => 'modules/service/view.php?id=',
+    'rma' => 'modules/rma/view.php?id=', 'leave' => 'modules/leave/request-view.php?id=',
+    'shipments' => 'modules/shipments/route-view.php?id=',
+];
+$shipmentStops = ($convTarget && $convTarget['module'] === 'shipments' && !$isConverted && can('shipments.edit'))
+    ? form_center_shipment_stop_options() : [];
+
 $users = [];
 if ($manage) { try { foreach (db()->query('SELECT id, full_name, username FROM users WHERE is_active=1 ORDER BY full_name')->fetchAll() as $u) { $users[(int) $u['id']] = $u['full_name'] ?: $u['username']; } } catch (Throwable $e) {} }
 
@@ -69,6 +84,37 @@ layout_top($s['submission_no'] . ' · ' . $s['form_name'], 'forms');
                 <div><dt>Tarih</dt><dd><?= e((string) $s['created_at']) ?></dd></div>
                 <?php if (!empty($s['rejection_reason'])): ?><div><dt>Red sebebi</dt><dd><?= e((string) $s['rejection_reason']) ?></dd></div><?php endif; ?>
             </dl>
+
+            <?php /* ---- Modüle dönüştürme ---- */ ?>
+            <?php if ($isConverted): ?>
+                <div class="alert alert-success form-converted">
+                    <?= icon('check-circle', 'icon-sm') ?>
+                    Bu kayıt <strong><?= e($convModule) ?></strong> modülüne aktarıldı.
+                    <?php if ($convRecordId > 0 && isset($convUrlMap[$convModule])): ?>
+                        <a href="<?= e(url($convUrlMap[$convModule] . $convRecordId)) ?>">Kaydı aç (#<?= $convRecordId ?>) →</a>
+                    <?php endif; ?>
+                </div>
+            <?php elseif ($convTarget && $convTarget['module'] !== 'shipments' && can($convTarget['perm'])): ?>
+                <form method="post" action="<?= e(url('modules/forms/convert.php')) ?>" class="form-convert-row"
+                      onsubmit="return confirm('<?= e($convTarget['label']) ?>? Bu işlem geri alınamaz.')">
+                    <?= csrf_field() ?><input type="hidden" name="id" value="<?= $id ?>"><input type="hidden" name="action" value="convert">
+                    <button type="submit" class="btn btn-primary btn-sm"><?= icon($convTarget['icon']) ?><?= e($convTarget['label']) ?></button>
+                </form>
+            <?php elseif ($convTarget && $convTarget['module'] === 'shipments' && can('shipments.edit')): ?>
+                <form method="post" action="<?= e(url('modules/forms/convert.php')) ?>" class="form-convert-ship">
+                    <?= csrf_field() ?><input type="hidden" name="id" value="<?= $id ?>"><input type="hidden" name="action" value="relate_shipment">
+                    <div class="form-group"><label>Sevkiyat Durağıyla İlişkilendir</label>
+                        <select name="stop_id" required>
+                            <option value="">— Rota / durak seçin —</option>
+                            <?php foreach ($shipmentStops as $st): ?>
+                                <option value="<?= (int) $st['id'] ?>"><?= e((string) $st['route_name'] . ' · ' . ($st['company_name'] ?? 'Adres') . ' (' . ($st['route_date'] ?? '') . ')') ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm"><?= icon('truck') ?>İlişkilendir</button>
+                    <?php if (!$shipmentStops): ?><div class="field-hint">Önce bir sevkiyat rotası/durağı oluşturun.</div><?php endif; ?>
+                </form>
+            <?php endif; ?>
 
             <?php if ($manage): ?>
             <div class="form-op-group">

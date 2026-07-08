@@ -1606,3 +1606,9 @@ a.dash-meta-chip:hover { border-color: #C9CDD6; text-decoration: none; }
 .field-row-grid input, .field-row-grid select { min-width: 0; }
 .field-remove { flex: 0 0 auto; margin-top: 4px; }
 @media (max-width: 900px) { .field-row-grid { grid-template-columns: 1fr 1fr; } }
+
+/* Form Merkezi — modüle dönüştürme */
+.form-convert-row, .form-convert-ship { margin: 14px 0 4px; padding-top: 14px; border-top: 1px solid var(--border); }
+.form-convert-ship .form-group { margin: 0 0 8px; }
+.form-converted { margin: 14px 0 4px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.form-converted a { font-weight: 600; }
