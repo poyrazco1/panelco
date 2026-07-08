@@ -41,12 +41,17 @@ if (!vault_verify_panel_password($uid, $panelPassword)) {
 $item = get_vault_item($id);
 if (!$item) { $fail('Kayıt bulunamadı veya görüntüleme yetkiniz yok.', 404); }
 
-$secret = vault_decrypt((string) ($item['secret_enc'] ?? ''));
-if ($secret === null) {
-    // Şifre yok ya da çözülemedi (anahtar değişmiş olabilir).
-    $fail('Şifre çözülemedi. Kayıtta şifre olmayabilir veya anahtar değişmiş olabilir.', 422);
+$res = vault_decrypt_result((string) ($item['secret_enc'] ?? ''));
+if ($res['status'] !== 'ok') {
+    // Bozuk veriyi ASLA silme/tahmin etme; kullanıcıya kontrollü mesaj göster.
+    $msg = match ($res['status']) {
+        'empty'          => 'Bu kayıtta saklı şifre yok.',
+        'not_configured' => 'Şifre kasası yapılandırılmamış.',
+        default          => 'Bu kayıt mevcut VAULT_KEY ile çözülemedi. Anahtar değişmiş veya kayıt bozulmuş olabilir.',
+    };
+    $fail($msg, $res['status'] === 'not_configured' ? 503 : 422);
 }
 
 vault_log_access($id, 'reveal');
 
-echo json_encode(['ok' => true, 'secret' => $secret, 'username' => (string) ($item['username'] ?? '')], JSON_UNESCAPED_UNICODE);
+echo json_encode(['ok' => true, 'secret' => $res['plain'], 'username' => (string) ($item['username'] ?? '')], JSON_UNESCAPED_UNICODE);

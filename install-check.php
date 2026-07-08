@@ -48,6 +48,61 @@ if ($hasConfig) {
     chk($checks, 'Yazılabilir: logs/', $writable ? 'ok' : 'warn',
         $writable ? 'yazılabilir' : 'yazılamıyor (izinleri kontrol edin)');
 
+    /* ------------------------------------------------------------------ *
+     |  ŞİFRE KASASI ANAHTARI (VAULT_KEY) — değer ASLA gösterilmez.
+     |  Yalnızca: tanımlı mı, biçim doğru mu, 32 bayta çözülüyor mu,
+     |  bellek içi şifrele/çöz turu çalışıyor mu.
+     * ------------------------------------------------------------------ */
+    (function () use (&$checks) {
+        if (!extension_loaded('openssl')) {
+            chk($checks, 'Şifre Kasası (VAULT_KEY)', 'fail', 'openssl eklentisi yok — şifreleme yapılamaz');
+            return;
+        }
+        if (!defined('VAULT_KEY')) {
+            chk($checks, 'Şifre Kasası (VAULT_KEY)', 'fail', 'config.php içinde VAULT_KEY tanımlı değil');
+            return;
+        }
+        $ph = defined('VAULT_KEY_PLACEHOLDER') ? (string) VAULT_KEY_PLACEHOLDER : '';
+        $key = (string) VAULT_KEY;
+        if ($key === '' || $key === $ph) {
+            chk($checks, 'Şifre Kasası (VAULT_KEY)', 'fail',
+                'Anahtar tanımlı değil/placeholder — tools/generate-vault-key.php ile üretip config.php içine ekleyin');
+            return;
+        }
+        // 32 baytlık ham anahtarı türet (vault_key() ile aynı mantık, değeri sızdırmadan)
+        $raw = null; $fmt = 'sha256 türetme';
+        if (stripos($key, 'base64:') === 0) {
+            $d = base64_decode(substr($key, 7), true); $fmt = 'base64';
+            if ($d !== false && strlen($d) === 32) { $raw = $d; }
+        } elseif (stripos($key, 'hex:') === 0) {
+            $h = substr($key, 4); $fmt = 'hex';
+            if (strlen($h) === 64 && ctype_xdigit($h)) { $raw = (string) hex2bin($h); }
+        }
+        if ($raw === null) {
+            if (stripos($key, 'base64:') === 0 || stripos($key, 'hex:') === 0) {
+                chk($checks, 'Şifre Kasası — anahtar biçimi', 'fail', $fmt . ' ön eki var ama 32 bayta çözülemiyor');
+                return;
+            }
+            $raw = hash('sha256', $key, true); // düz metin → 32 bayt
+        }
+        chk($checks, 'Şifre Kasası — anahtar biçimi', 'ok', $fmt . ' · 32 bayt (256-bit) hazır');
+
+        // Bellek içi şifrele/çöz turu (DB'ye dokunmaz, değer gösterilmez)
+        try {
+            $sample = 'vault-selftest-' . bin2hex(random_bytes(4));
+            $iv = random_bytes(12); $tag = '';
+            $ct = openssl_encrypt($sample, 'aes-256-gcm', $raw, OPENSSL_RAW_DATA, $iv, $tag);
+            $pt = ($ct !== false)
+                ? openssl_decrypt($ct, 'aes-256-gcm', $raw, OPENSSL_RAW_DATA, $iv, $tag)
+                : false;
+            $roundOk = ($ct !== false && $pt === $sample);
+            chk($checks, 'Şifre Kasası — şifrele/çöz testi', $roundOk ? 'ok' : 'fail',
+                $roundOk ? 'AES-256-GCM turu başarılı' : 'test başarısız — anahtar/openssl sorunu');
+        } catch (Throwable $e) {
+            chk($checks, 'Şifre Kasası — şifrele/çöz testi', 'fail', 'test hatası');
+        }
+    })();
+
     if ($defined) {
         // Yapılandırılan değerleri göster (şifre gizli) — Plesk ile karşılaştırın
         chk($checks, 'Ayar → host:port', 'ok', DB_HOST . ' : ' . DB_PORT);

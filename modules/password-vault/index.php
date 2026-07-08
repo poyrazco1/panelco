@@ -12,15 +12,33 @@ $f = ['category' => (string) ($_GET['category'] ?? ''), 'search' => trim((string
 $rows = get_vault_items($f);
 $counts = vault_counts();
 
+$vaultReady = vault_is_configured();
+$isSuperAdmin = in_array('all', function_exists('current_permissions') ? current_permissions() : [], true);
+
 layout_top('Şifre Kasası', 'password_vault');
 ?>
 <div class="page-head"><h1 class="page-title">Şifre Kasası</h1><div class="page-actions">
-    <?php if (can('password_vault.create')): ?><a class="btn btn-primary btn-sm" href="<?= e(url('modules/password-vault/create.php')) ?>"><?= icon('plus') ?>Yeni Kayıt</a><?php endif; ?>
+    <?php if (can('password_vault.create')): ?>
+        <?php if ($vaultReady): ?>
+            <a class="btn btn-primary btn-sm" href="<?= e(url('modules/password-vault/create.php')) ?>"><?= icon('plus') ?>Yeni Kayıt</a>
+        <?php else: ?>
+            <button type="button" class="btn btn-primary btn-sm" disabled title="Güvenlik anahtarı yapılandırılmadan kayıt eklenemez"><?= icon('plus') ?>Yeni Kayıt</button>
+        <?php endif; ?>
+    <?php endif; ?>
 </div></div>
 <?= render_flashes() ?>
 
-<?php if (!vault_is_configured()): ?>
-    <div class="alert alert-error">Şifre kasası şifreleme anahtarı (VAULT_KEY) yapılandırılmamış. Şifreler görüntülenemez/kaydedilemez.</div>
+<?php if (!$vaultReady): ?>
+    <div class="alert alert-error">
+        <strong>Şifre Kasası güvenlik anahtarı yapılandırılmamış.</strong> Şifreler kaydedilemez veya görüntülenemez.
+        <?php if ($isSuperAdmin): ?>
+            <div style="margin-top:8px;font-weight:400">
+                Çözüm: <code>tools/generate-vault-key.php</code> ile bir anahtar üretip <code>config.php</code> içine
+                <code>VAULT_KEY</code> olarak ekleyin.
+                <a class="btn btn-xs" style="margin-left:6px" href="<?= e(url('tools/generate-vault-key.php')) ?>"><?= icon('shield', 'icon-xs') ?>Anahtar Üret</a>
+            </div>
+        <?php endif; ?>
+    </div>
 <?php endif; ?>
 
 <div class="tab-row">

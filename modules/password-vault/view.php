@@ -37,7 +37,15 @@ $row = static fn(string $l, ?string $vv): string => trim((string) $vv) !== '' ? 
             <div class="dl-row"><span class="dl-k">Geçmiş şifre sayısı</span><span class="dl-v"><?= (int) $historyCount ?></span></div>
         </div>
 
-        <?php if (can('password_vault.reveal') && !empty($v['secret_enc'])): ?>
+        <?php
+        // Şifre çözme durumunu belirle (düz şifre GÖSTERİLMEZ/loglanmaz; yalnızca durum).
+        $decStatus = !empty($v['secret_enc']) ? vault_decrypt_result((string) $v['secret_enc'])['status'] : 'empty';
+        ?>
+        <?php if (!vault_is_configured()): ?>
+            <div class="alert alert-error" style="margin-top:14px">Şifre Kasası güvenlik anahtarı yapılandırılmamış. Şifreler görüntülenemez.</div>
+        <?php elseif (!empty($v['secret_enc']) && $decStatus === 'failed'): ?>
+            <div class="alert alert-error" style="margin-top:14px">Bu kayıt mevcut VAULT_KEY ile çözülemedi. Anahtar değişmiş veya kayıt bozulmuş olabilir. (Kayıt korunuyor; silinmedi.)</div>
+        <?php elseif (can('password_vault.reveal') && !empty($v['secret_enc']) && $decStatus === 'ok'): ?>
         <div class="vault-reveal" style="margin-top:16px">
             <div class="form-row" style="max-width:520px">
                 <div class="form-group"><label for="vaultPanelPass">Şifreyi görmek için panel şifrenizi girin</label>

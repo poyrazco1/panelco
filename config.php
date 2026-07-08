@@ -61,11 +61,20 @@ if (!defined('SMTP_PASSWORD_PLACEHOLDER')) { define('SMTP_PASSWORD_PLACEHOLDER',
 /* =========================================================================
  |  ŞİFRE KASASI ŞİFRELEME ANAHTARI (Faz D — password_vault)
  |  Kasadaki şifreler AES-256-GCM ile şifrelenir. Anahtar SUNUCUDA burada
- |  saklanır; asla veritabanında/kod deposunda düz tutulmaz. Placeholder
- |  kaldıkça kasa çalışmaz (şifreleme/çözme reddedilir).
- |  Güçlü anahtar üretmek için: php -r "echo bin2hex(random_bytes(32));"
+ |  saklanır; asla veritabanında düz tutulmaz. Placeholder kaldıkça kasa
+ |  çalışmaz (şifreleme/çözme reddedilir).
+ |
+ |  ÖNERİLEN BİÇİM: "base64:" ön ekiyle 32 baytlık (256-bit) rastgele anahtar.
+ |  Güçlü anahtar üretmek için (herhangi biri):
+ |     php tools/generate-vault-key.php
+ |     php -r "echo 'base64:' . base64_encode(random_bytes(32)) . PHP_EOL;"
+ |  Üretilen satırı buraya YAPIŞTIRIN. Anahtarı değiştirirseniz eski kayıtlar
+ |  ÇÖZÜLEMEZ; kasada saklı şifreler yeniden girilmelidir.
+ |
+ |  GÜVENLİK: Anahtar bir kez üretildikten sonra sabit kalmalıdır. Bu değeri
+ |  paylaşmayın; sunucu dışına çıkarmayın.
  * ====================================================================== */
-if (!defined('VAULT_KEY'))             { define('VAULT_KEY', 'BURAYA_KASA_ANAHTARI_YAZILACAK'); }
+if (!defined('VAULT_KEY'))             { define('VAULT_KEY', 'base64:mqk3nrr9d0HXVYvhedSaj1V7kLqZn0BZC1PY4TUG1Rg='); }
 if (!defined('VAULT_KEY_PLACEHOLDER')) { define('VAULT_KEY_PLACEHOLDER', 'BURAYA_KASA_ANAHTARI_YAZILACAK'); }
 // Kasa dışa aktarma (export) — güvenlik gereği VARSAYILAN KAPALI.
 if (!defined('VAULT_ALLOW_EXPORT'))    { define('VAULT_ALLOW_EXPORT', false); }

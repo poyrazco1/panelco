@@ -27,10 +27,52 @@ function vault_is_configured(): bool
     return true;
 }
 
-/** 32 baytlık türetilmiş anahtar (config değeri ne uzunlukta olursa olsun). */
+/**
+ * VAULT_KEY biçimini doğrular. Geçerli biçimler:
+ *  - "base64:<44 char>"  → tam 32 bayta çözülmeli (önerilen; generate aracı üretir)
+ *  - "hex:<64 hex>"      → tam 32 bayta çözülmeli
+ *  - düz metin           → sha256 ile 32 bayta türetilir (geriye dönük uyum)
+ * @return array{ok:bool, reason:string}  reason: ekranda GÖSTERİLMEZ (anahtar sızmaz).
+ */
+function vault_key_format_check(): array
+{
+    if (!defined('VAULT_KEY')) { return ['ok' => false, 'reason' => 'undefined']; }
+    $key = (string) VAULT_KEY;
+    $ph = defined('VAULT_KEY_PLACEHOLDER') ? (string) VAULT_KEY_PLACEHOLDER : '';
+    if ($key === '' || $key === $ph) { return ['ok' => false, 'reason' => 'placeholder']; }
+    if (stripos($key, 'base64:') === 0) {
+        $raw = base64_decode(substr($key, 7), true);
+        return ($raw !== false && strlen($raw) === 32)
+            ? ['ok' => true, 'reason' => 'base64-32']
+            : ['ok' => false, 'reason' => 'base64-invalid'];
+    }
+    if (stripos($key, 'hex:') === 0) {
+        $hex = substr($key, 4);
+        return (strlen($hex) === 64 && ctype_xdigit($hex))
+            ? ['ok' => true, 'reason' => 'hex-32']
+            : ['ok' => false, 'reason' => 'hex-invalid'];
+    }
+    // Düz metin: sha256 türetmesiyle her zaman 32 bayt üretilir.
+    return ['ok' => true, 'reason' => 'derived-sha256'];
+}
+
+/**
+ * 32 baytlık ham şifreleme anahtarı.
+ *  - "base64:" / "hex:" ön ekiyle 32 bayta çözülebiliyorsa ham bayt kullanılır.
+ *  - Aksi halde (düz metin veya geçersiz uzunluk) sha256 ile 32 bayta türetilir.
+ * Bu türetme DETERMİNİSTİKtir: aynı VAULT_KEY her zaman aynı anahtarı verir.
+ */
 function vault_key(): string
 {
-    return hash('sha256', (string) VAULT_KEY, true);
+    $key = (string) VAULT_KEY;
+    if (stripos($key, 'base64:') === 0) {
+        $raw = base64_decode(substr($key, 7), true);
+        if ($raw !== false && strlen($raw) === 32) { return $raw; }
+    } elseif (stripos($key, 'hex:') === 0) {
+        $hex = substr($key, 4);
+        if (strlen($hex) === 64 && ctype_xdigit($hex)) { return (string) hex2bin($hex); }
+    }
+    return hash('sha256', $key, true);
 }
 
 /** Düz metni şifreler → base64(iv|tag|cipher). Boş/yapılandırılmamışsa null. */
@@ -52,18 +94,33 @@ function vault_encrypt(string $plain): ?string
 /** Şifreli değeri çözer → düz metin. Hata/yapılandırma yoksa null. */
 function vault_decrypt(?string $enc): ?string
 {
-    if (!vault_is_configured() || $enc === null || $enc === '') { return null; }
+    return vault_decrypt_result($enc)['plain'];
+}
+
+/**
+ * Şifre çözmeyi durum bilgisiyle döndürür (UI kontrollü mesaj için).
+ * @return array{status:string, plain:?string}
+ *   status: 'ok' | 'empty' | 'not_configured' | 'failed'
+ *   - 'failed': kayıtta veri VAR ama mevcut VAULT_KEY ile çözülemedi
+ *     (anahtar değişmiş / kayıt bozulmuş). Bozuk veri ASLA silinmez, tahmin edilmez.
+ */
+function vault_decrypt_result(?string $enc): array
+{
+    if ($enc === null || $enc === '') { return ['status' => 'empty', 'plain' => null]; }
+    if (!vault_is_configured()) { return ['status' => 'not_configured', 'plain' => null]; }
     try {
         $raw = base64_decode($enc, true);
-        if ($raw === false || strlen($raw) < 28) { return null; }
+        if ($raw === false || strlen($raw) < 28) { return ['status' => 'failed', 'plain' => null]; }
         $iv = substr($raw, 0, 12);
         $tag = substr($raw, 12, 16);
         $cipher = substr($raw, 28);
         $plain = openssl_decrypt($cipher, 'aes-256-gcm', vault_key(), OPENSSL_RAW_DATA, $iv, $tag);
-        return $plain === false ? null : $plain;
+        return $plain === false
+            ? ['status' => 'failed', 'plain' => null]
+            : ['status' => 'ok', 'plain' => $plain];
     } catch (Throwable $e) {
         log_error('vault_decrypt hata (detay gizli)');
-        return null;
+        return ['status' => 'failed', 'plain' => null];
     }
 }
 
