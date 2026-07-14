@@ -15,7 +15,8 @@ layout_top('Lead Yönetimi', 'leads');
     <?php if (can('leads.edit')): ?><a class="btn btn-sm" href="<?= e(url('modules/leads/settings.php')) ?>"><?= icon('settings') ?>API & Şablon</a><?php endif; ?>
     <?php if (can('leads.export')): ?><a class="btn btn-sm" href="<?= e(url('modules/leads/export.php')) ?>"><?= icon('download') ?>CSV</a><?php endif; ?>
     <?php if (can('leads.create')): ?><a class="btn btn-sm" href="<?= e(url('modules/leads/create.php')) ?>"><?= icon('plus') ?>Yeni Lead</a><?php endif; ?>
-    <?php if (can('leads.create')): ?><a class="btn btn-primary btn-sm" href="<?= e(url('modules/leads/scan.php')) ?>"><?= icon('search') ?>Yeni Lead Tara</a><?php endif; ?>
+    <?php if (can('leads.create')): ?><a class="btn btn-sm" href="<?= e(url('modules/leads/scan.php')) ?>"><?= icon('search') ?>Eklenti ile Tara</a><?php endif; ?>
+    <?php if (can('leads.create')): ?><a class="btn btn-primary btn-sm" href="<?= e(url('modules/leads/places-scan.php')) ?>"><?= icon('map-pin') ?>Google ile Tara</a><?php endif; ?>
 </div></div>
 <?= render_flashes() ?>
 <div class="tab-row">
