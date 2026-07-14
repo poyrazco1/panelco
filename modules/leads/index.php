@@ -11,6 +11,7 @@ $counts = lead_counts();
 layout_top('Lead Yönetimi', 'leads');
 ?>
 <div class="page-head"><h1 class="page-title">Lead Yönetimi</h1><div class="page-actions">
+    <?php if (can('leads.view')): ?><a class="btn btn-sm" href="<?= e(url('modules/leads/reminders.php')) ?>"><?= icon('bell-ring') ?>Takip Panosu</a><?php endif; ?>
     <?php if (can('leads.view')): ?><a class="btn btn-sm" href="<?= e(url('modules/leads/reports.php')) ?>"><?= icon('bar-chart-3') ?>Raporlar</a><?php endif; ?>
     <?php if (can('leads.view')): ?><a class="btn btn-sm" href="<?= e(url('modules/leads/places-searches.php')) ?>"><?= icon('history') ?>Taramalar</a><?php endif; ?>
     <?php if (can('leads.edit')): ?><a class="btn btn-sm" href="<?= e(url('modules/leads/settings.php')) ?>"><?= icon('settings') ?>API & Şablon</a><?php endif; ?>
