@@ -17,13 +17,17 @@ header('Pragma: no-cache');
 header('Expires: 0');
 $out = fopen('php://output', 'w');
 fwrite($out, "\xEF\xBB\xBF");
-fputcsv($out, ['Firma', 'Yetkili', 'Telefon', 'WhatsApp', 'E-posta', 'Web', 'Instagram', 'Sektör', 'İl', 'İlçe', 'Kaynak', 'Durum'], ';');
+fputcsv($out, ['Firma', 'Yetkili', 'Telefon', 'WhatsApp', 'E-posta', 'Web', 'Alan adı', 'Kategori', 'Ülke', 'İl', 'İlçe',
+               'Adres', 'Puan', 'Yorum', 'Kaynak', 'Aranan kelime', 'Durum', 'Son iletişim', 'Sonraki aksiyon', 'Place ID'], ';');
 foreach ($rows as $r) {
     fputcsv($out, [
         (string) $r['company_name'], (string) ($r['contact_name'] ?? ''), (string) ($r['phone'] ?? ''),
         (string) ($r['whatsapp'] ?? ''), (string) ($r['email'] ?? ''), (string) ($r['website'] ?? ''),
-        (string) ($r['instagram'] ?? ''), (string) ($r['sector'] ?? ''), (string) ($r['city'] ?? ''),
-        (string) ($r['district'] ?? ''), (string) ($r['source'] ?? ''), lead_status_label((string) $r['status']),
+        (string) ($r['domain'] ?? ''), (string) ($r['main_category'] ?? $r['sector'] ?? ''),
+        (string) ($r['country'] ?? ''), (string) ($r['city'] ?? ''), (string) ($r['district'] ?? ''),
+        (string) ($r['address'] ?? ''), (string) ($r['google_rating'] ?? ''), (string) ($r['review_count'] ?? ''),
+        (string) ($r['source'] ?? ''), (string) ($r['search_keyword'] ?? ''), lead_status_label((string) $r['status']),
+        (string) ($r['last_contact_at'] ?? ''), (string) ($r['next_action_at'] ?? ''), (string) ($r['place_id'] ?? ''),
     ], ';');
 }
 fclose($out);
