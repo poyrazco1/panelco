@@ -267,6 +267,16 @@ function lead_assign(int $leadId, ?int $personnelId, ?int $userId): bool
 
 function lead_worklist_types(): array { return ['call' => 'Arama Listem', 'whatsapp' => 'WhatsApp Listem']; }
 
+/** Oturumdaki kullanıcının personel id'si (çalışma listeleri için). Yoksa 0. */
+function current_personnel_id(): int
+{
+    $uid = (int) (current_user_id() ?? 0);
+    if ($uid <= 0) { return 0; }
+    if (!function_exists('get_personnel_by_user_id')) { require_once __DIR__ . '/personnel.php'; }
+    $p = get_personnel_by_user_id($uid);
+    return $p ? (int) $p['id'] : 0;
+}
+
 /** Lead'i kullanıcının çalışma listesine ekler (aktif). Zaten varsa aktifleştirir. */
 function lead_worklist_add(int $leadId, int $personnelId, string $type): bool
 {

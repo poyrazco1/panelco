@@ -74,7 +74,8 @@ switch ($action) {
     case 'worklist_add':
         require_action('leads', 'edit');
         $type = (string) ($_POST['list_type'] ?? 'call');
-        $pid = (int) ($_POST['personnel_id'] ?? 0) ?: (int) $uid;
+        $pid = (int) ($_POST['personnel_id'] ?? 0) ?: current_personnel_id();
+        if ($pid <= 0) { flash('error', 'Çalışma listesi için hesabınıza bağlı bir personel kaydı gerekli.'); break; }
         lead_worklist_add($id, $pid, $type);
         flash('success', ($type === 'whatsapp' ? 'WhatsApp' : 'Arama') . ' listeme eklendi.');
         break;
