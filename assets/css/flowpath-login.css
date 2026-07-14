@@ -1,7 +1,7 @@
 /* =========================================================================
-   Flowpath — giriş sayfası teması (video hero + liquid glass)
-   Tailwind CDN ile birlikte kullanılır. Yalnızca Tailwind ile üretilemeyen
-   özel kurallar burada tutulur.
+   Giriş / tanıtım sayfası teması (video hero + liquid glass)
+   Derlenmiş Tailwind (assets/css/tailwind.css) ile birlikte kullanılır.
+   Yalnızca Tailwind ile üretilemeyen özel kurallar burada tutulur.
    ========================================================================= */
 
 /* ---- Yazı tipi: Helvetica Now Text ---- */
@@ -39,38 +39,6 @@
           mask-composite: exclude;
   pointer-events: none;
 }
-
-/* ---- Açılır menü animasyonu ---- */
-@keyframes dropdown-in {
-  from { opacity: 0; transform: translateY(-4px) scale(0.96); }
-  to   { opacity: 1; transform: translateY(0)    scale(1);    }
-}
-.animate-dropdown { animation: dropdown-in 0.2s ease-out; }
-.duration-400 { transition-duration: 400ms; }
-
-/* ---- Mobil menü (400ms, cubic-bezier yumuşak açılış) ---- */
-.fp-mobile-menu {
-  opacity: 0;
-  transform: translateY(-8px) scale(0.98);
-  pointer-events: none;
-  transition: opacity 400ms cubic-bezier(0.16, 1, 0.3, 1),
-              transform 400ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-.fp-mobile-menu.is-open {
-  opacity: 1;
-  transform: translateY(0) scale(1);
-  pointer-events: auto;
-}
-
-/* ---- Hamburger ikon geçişi (Menu <-> X) ---- */
-.fp-burger .icon-menu,
-.fp-burger .icon-x {
-  transition: opacity 300ms ease, transform 300ms ease;
-}
-.fp-burger .icon-x    { opacity: 0; transform: rotate(-90deg) scale(0.5); }
-.fp-burger .icon-menu { opacity: 1; transform: rotate(0deg)   scale(1);   }
-.fp-burger.is-open .icon-x    { opacity: 1; transform: rotate(0deg)  scale(1);   }
-.fp-burger.is-open .icon-menu { opacity: 0; transform: rotate(90deg) scale(0.5); }
 
 /* ---- Giriş modalı: JS'siz de :target ile açılabilsin ---- */
 .fp-modal { display: none; }

@@ -17,6 +17,7 @@ $textKeys = [
     'company_name', 'company_legal_name', 'company_tax_office', 'company_tax_no',
     'company_address', 'company_phone', 'company_whatsapp', 'company_email',
     'company_website', 'default_currency', 'default_vat', 'mail_from_name', 'mail_from_email',
+    'landing_title', 'landing_subtitle', 'landing_cta',
 ];
 
 $get = static function (string $k, string $def = ''): string {
@@ -194,6 +195,26 @@ layout_top('Şirket Bilgileri', 'settings');
                 <?php if ($fav !== '' && is_file(APP_ROOT . '/' . ltrim($fav, '/'))): ?>
                     <div class="settings-media-preview is-favicon"><img src="<?= e(asset(ltrim($fav, '/'))) ?>" alt="Favicon"></div>
                 <?php endif; ?>
+            </div>
+        </div>
+    </div>
+
+    <div class="card" style="max-width:820px">
+        <div class="card-header"><h2>Giriş / Tanıtım Sayfası</h2></div>
+        <div class="card-body">
+            <p class="field-hint" style="margin-top:0">Ana sayfa (poyraztech.com) ve giriş ekranındaki büyük başlık, açıklama ve buton yazısı. Marka adı üstteki "Firma adı", logo ve favicon ise "Logo &amp; Favicon" kartından düzenlenir.</p>
+            <div class="form-group">
+                <label for="landing_title">Ana başlık</label>
+                <textarea id="landing_title" name="landing_title" rows="2" placeholder="İşinizi tek panelden yönetin."><?= e($get('landing_title')) ?></textarea>
+                <div class="field-hint">Boşsa varsayılan metin gösterilir. Alt satıra geçmek için Enter kullanabilirsiniz.</div>
+            </div>
+            <div class="form-group">
+                <label for="landing_subtitle">Açıklama</label>
+                <textarea id="landing_subtitle" name="landing_subtitle" rows="3" placeholder="Müşteriler, teklifler, siparişler, sevkiyat ve raporlar — hepsi tek yerde."><?= e($get('landing_subtitle')) ?></textarea>
+            </div>
+            <div class="form-group">
+                <label for="landing_cta">Giriş butonu yazısı</label>
+                <input type="text" id="landing_cta" name="landing_cta" value="<?= e($get('landing_cta')) ?>" placeholder="Panele Giriş">
             </div>
         </div>
     </div>

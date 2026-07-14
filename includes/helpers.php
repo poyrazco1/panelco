@@ -426,6 +426,38 @@ if (!function_exists('favicon_mime')) {
     }
 }
 
+if (!function_exists('pub_setting')) {
+    /**
+     * app_settings tablosundan güvenli metin okuma (public sayfalar için).
+     * DB yoksa/okunamazsa $default döner; asla fatal atmaz.
+     */
+    function pub_setting(string $key, ?string $default = null): ?string
+    {
+        try {
+            if (!function_exists('db')) { return $default; }
+            $st = db()->prepare('SELECT setting_value FROM app_settings WHERE setting_key = :k LIMIT 1');
+            $st->execute([':k' => $key]);
+            $v = $st->fetchColumn();
+            return ($v === false || $v === null) ? $default : (string) $v;
+        } catch (Throwable $e) {
+            return $default;
+        }
+    }
+}
+
+if (!function_exists('pub_brand_name')) {
+    /**
+     * Giriş/tanıtım sayfasında görünen marka adı.
+     * Ayarlar → Şirket Bilgileri (company_name); boşsa config.php SITE_NAME.
+     */
+    function pub_brand_name(): string
+    {
+        $n = trim((string) pub_setting('company_name', ''));
+        if ($n !== '') { return $n; }
+        return defined('SITE_NAME') ? (string) SITE_NAME : 'Panel';
+    }
+}
+
 if (!function_exists('log_activity')) {
     /**
      * İşlem denetim logu (activity_logs). Asla exception fırlatmaz.
