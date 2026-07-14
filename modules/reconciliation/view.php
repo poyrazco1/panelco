@@ -44,8 +44,8 @@ $vars = [
     'personel_adi'   => $actor['full_name'] ?: $actor['username'],
     'personel_email' => $actor['email'],
     'departman'      => (string) ($dept['department_name'] ?? ''),
-    'belge_linki'    => '',
-    'onay_linki'     => '',
+    // belge_linki / onay_linki BİLEREK verilmez: şablonda {{onay_linki}} olarak kalır,
+    // gönderim anında (send-mail.php) güvenli token URL'i ile değiştirilir.
     'sirket_adi'     => function_exists('pub_brand_name') ? pub_brand_name() : (string) $r['customer_name'],
     'sirket_telefon' => (string) pub_setting('company_phone', ''),
     'sirket_email'   => (string) pub_setting('company_email', ''),
@@ -147,7 +147,9 @@ $row = static fn(string $l, ?string $v): string => trim((string) $v) !== '' ? '<
             <div class="form-group"><label for="s-msg">Mesaj</label>
                 <textarea id="s-msg" name="message" rows="9"><?= e($bodyDefault) ?></textarea></div>
             <div class="form-check"><label><input type="checkbox" name="attach_pdf" checked> PDF ekle</label></div>
+            <div class="form-check"><label><input type="checkbox" name="add_link" checked> Güvenli onay bağlantısı ekle</label></div>
             <p class="field-hint">Gönderen departman hesabı ve Reply-To (işlemi yapan kullanıcı) ayarlardan belirlenir.
+                Mesajdaki <code>{{onay_linki}}</code> güvenli müşteri onay bağlantısıyla değiştirilir; yoksa mesaj sonuna eklenir.
                 Gönderim, "Gönderim Geçmişi"ne kaydedilir.</p>
         </div>
         <div class="send-dialog-foot">

@@ -80,7 +80,7 @@ function module_action_registry(): array
         'customers'       => ['Müşteriler',            'Satış',       ['view','create','edit','delete','export','import']],
         'quotes'          => ['Teklifler',             'Satış',       ['view','create','edit','delete','pdf','mail','whatsapp','print']],
         'orders'          => ['Siparişler',            'Satış',       ['view','create','edit','delete','status','print','pdf']],
-        'reconciliation'  => ['Mutabakat',             'Satış',       ['view','create','edit','delete','mail','whatsapp','print','pdf']],
+        'reconciliation'  => ['Mutabakat',             'Satış',       ['view','create','edit','delete','mail','whatsapp','print','pdf','approval_cancel','token_renew']],
         'suppliers'       => ['Tedarikçiler',          'Satın Alma',  ['view','create','edit','delete','export']],
         'tsoft_products'  => ['T-Soft Ürünler',        'Satın Alma',  ['view']],
         'service'         => ['Teknik Servis',         'Operasyon',   ['view','create','edit','delete','status','mail','whatsapp','print','pdf']],

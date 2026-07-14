@@ -13,6 +13,7 @@ require_once __DIR__ . '/../../includes/email_system.php';
 require_once __DIR__ . '/../../includes/mail.php';
 require_once __DIR__ . '/../../classes/MailService.php';
 require_once __DIR__ . '/../../classes/DocumentService.php';
+require_once __DIR__ . '/../../classes/DocumentTokenService.php';
 
 auth_boot();
 require_permission('reconciliation.mail');
@@ -74,6 +75,22 @@ if ($attachPdf) {
     }
 }
 
+// Güvenli müşteri onay bağlantısı: yeni gönderimde token üret ve {{onay_linki}} yerine koy.
+$docLink = '';
+if ($op !== 'resend' && !empty($_POST['add_link'])) {
+    $tok = DocumentTokenService::issue('reconciliation', $id, 30, current_user_id());
+    if ($tok['ok'] && $tok['url'] !== '') {
+        $docLink = $tok['url'];
+        if (strpos($message, '{{onay_linki}}') !== false || strpos($message, '{{belge_linki}}') !== false) {
+            $message = str_replace(['{{onay_linki}}', '{{belge_linki}}'], $docLink, $message);
+        } else {
+            $message .= "\n\nBelgeyi görüntülemek ve onaylamak için:\n" . $docLink;
+        }
+    }
+}
+// Kullanılmayan {{degisken}} yer tutucularını temizle.
+$message = (string) preg_replace('/\{\{[a-zA-Z_]+\}\}/', '', $message);
+
 // Düz metin mesajı güvenli HTML gövdeye çevir (satır sonları korunur).
 $htmlBody = '<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#222;line-height:1.5">'
           . nl2br(e($message)) . '</div>';
@@ -91,6 +108,7 @@ $res = MailService::sendDocument([
     'html'          => true,
     'attachments'   => $attachments,
     'pdf_rel'       => $pdfRel,
+    'doc_link'      => $docLink,
     'sender_user'   => mail_session_user(),
     'resend_of_id'  => $resendOf,
 ]);

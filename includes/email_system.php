@@ -385,6 +385,35 @@ function document_email_log_get(int $id): ?array
 }
 
 /* =========================================================================
+ |  BELGE ONAYLARI (müşteri dijital onayı)
+ * ====================================================================== */
+
+function document_approval_insert(array $d): int
+{
+    try {
+        db()->prepare(
+            'INSERT INTO document_approvals (document_type, document_id, token_id, decision, note, authorized_name, ip_address, user_agent)
+             VALUES (:t,:id,:tok,:dec,:note,:name,:ip,:ua)'
+        )->execute([
+            ':t'=>(string)($d['document_type']??''), ':id'=>(int)($d['document_id']??0),
+            ':tok'=>($d['token_id']??null), ':dec'=>($d['decision']??'agreed')==='disagreed'?'disagreed':'agreed',
+            ':note'=>(string)($d['note']??''), ':name'=>(string)($d['authorized_name']??''),
+            ':ip'=>(string)($d['ip_address']??''), ':ua'=>mb_strimwidth((string)($d['user_agent']??''),0,250,'','UTF-8'),
+        ]);
+        return (int) db()->lastInsertId();
+    } catch (Throwable $e) { log_error('document_approval_insert: ' . $e->getMessage()); return 0; }
+}
+
+function document_approvals_for(string $type, int $id): array
+{
+    try {
+        $st = db()->prepare('SELECT * FROM document_approvals WHERE document_type = ? AND document_id = ? ORDER BY created_at DESC, id DESC');
+        $st->execute([$type, $id]);
+        return $st->fetchAll();
+    } catch (Throwable $e) { log_error('document_approvals_for: ' . $e->getMessage()); return []; }
+}
+
+/* =========================================================================
  |  KULLANICI E-POSTA TERCİHLERİ
  * ====================================================================== */
 
