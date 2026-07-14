@@ -12,6 +12,9 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/document_builders.php';
 require_once __DIR__ . '/email_system.php';
+require_once __DIR__ . '/service.php';      // get_service_record
+require_once __DIR__ . '/rma.php';          // get_rma_record
+require_once __DIR__ . '/commissions.php';  // get_commission
 
 /** Tüm belge türü tanımları. Yeni bir forma uygulamak için buraya bir giriş eklenir. */
 function document_types(): array
@@ -54,8 +57,78 @@ function document_types(): array
                 ];
             },
         ],
+
+        'service' => [
+            'label'       => 'Teknik Servis',
+            'module'      => 'service',
+            'index'       => 'modules/service/index.php',
+            'orientation' => 'portrait',
+            'load'        => static fn(int $id) => get_service_record($id),
+            'no'          => static fn(array $r) => (string) ($r['reference_code'] ?? ''),
+            'party'       => static fn(array $r) => (string) ($r['customer_name'] ?? ''),
+            'to_email'    => static fn(array $r) => (string) ($r['customer_email'] ?? ''),
+            'inner'       => static fn(array $r) => service_document_inner_html($r),
+            'vars'        => static fn(array $s, array $actor, ?array $dept) => document_common_vars('Teknik Servis Kabul',
+                (string) ($s['reference_code'] ?? ''), (string) ($s['customer_name'] ?? ''), (string) ($s['customer_name'] ?? ''),
+                (string) ($s['received_at'] ?? ''), $actor, $dept),
+        ],
+
+        'rma' => [
+            'label'       => 'İade / Değişim',
+            'module'      => 'rma',
+            'index'       => 'modules/rma/index.php',
+            'orientation' => 'portrait',
+            'load'        => static fn(int $id) => get_rma_record($id),
+            'no'          => static fn(array $r) => (string) ($r['reference_code'] ?? ''),
+            'party'       => static fn(array $r) => (string) ($r['customer_name'] ?? ''),
+            'to_email'    => static fn(array $r) => (string) ($r['customer_email'] ?? ''),
+            'inner'       => static fn(array $r) => rma_document_inner_html($r),
+            'vars'        => static fn(array $r, array $actor, ?array $dept) => document_common_vars('İade / Değişim / İptal',
+                (string) ($r['reference_code'] ?? ''), (string) ($r['customer_name'] ?? ''), (string) ($r['customer_name'] ?? ''),
+                (string) ($r['process_date'] ?? ''), $actor, $dept),
+        ],
+
+        'commission' => [
+            'label'       => 'Prim',
+            'module'      => 'commissions',
+            'index'       => 'modules/commissions/index.php',
+            'orientation' => 'portrait',
+            'load'        => static fn(int $id) => get_commission($id),
+            'no'          => static fn(array $r) => 'PRM-' . (string) ($r['id'] ?? ''),
+            'party'       => static fn(array $r) => (string) ($r['personnel_name'] ?? ''),
+            'to_email'    => static fn(array $r) => '',
+            'inner'       => static fn(array $r) => commission_document_inner_html($r),
+            'vars'        => static fn(array $c, array $actor, ?array $dept) => document_common_vars('Prim',
+                'PRM-' . (string) ($c['id'] ?? ''), (string) ($c['personnel_name'] ?? ''), (string) ($c['personnel_name'] ?? ''),
+                (string) ($c['created_at'] ?? ''), $actor, $dept),
+        ],
     ];
     return $types;
+}
+
+/** Ortak şablon değişkenleri (belgeye özel değerler eklenerek genişletilebilir). */
+function document_common_vars(string $belgeTuru, string $belgeNo, string $firma, string $yetkili, string $tarih, array $actor, ?array $dept): array
+{
+    return [
+        'firma_unvani'   => $firma,
+        'musteri_adi'    => $firma,
+        'yetkili_adi'    => $yetkili,
+        'belge_turu'     => $belgeTuru,
+        'belge_no'       => $belgeNo,
+        'belge_tarihi'   => $tarih,
+        'donem_baslangic'=> '',
+        'donem_bitis'    => '',
+        'borc'           => '',
+        'alacak'         => '',
+        'bakiye'         => '',
+        'para_birimi'    => '',
+        'personel_adi'   => $actor['full_name'] ?: $actor['username'],
+        'personel_email' => $actor['email'],
+        'departman'      => (string) ($dept['department_name'] ?? ''),
+        'sirket_adi'     => function_exists('pub_brand_name') ? pub_brand_name() : $firma,
+        'sirket_telefon' => (string) pub_setting('company_phone', ''),
+        'sirket_email'   => (string) pub_setting('company_email', ''),
+    ];
 }
 
 function document_type_meta(string $type): ?array

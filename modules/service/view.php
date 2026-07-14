@@ -288,4 +288,6 @@ layout_top('Servis: ' . $s['reference_code'], 'service');
 </div>
 
 <?php
+$docType = 'service'; $docId = $id; $docRow = $s; $docBackUrl = 'modules/service/view.php?id=' . $id;
+require __DIR__ . '/../../includes/_document_send_ui.php';
 layout_bottom();

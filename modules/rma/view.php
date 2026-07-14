@@ -214,4 +214,6 @@ layout_top('İade-Değişim: ' . ($r['reference_code'] ?? $r['customer_name']), 
 </div>
 
 <?php
+$docType = 'rma'; $docId = $id; $docRow = $r; $docBackUrl = 'modules/rma/view.php?id=' . $id;
+require __DIR__ . '/../../includes/_document_send_ui.php';
 layout_bottom();

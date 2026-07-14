@@ -34,4 +34,7 @@ $row = static fn(string $l, ?string $v): string => trim((string) $v) !== '' ? '<
     <?= $row('Hesaplanan prim', fmt_money((float) $c['calculated_commission']) . ' ' . $sym) ?>
     <?= $row('Açıklama', $c['description']) ?>
 </div></div></div>
-<?php layout_bottom();
+<?php
+$docType = 'commission'; $docId = $id; $docRow = $c; $docBackUrl = 'modules/commissions/view.php?id=' . $id;
+require __DIR__ . '/../../includes/_document_send_ui.php';
+layout_bottom();

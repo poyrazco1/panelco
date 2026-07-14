@@ -73,3 +73,120 @@ function quote_document_inner_html(array $q): string
     document_footer('Bu teklif bilgilendirme amaçlıdır.');
     return (string) ob_get_clean();
 }
+
+/** TEKNİK SERVİS KABUL FORMU belge gövdesi (müşteriye açık; iç maliyet gizli). */
+function service_document_inner_html(array $s): string
+{
+    require_once __DIR__ . '/service.php';
+    ob_start();
+    document_header([
+        'title'      => 'TEKNİK SERVİS KABUL FORMU',
+        'number'     => (string) ($s['reference_code'] ?? ''),
+        'date'       => (string) ($s['received_at'] ?? ''),
+        'department' => 'Teknik Servis',
+        'extra'      => ['Durum' => function_exists('service_status_label') ? service_status_label((string) ($s['status'] ?? '')) : (string) ($s['status'] ?? '')],
+    ]);
+    $dev = trim((string) ($s['brand_name'] ?? '') . ' ' . (string) ($s['device_model'] ?? ''));
+    ?>
+    <div class="doc-party"><strong>Teslim eden:</strong> <?= e((string) $s['customer_name']) ?>
+        <?php if (!empty($s['customer_phone'])): ?> · <?= e((string) $s['customer_phone']) ?><?php endif; ?>
+        <?php if (!empty($s['customer_email'])): ?> · <?= e((string) $s['customer_email']) ?><?php endif; ?>
+        <?php if (!empty($s['customer_address'])): ?><br><?= e((string) $s['customer_address']) ?><?php endif; ?>
+    </div>
+    <table class="table" style="margin-top:14px"><tbody>
+        <tr><th style="width:200px">Cihaz türü</th><td><?= e((string) ($s['device_type'] ?? '—')) ?></td></tr>
+        <tr><th>Marka / Model</th><td><?= e($dev !== '' ? $dev : '—') ?></td></tr>
+        <tr><th>Miktar</th><td><?= (int) ($s['quantity'] ?? 1) ?></td></tr>
+        <tr><th>Seri No</th><td><?= e((string) ($s['serial_no'] ?? '—')) ?></td></tr>
+        <tr><th>Aksesuarlar</th><td><?= e((string) ($s['accessories'] ?? '—')) ?></td></tr>
+        <tr><th>Fiziksel durum</th><td><?= e((string) ($s['physical_condition'] ?? '—')) ?></td></tr>
+    </tbody></table>
+    <?php if (trim((string) ($s['problem_description'] ?? '')) !== ''): ?>
+        <p style="margin-top:14px"><strong>Bildirilen sorun:</strong><br><?= nl2br(e((string) $s['problem_description'])) ?></p>
+    <?php endif; ?>
+    <p style="margin-top:14px;font-size:12.5px;color:#444">Cihaz yukarıdaki durumda teslim alınmıştır. Teslim tarihinden itibaren yasal süre içinde teslim alınmayan cihazlardan firmamız sorumlu değildir.</p>
+    <?php
+    document_signatures('Teslim Alan (Yetkili)', 'Teslim Eden (Müşteri)');
+    document_footer();
+    return (string) ob_get_clean();
+}
+
+/** İADE / DEĞİŞİM / İPTAL FORMU belge gövdesi. */
+function rma_document_inner_html(array $r): string
+{
+    require_once __DIR__ . '/rma.php';
+    $recv = function_exists('get_rma_received_items') ? get_rma_received_items((int) $r['id']) : [];
+    $sent = function_exists('get_rma_sent_items') ? get_rma_sent_items((int) $r['id']) : [];
+    $itemName = static fn(array $it): string => (string) ($it['product_name'] ?? $it['name'] ?? $it['title'] ?? $it['description'] ?? '—');
+    $itemQty  = static fn(array $it): string => (string) ($it['quantity'] ?? $it['qty'] ?? '');
+    ob_start();
+    document_header([
+        'title'      => 'İADE / DEĞİŞİM / İPTAL FORMU',
+        'number'     => (string) ($r['reference_code'] ?? ''),
+        'date'       => (string) ($r['process_date'] ?? ''),
+        'department' => 'İade / Değişim',
+        'extra'      => [
+            'İşlem'  => (string) ($r['process_type'] ?? ''),
+            'Sebep'  => (string) ($r['reason_type'] ?? ''),
+        ],
+    ]);
+    ?>
+    <div class="doc-party"><strong>Sayın:</strong> <?= e((string) $r['customer_name']) ?>
+        <?php if (!empty($r['customer_phone'])): ?> · <?= e((string) $r['customer_phone']) ?><?php endif; ?>
+        <?php if (!empty($r['customer_email'])): ?> · <?= e((string) $r['customer_email']) ?><?php endif; ?>
+        <?php if (!empty($r['invoice_date'])): ?><br>Fatura tarihi: <?= e((string) $r['invoice_date']) ?><?php endif; ?>
+        <?php if (!empty($r['platform'])): ?> · Platform: <?= e((string) $r['platform']) ?><?php endif; ?>
+    </div>
+    <?php if (!empty($recv)): ?>
+        <p style="margin-top:14px"><strong>Müşteriden alınan ürünler</strong></p>
+        <table class="table"><thead><tr><th>Ürün</th><th class="nowrap" style="width:80px">Adet</th></tr></thead><tbody>
+            <?php foreach ($recv as $it): ?><tr><td><?= e($itemName($it)) ?></td><td class="nowrap"><?= e($itemQty($it)) ?></td></tr><?php endforeach; ?>
+        </tbody></table>
+    <?php endif; ?>
+    <?php if (!empty($sent)): ?>
+        <p style="margin-top:12px"><strong>Müşteriye gönderilen ürünler</strong></p>
+        <table class="table"><thead><tr><th>Ürün</th><th class="nowrap" style="width:80px">Adet</th></tr></thead><tbody>
+            <?php foreach ($sent as $it): ?><tr><td><?= e($itemName($it)) ?></td><td class="nowrap"><?= e($itemQty($it)) ?></td></tr><?php endforeach; ?>
+        </tbody></table>
+    <?php endif; ?>
+    <?php if (trim((string) ($r['description'] ?? '')) !== ''): ?>
+        <p style="margin-top:14px"><strong>Açıklama:</strong><br><?= nl2br(e((string) $r['description'])) ?></p>
+    <?php endif; ?>
+    <?php
+    document_signatures('Düzenleyen', 'Müşteri / Kaşe-İmza');
+    document_footer();
+    return (string) ob_get_clean();
+}
+
+/** PRİM FORMU / BORDROSU belge gövdesi (iç belge). */
+function commission_document_inner_html(array $c): string
+{
+    $sym = quote_currency_symbol((string) ($c['currency'] ?? 'TRY'));
+    $period = trim((string) ($c['period_start'] ?? '') . ' – ' . (string) ($c['period_end'] ?? ''), ' –');
+    ob_start();
+    document_header([
+        'title'      => 'PRİM FORMU',
+        'number'     => 'PRM-' . (string) ($c['id'] ?? ''),
+        'date'       => (string) ($c['created_at'] ?? ''),
+        'department' => 'Muhasebe',
+        'extra'      => ['Dönem' => $period],
+    ]);
+    ?>
+    <div class="doc-party"><strong>Personel:</strong> <?= e((string) ($c['personnel_name'] ?? '')) ?></div>
+    <table class="table" style="margin-top:14px"><tbody>
+        <tr><th style="width:220px">Satış tutarı</th><td><?= e(fmt_money((float) ($c['sales_amount'] ?? 0)) . ' ' . $sym) ?></td></tr>
+        <tr><th>Kâr tutarı</th><td><?= e(fmt_money((float) ($c['profit_amount'] ?? 0)) . ' ' . $sym) ?></td></tr>
+        <tr><th>Prim oranı</th><td><?= e(rtrim(rtrim((string) ($c['commission_rate'] ?? '0'), '0'), '.') . ' %') ?></td></tr>
+        <tr><th>Sabit prim</th><td><?= e(fmt_money((float) ($c['fixed_commission'] ?? 0)) . ' ' . $sym) ?></td></tr>
+        <tr><th>Hedef tutarı</th><td><?= e(fmt_money((float) ($c['target_amount'] ?? 0)) . ' ' . $sym) ?></td></tr>
+        <tr><th>Hedef gerçekleşme</th><td><?= e(rtrim(rtrim((string) ($c['target_ratio'] ?? '0'), '0'), '.') . ' %') ?></td></tr>
+        <tr><th>Hesaplanan prim</th><td><strong><?= e(fmt_money((float) ($c['calculated_commission'] ?? 0)) . ' ' . $sym) ?></strong></td></tr>
+    </tbody></table>
+    <?php if (trim((string) ($c['description'] ?? '')) !== ''): ?>
+        <p style="margin-top:14px"><strong>Açıklama:</strong><br><?= nl2br(e((string) $c['description'])) ?></p>
+    <?php endif; ?>
+    <?php
+    document_signatures('Hazırlayan', 'Personel');
+    document_footer();
+    return (string) ob_get_clean();
+}
