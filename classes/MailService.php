@@ -148,7 +148,8 @@ final class MailService
             $mailer->send();
             $messageId = trim((string) $mailer->getLastMessageID());
             $logId = document_email_log_insert($logBase + ['status' => 'sent', 'error_message' => null, 'message_id' => $messageId]);
-            return ['ok' => true, 'msg' => 'E-posta başarıyla gönderildi.', 'log_id' => $logId, 'error' => null];
+            return ['ok' => true, 'msg' => 'E-posta başarıyla gönderildi.', 'log_id' => $logId, 'error' => null,
+                    'to' => $to, 'from' => $fromEmail, 'reply_to' => $replyEmail];
         } catch (PHPMailerException $e) {
             $err = mail_scrub_secret($e->getMessage() . ' | ' . (string) $mailer->ErrorInfo);
             return self::fail($logBase, $err, 'Mail gönderilemedi. SMTP ayarlarını/sunucu bağlantısını kontrol edin.');
@@ -231,7 +232,9 @@ final class MailService
     private static function fail(array $logBase, string $error, string $userMsg): array
     {
         $logId = document_email_log_insert($logBase + ['status' => 'failed', 'error_message' => $error, 'message_id' => '']);
-        return ['ok' => false, 'msg' => $userMsg, 'log_id' => $logId, 'error' => $error];
+        return ['ok' => false, 'msg' => $userMsg, 'log_id' => $logId, 'error' => $error,
+                'to' => (string) ($logBase['to_email'] ?? ''), 'from' => (string) ($logBase['from_email'] ?? ''),
+                'reply_to' => (string) ($logBase['reply_to'] ?? '')];
     }
 
     private static function friendlySmtpError(string $err): string

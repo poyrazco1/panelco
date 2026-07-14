@@ -25,6 +25,8 @@ if ($__m && !empty($docRow) && (can($__m['module'] . '.mail') || can($__m['modul
     $__cc    = (string) ($__dept['default_cc'] ?? '');
     $__bcc   = (string) ($__dept['default_bcc'] ?? '');
     $__vars  = document_type_vars($docType, $docRow, $__actor, $__dept);
+    $__fromDisp  = trim((string) ($__dept['from_email'] ?? '')) ?: 'Varsayılan gönderen hesabı';
+    $__replyDisp = trim((string) ($__actor['email'] ?? '')) ?: (trim((string) ($__dept['from_email'] ?? '')) ?: 'Departman hesabı');
     $__tpl   = email_template_for_module((string) $__m['module']);
     if ($__tpl) {
         $__subject = email_template_render((string) $__tpl['subject'], $__vars);
@@ -40,6 +42,7 @@ if ($__m && !empty($docRow) && (can($__m['module'] . '.mail') || can($__m['modul
 <div class="card" style="max-width:820px"><div class="card-header"><h2>Belge Çıktısı & Gönderim</h2></div><div class="card-body">
     <div class="row-actions" style="margin-bottom:6px">
         <?php if (can($__m['module'] . '.pdf')): ?>
+            <a class="btn btn-sm" href="<?= e(url('modules/documents/pdf.php?type=' . $docType . '&id=' . $docId . '&inline=1')) ?>" target="_blank"><?= icon('eye') ?>Önizle</a>
             <a class="btn btn-sm" href="<?= e(url('modules/documents/pdf.php?type=' . $docType . '&id=' . $docId)) ?>"><?= icon('file-down') ?>PDF indir</a>
         <?php endif; ?>
         <?php if (can($__m['module'] . '.mail')): ?>
@@ -106,7 +109,13 @@ if ($__m && !empty($docRow) && (can($__m['module'] . '.mail') || can($__m['modul
             <div class="form-group"><label for="s-sub">Konu</label><input type="text" id="s-sub" name="subject" value="<?= e($__subject) ?>" required></div>
             <div class="form-group"><label for="s-msg">Mesaj</label><textarea id="s-msg" name="message" rows="9"><?= e($__body) ?></textarea></div>
             <div class="form-check"><label><input type="checkbox" name="attach_pdf" checked> PDF ekle</label></div>
-            <p class="field-hint">Gönderen departman hesabı ve Reply-To (işlemi yapan kullanıcı) ayarlardan belirlenir. Gönderim, geçmişe kaydedilir.</p>
+            <div class="form-check"><label><input type="checkbox" name="copy_self"> Bana (kullanıcıya) kopya gönder</label></div>
+            <div class="form-check"><label><input type="checkbox" name="copy_dept"> Departmana kopya gönder</label></div>
+            <p class="field-hint">
+                <strong>Gönderen (From):</strong> <?= e($__fromDisp) ?> · <strong>Reply-To:</strong> <?= e($__replyDisp) ?>
+                <?php if (!empty($__dept['department_name'])): ?> · <strong>Departman:</strong> <?= e((string) $__dept['department_name']) ?><?php endif; ?><br>
+                Gönderim "Gönderim Geçmişi"ne kaydedilir. "Önizle" ile belgeyi PDF olarak görebilirsiniz.
+            </p>
         </div>
         <div class="send-dialog-foot">
             <button type="submit" class="btn btn-primary"><?= icon('mail') ?>Gönder</button>

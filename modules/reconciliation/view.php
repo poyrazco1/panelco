@@ -68,7 +68,7 @@ $row = static fn(string $l, ?string $v): string => trim((string) $v) !== '' ? '<
 <div class="page-head"><h1 class="page-title">Mutabakat · <?= e((string) $r['recon_no']) ?></h1><div class="page-actions">
     <a class="btn btn-sm" href="<?= e(url('modules/reconciliation/index.php')) ?>"><?= icon('chevron-left') ?>Mutabakat</a>
     <?php if (can('reconciliation.print')): ?><a class="btn btn-sm" href="<?= e(url('modules/reconciliation/print.php?id=' . $id)) ?>" target="_blank"><?= icon('printer') ?>Yazdır</a><?php endif; ?>
-    <?php if (can('reconciliation.pdf')): ?><a class="btn btn-sm" href="<?= e(url('modules/reconciliation/pdf.php?id=' . $id)) ?>"><?= icon('file-down') ?>PDF indir</a><?php endif; ?>
+    <?php if (can('reconciliation.pdf')): ?><a class="btn btn-sm" href="<?= e(url('modules/reconciliation/pdf.php?id=' . $id . '&inline=1')) ?>" target="_blank"><?= icon('eye') ?>Önizle</a><a class="btn btn-sm" href="<?= e(url('modules/reconciliation/pdf.php?id=' . $id)) ?>"><?= icon('file-down') ?>PDF indir</a><?php endif; ?>
     <?php if (can('reconciliation.mail')): ?><button type="button" class="btn btn-primary btn-sm" data-open-send><?= icon('mail') ?>E-posta gönder</button><?php endif; ?>
     <?php if (can('reconciliation.edit')): ?><a class="btn btn-sm" href="<?= e(url('modules/reconciliation/edit.php?id=' . $id)) ?>"><?= icon('pencil') ?>Düzenle</a><?php endif; ?>
 </div></div>
@@ -148,9 +148,13 @@ $row = static fn(string $l, ?string $v): string => trim((string) $v) !== '' ? '<
                 <textarea id="s-msg" name="message" rows="9"><?= e($bodyDefault) ?></textarea></div>
             <div class="form-check"><label><input type="checkbox" name="attach_pdf" checked> PDF ekle</label></div>
             <div class="form-check"><label><input type="checkbox" name="add_link" checked> Güvenli onay bağlantısı ekle</label></div>
-            <p class="field-hint">Gönderen departman hesabı ve Reply-To (işlemi yapan kullanıcı) ayarlardan belirlenir.
-                Mesajdaki <code>{{onay_linki}}</code> güvenli müşteri onay bağlantısıyla değiştirilir; yoksa mesaj sonuna eklenir.
-                Gönderim, "Gönderim Geçmişi"ne kaydedilir.</p>
+            <div class="form-check"><label><input type="checkbox" name="copy_self"> Bana (kullanıcıya) kopya gönder</label></div>
+            <div class="form-check"><label><input type="checkbox" name="copy_dept"> Departmana kopya gönder</label></div>
+            <?php $fromDisp = trim((string) ($dept['from_email'] ?? '')) ?: 'Varsayılan gönderen'; $replyDisp = trim((string) ($actor['email'] ?? '')) ?: $fromDisp; ?>
+            <p class="field-hint">
+                <strong>Gönderen (From):</strong> <?= e($fromDisp) ?> · <strong>Reply-To:</strong> <?= e($replyDisp) ?>
+                <?php if (!empty($dept['department_name'])): ?> · <strong>Departman:</strong> <?= e((string) $dept['department_name']) ?><?php endif; ?><br>
+                Mesajdaki <code>{{onay_linki}}</code> güvenli müşteri onay bağlantısıyla değiştirilir; yoksa mesaj sonuna eklenir. Gönderim geçmişe kaydedilir.</p>
         </div>
         <div class="send-dialog-foot">
             <button type="submit" class="btn btn-primary"><?= icon('mail') ?>Gönder</button>

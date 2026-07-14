@@ -57,6 +57,17 @@ if (!is_valid_email($to)) {
     redirect($back);
 }
 
+// Ek kopya seçenekleri (yalnızca yeni gönderimde).
+if ($op !== 'resend') {
+    $actorEmail = mail_session_user()['email'];
+    if (!empty($_POST['copy_self']) && $actorEmail !== '') { $cc = trim($cc . ',' . $actorEmail, ', '); }
+    if (!empty($_POST['copy_dept'])) {
+        $deptAcc  = dept_account_for_module('reconciliation');
+        $depEmail = trim((string) ($deptAcc['from_email'] ?? ''));
+        if ($depEmail !== '') { $cc = trim($cc . ',' . $depEmail, ', '); }
+    }
+}
+
 // PDF ekini üret (güvenli klasöre) — istenmişse.
 $attachments = [];
 $pdfRel = '';
@@ -117,5 +128,10 @@ log_activity('reconciliation_mail', 'reconciliation', $id, (string) $r['recon_no
     $res['ok'] ? 'success' : 'failed',
     $res['ok'] ? 'Mutabakat maili gönderildi' : ($res['error'] ?? 'Mail hatası'));
 
-flash($res['ok'] ? 'success' : 'error', $res['msg']);
+if ($res['ok']) {
+    flash('success', 'E-posta gönderildi. Alıcı: ' . ($res['to'] ?? $to)
+        . ' · Gönderen: ' . ($res['from'] ?? '') . ' · Reply-To: ' . ($res['reply_to'] ?? ''));
+} else {
+    flash('error', $res['msg']);
+}
 redirect($back);
