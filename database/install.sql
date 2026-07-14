@@ -801,9 +801,12 @@ CREATE TABLE IF NOT EXISTS `user_notifications` (
     `message`           TEXT         NOT NULL,
     `related_type`      VARCHAR(80)  DEFAULT NULL,
     `related_id`        INT UNSIGNED DEFAULT NULL,
+    `action_url`        VARCHAR(255) DEFAULT NULL,
     `notification_date` DATE         DEFAULT NULL,
     `is_read`           TINYINT(1)   NOT NULL DEFAULT 0,
     `read_at`           DATETIME     DEFAULT NULL,
+    `is_dismissed`      TINYINT(1)   NOT NULL DEFAULT 0,
+    `dismissed_at`      DATETIME     DEFAULT NULL,
     `is_deleted`        TINYINT(1)   NOT NULL DEFAULT 0,
     `created_at`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
@@ -1452,30 +1455,34 @@ CREATE TABLE IF NOT EXISTS `lead_statuses` (
     `is_completed` TINYINT(1) NOT NULL DEFAULT 0,
     `is_success`   TINYINT(1) NOT NULL DEFAULT 0,
     `is_failure`   TINYINT(1) NOT NULL DEFAULT 0,
+    `requires_followup` TINYINT(1) NOT NULL DEFAULT 0,
     `created_at`   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at`   DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`), UNIQUE KEY `uq_lead_status_code` (`code`), KEY `idx_lead_status_active` (`is_active`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT IGNORE INTO `lead_statuses` (`code`,`name`,`color`,`sort_order`,`is_completed`,`is_success`,`is_failure`) VALUES
- ('new','Yeni Lead','badge-info',10,0,0,0),
- ('to_review','İncelenecek','badge-muted',20,0,0,0),
- ('to_call','Arama Bekliyor','badge-warning',30,0,0,0),
- ('called','Arandı','badge-info',40,0,0,0),
- ('unreachable','Ulaşılamadı','badge-warning',50,0,0,0),
- ('call_again','Tekrar Aranacak','badge-warning',60,0,0,0),
- ('wa_to_send','WhatsApp Gönderilecek','badge-warning',70,0,0,0),
- ('wa_sent','WhatsApp Gönderildi','badge-info',80,0,0,0),
- ('email_sent','E-posta Gönderildi','badge-info',90,0,0,0),
- ('met','Görüşme Yapıldı','badge-info',100,0,0,0),
- ('wants_quote','Teklif İstiyor','badge-info',110,0,0,0),
- ('quote_sent','Teklif Gönderildi','badge-info',120,0,0,0),
- ('positive','Olumlu','badge-success',130,0,0,0),
- ('converted','Müşteriye Dönüştü','badge-success',140,1,1,0),
- ('not_interested','İlgilenmiyor','badge-muted',150,1,0,1),
- ('wrong_number','Yanlış Numara','badge-muted',160,1,0,1),
- ('closed','Firma Kapalı','badge-muted',170,1,0,1),
- ('blacklist','Kara Liste','badge-danger',180,1,0,1);
+INSERT IGNORE INTO `lead_statuses` (`code`,`name`,`color`,`sort_order`,`is_completed`,`is_success`,`is_failure`,`requires_followup`) VALUES
+ ('new','Yeni Lead','badge-info',10,0,0,0,0),
+ ('to_review','İncelenecek','badge-muted',20,0,0,0,0),
+ ('to_call','Arama Bekliyor','badge-warning',30,0,0,0,0),
+ ('call_later','Daha Sonra Aranacak','badge-warning',35,0,0,0,1),
+ ('called','Arandı','badge-info',40,0,0,0,0),
+ ('unreachable','Ulaşılamadı','badge-warning',50,0,0,0,0),
+ ('call_again','Tekrar Aranacak','badge-warning',60,0,0,0,1),
+ ('wa_to_send','WhatsApp Gönderilecek','badge-warning',70,0,0,0,1),
+ ('wa_sent','WhatsApp Gönderildi','badge-info',80,0,0,0,0),
+ ('email_sent','E-posta Gönderildi','badge-info',90,0,0,0,0),
+ ('met','Görüşme Yapıldı','badge-info',100,0,0,0,0),
+ ('meet_again','Tekrar Görüşülecek','badge-warning',105,0,0,0,1),
+ ('wants_quote','Teklif İstiyor','badge-info',110,0,0,0,0),
+ ('quote_followup','Teklif İçin Dönüş Yapılacak','badge-warning',115,0,0,0,1),
+ ('quote_sent','Teklif Gönderildi','badge-info',120,0,0,0,0),
+ ('positive','Olumlu','badge-success',130,0,0,0,0),
+ ('converted','Müşteriye Dönüştü','badge-success',140,1,1,0,0),
+ ('not_interested','İlgilenmiyor','badge-muted',150,1,0,1,0),
+ ('wrong_number','Yanlış Numara','badge-muted',160,1,0,1,0),
+ ('closed','Firma Kapalı','badge-muted',170,1,0,1,0),
+ ('blacklist','Kara Liste','badge-danger',180,1,0,1,0);
 
 -- Durum geçmişi
 CREATE TABLE IF NOT EXISTS `lead_status_history` (
@@ -1544,20 +1551,50 @@ CREATE TABLE IF NOT EXISTS `lead_notes` (
     CONSTRAINT `fk_ln_lead` FOREIGN KEY (`lead_id`) REFERENCES `leads` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Hatırlatmalar
+-- Hatırlatmalar / Takipler (§21)
 CREATE TABLE IF NOT EXISTS `lead_reminders` (
     `id`          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     `lead_id`     INT UNSIGNED NOT NULL,
+    `assigned_user_id` INT UNSIGNED NULL,
     `type`        VARCHAR(30) NOT NULL DEFAULT 'call',
+    `reminder_type` VARCHAR(30) NOT NULL DEFAULT 'call',
     `remind_at`   DATETIME NOT NULL,
+    `reminder_date` DATE NULL,
+    `reminder_time` TIME NULL,
+    `remind_before_minutes` INT UNSIGNED NOT NULL DEFAULT 0,
+    `priority`    VARCHAR(20) NOT NULL DEFAULT 'normal',
+    `status`      VARCHAR(20) NOT NULL DEFAULT 'pending',
+    `is_overdue`  TINYINT(1) NOT NULL DEFAULT 0,
+    `postpone_count` INT UNSIGNED NOT NULL DEFAULT 0,
+    `notify_stage` VARCHAR(20) NOT NULL DEFAULT '',
     `note`        VARCHAR(500) NOT NULL DEFAULT '',
     `assigned_to` INT UNSIGNED NULL,
     `is_done`     TINYINT(1) NOT NULL DEFAULT 0,
     `done_at`     DATETIME NULL,
+    `completed_at` DATETIME NULL,
+    `completed_by` INT UNSIGNED NULL,
+    `completion_result` VARCHAR(40) NULL,
+    `completion_note` TEXT NULL,
     `created_by`  INT UNSIGNED NULL,
     `created_at`  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`  DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    `deleted_at`  DATETIME NULL,
     PRIMARY KEY (`id`), KEY `idx_lr_lead` (`lead_id`), KEY `idx_lr_remind` (`remind_at`), KEY `idx_lr_done` (`is_done`),
+    KEY `idx_lr_assigned_user` (`assigned_user_id`), KEY `idx_lr_status` (`status`), KEY `idx_lr_overdue` (`is_overdue`),
     CONSTRAINT `fk_lr_lead` FOREIGN KEY (`lead_id`) REFERENCES `leads` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Takip erteleme geçmişi
+CREATE TABLE IF NOT EXISTS `lead_reminder_postpones` (
+    `id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `reminder_id`  BIGINT UNSIGNED NOT NULL,
+    `lead_id`      INT UNSIGNED NOT NULL,
+    `old_remind_at` DATETIME NULL,
+    `new_remind_at` DATETIME NULL,
+    `reason`       VARCHAR(500) NOT NULL DEFAULT '',
+    `postponed_by` INT UNSIGNED NULL,
+    `created_at`   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`), KEY `idx_lrp_reminder` (`reminder_id`), KEY `idx_lrp_lead` (`lead_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Atamalar (geçmiş)
