@@ -1,24 +1,9 @@
-# uploads/brands — yüklenen dosyalarda PHP/script çalıştırmayı engelle
-php_flag engine off
-<IfModule mod_php.c>
-    php_flag engine off
+# Üretilen belge PDF'lerine doğrudan HTTP erişimi engellenir.
+# Dosyalar yalnızca yetki denetimli indirme uç noktası üzerinden sunulur.
+<IfModule mod_authz_core.c>
+    Require all denied
 </IfModule>
-<IfModule mod_php7.c>
-    php_flag engine off
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
 </IfModule>
-<IfModule mod_php8.c>
-    php_flag engine off
-</IfModule>
-RemoveHandler .php .phtml .php3 .php4 .php5 .php7 .php8 .pht .phar
-RemoveType .php .phtml .php3 .php4 .php5 .php7 .php8 .pht .phar
-AddType text/plain .php .phtml .phar .pht
-# Yalnızca görsel uzantılarına izin ver
-<FilesMatch "(?i)\.(php|phtml|php3|php4|php5|php7|php8|pht|phar|cgi|pl|py|sh)$">
-    <IfModule mod_authz_core.c>
-        Require all denied
-    </IfModule>
-    <IfModule !mod_authz_core.c>
-        Order allow,deny
-        Deny from all
-    </IfModule>
-</FilesMatch>
