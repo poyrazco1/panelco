@@ -38,6 +38,15 @@ $rates      = get_dashboard_exchange_rates();
 $todayCtx   = dashboard_today_context();
 $notifUnread = $uid > 0 ? get_unread_notification_count($uid) : 0;
 
+// Lead takip (follow-up) kartı verisi (§21) — yalnız yetkili kullanıcı
+$leadFollowData = null; $leadFollowCounts = null; $leadTeam = null;
+if ($uid > 0 && can('leads.view')) {
+    require_once __DIR__ . '/includes/lead_followup_render.php';
+    $leadFollowCounts = lead_reminder_counts($uid, false);
+    $leadFollowData   = lead_reminder_dashboard($uid, null);
+    if (lead_reminders_can_see_team()) { $leadTeam = lead_reminder_team_by_user(); }
+}
+
 $fmtRate = static fn($v) => $v !== null ? number_format((float) $v, 2, ',', '.') : '—';
 
 /** Aksiyon/hareket satırındaki tarihi kısa ve okunur biçime çevirir. */
@@ -96,6 +105,35 @@ layout_top('Genel Bakış', 'dashboard');
         </a>
     <?php endforeach; ?>
 </section>
+<?php endif; ?>
+
+<!-- 2b) BUGÜNKÜ LEAD TAKİPLERİ (§21) -->
+<?php if ($leadFollowData !== null):
+    $lfActUrl = e(url('modules/leads/lead-action.php'));
+    lead_followup_dashboard_card($leadFollowData, $leadFollowCounts, $lfActUrl, 'dashboard.php');
+    if ($leadTeam): ?>
+    <section class="panel followup-team-panel">
+        <div class="panel-head">
+            <h2 class="panel-title"><?= icon('users', 'icon-sm') ?> Ekip Lead Takipleri</h2>
+            <a class="btn btn-sm" href="<?= e(url('modules/leads/team-reminders.php')) ?>">Detay</a>
+        </div>
+        <div class="table-wrap"><table class="table">
+            <thead><tr><th>Personel</th><th class="nowrap">Bugün</th><th class="nowrap">Geciken</th><th class="nowrap">Tamamlanan</th><th class="nowrap">Ulaşılamayan</th><th class="nowrap">Ertelenen</th></tr></thead>
+            <tbody>
+            <?php foreach ($leadTeam as $t): ?>
+                <tr>
+                    <td><?= e((string) ($t['full_name'] ?? '(atanmamış)')) ?></td>
+                    <td class="nowrap"><?= (int) $t['today_open'] ?></td>
+                    <td class="nowrap"<?= (int) $t['overdue'] > 0 ? ' style="color:#b91c1c;font-weight:600"' : '' ?>><?= (int) $t['overdue'] ?></td>
+                    <td class="nowrap"><?= (int) $t['done_today'] ?></td>
+                    <td class="nowrap"><?= (int) $t['unreachable'] ?></td>
+                    <td class="nowrap"><?= (int) $t['postponed'] ?></td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table></div>
+    </section>
+    <?php endif; ?>
 <?php endif; ?>
 
 <div class="dash-columns">
