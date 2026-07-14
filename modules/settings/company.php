@@ -8,6 +8,7 @@ declare(strict_types=1);
  */
 require_once __DIR__ . '/../../includes/permissions.php';
 require_once __DIR__ . '/../../includes/service.php'; // service_company_info / service_save_company_info
+require_once __DIR__ . '/../../includes/leave.php';   // app_setting_get / app_setting_set
 
 auth_boot();
 require_permission('settings');
