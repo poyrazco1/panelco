@@ -2319,3 +2319,19 @@ CREATE TABLE IF NOT EXISTS `cari_movements` (
     PRIMARY KEY (`id`), KEY `idx_cari_customer` (`customer_id`), KEY `idx_cari_date` (`movement_date`),
     KEY `idx_cari_deleted` (`is_deleted`), KEY `idx_cari_receipt` (`receipt_no`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+/* Belge dosyaları (üretilen PDF arşivi) — ayrıntı: migrations/2026-07-document-files.sql */
+CREATE TABLE IF NOT EXISTS `document_files` (
+    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `document_type` VARCHAR(60) NOT NULL DEFAULT '',
+    `document_id` INT UNSIGNED DEFAULT NULL,
+    `email_log_id` BIGINT UNSIGNED DEFAULT NULL,
+    `file_path` VARCHAR(255) NOT NULL DEFAULT '',
+    `original_name` VARCHAR(190) NOT NULL DEFAULT '',
+    `mime` VARCHAR(100) NOT NULL DEFAULT 'application/pdf',
+    `size` INT UNSIGNED NOT NULL DEFAULT 0,
+    `status` VARCHAR(20) NOT NULL DEFAULT 'active',
+    `created_by` INT UNSIGNED DEFAULT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`), KEY `idx_df_doc` (`document_type`,`document_id`), KEY `idx_df_log` (`email_log_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

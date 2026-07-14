@@ -124,6 +124,11 @@ $res = MailService::sendDocument([
     'resend_of_id'  => $resendOf,
 ]);
 
+if ($pdfRel !== '' && isset($stored)) {
+    document_file_record('reconciliation', $id, $stored['rel'], $stored['friendly'], 'application/pdf',
+        (int) @filesize($stored['abs']), current_user_id(), $res['log_id'] ?? null);
+}
+
 log_activity('reconciliation_mail', 'reconciliation', $id, (string) $r['recon_no'],
     $res['ok'] ? 'success' : 'failed',
     $res['ok'] ? 'Mutabakat maili gönderildi' : ($res['error'] ?? 'Mail hatası'));

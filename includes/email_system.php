@@ -385,6 +385,41 @@ function document_email_log_get(int $id): ?array
 }
 
 /* =========================================================================
+ |  BELGE DOSYALARI (üretilen PDF arşivi)
+ * ====================================================================== */
+
+/** Belge türünün yetki modülü anahtarı (indirme yetki kontrolü için). */
+function document_type_module_key(string $type): string
+{
+    static $map = [
+        'reconciliation' => 'reconciliation', 'statement' => 'finance', 'quote' => 'quotes',
+        'order' => 'orders', 'shipment' => 'shipments', 'service' => 'service',
+        'rma' => 'rma', 'commission' => 'commissions', 'payment' => 'finance',
+    ];
+    return $map[$type] ?? $type;
+}
+
+function document_file_record(string $type, ?int $docId, string $rel, string $name, string $mime, int $size, ?int $userId, ?int $logId = null): int
+{
+    try {
+        db()->prepare(
+            'INSERT INTO document_files (document_type, document_id, email_log_id, file_path, original_name, mime, size, created_by)
+             VALUES (:t,:id,:log,:path,:name,:mime,:size,:cb)'
+        )->execute([':t'=>$type, ':id'=>$docId, ':log'=>$logId, ':path'=>$rel, ':name'=>$name, ':mime'=>$mime, ':size'=>$size, ':cb'=>$userId]);
+        return (int) db()->lastInsertId();
+    } catch (Throwable $e) { log_error('document_file_record: ' . $e->getMessage()); return 0; }
+}
+
+function document_file_get(int $id): ?array
+{
+    try {
+        $st = db()->prepare('SELECT * FROM document_files WHERE id = ? LIMIT 1');
+        $st->execute([$id]);
+        return $st->fetch() ?: null;
+    } catch (Throwable $e) { log_error('document_file_get: ' . $e->getMessage()); return null; }
+}
+
+/* =========================================================================
  |  BELGE ONAYLARI (müşteri dijital onayı)
  * ====================================================================== */
 

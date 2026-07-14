@@ -67,6 +67,11 @@ $res = MailService::sendDocument([
     'sender_user'   => mail_session_user(),
 ]);
 
+if ($pdfRel !== '' && isset($stored)) {
+    document_file_record('statement', $cid, $stored['rel'], $stored['friendly'], 'application/pdf',
+        (int) @filesize($stored['abs']), current_user_id(), $res['log_id'] ?? null);
+}
+
 log_activity('finance_statement_mail', 'finance', $cid, 'EKS-' . $cid, $res['ok'] ? 'success' : 'failed', $res['ok'] ? 'Cari ekstre maili gönderildi' : ($res['error'] ?? 'Mail hatası'));
 flash($res['ok'] ? 'success' : 'error', $res['msg']);
 redirect($back);

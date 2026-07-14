@@ -37,7 +37,7 @@ layout_top('Belge Gönderim Geçmişi', 'settings');
                         <td><?= e((string) $l['document_type']) ?><?= $l['document_no'] !== '' ? ' · ' . e((string) $l['document_no']) : '' ?></td>
                         <td><?= e((string) $l['to_email']) ?></td>
                         <td><?= e((string) ($l['sent_by_name'] ?: '—')) ?><?= $l['department'] !== '' ? ' <span class="muted">(' . e((string) $l['department']) . ')</span>' : '' ?></td>
-                        <td><?= (int) $l['has_pdf'] === 1 ? '<span class="badge badge-info">Ek</span>' : '<span class="muted">—</span>' ?></td>
+                        <td><?= (int) $l['has_pdf'] === 1 ? '<a class="badge badge-info" href="' . e(url('modules/documents/file.php?log=' . (int) $l['id'])) . '" title="PDF indir">Ek ⬇</a>' : '<span class="muted">—</span>' ?></td>
                         <td><?= $l['status'] === 'sent' ? '<span class="badge badge-success">Gönderildi</span>' : '<span class="badge badge-danger">Başarısız</span>' ?></td>
                         <td><?= $l['status'] === 'sent' ? e((string) $l['from_email']) : '<span class="muted">' . e(mb_strimwidth((string) ($l['error_message'] ?? ''), 0, 80, '…', 'UTF-8')) . '</span>' ?></td>
                     </tr>

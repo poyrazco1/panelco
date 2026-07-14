@@ -63,7 +63,7 @@ if ($__m && !empty($docRow) && (can($__m['module'] . '.mail') || can($__m['modul
                         <td><?= e(date('d.m.Y H:i', strtotime((string) $l['created_at']))) ?></td>
                         <td><?= e((string) $l['to_email']) ?></td>
                         <td><?= e((string) ($l['sent_by_name'] ?: '—')) ?></td>
-                        <td><?= (int) $l['has_pdf'] === 1 ? '<span class="badge badge-info">Ek</span>' : '<span class="muted">—</span>' ?></td>
+                        <td><?= (int) $l['has_pdf'] === 1 ? '<a class="badge badge-info" href="' . e(url('modules/documents/file.php?log=' . (int) $l['id'])) . '" title="PDF indir">Ek ⬇</a>' : '<span class="muted">—</span>' ?></td>
                         <td><?= $l['status'] === 'sent' ? '<span class="badge badge-success">Gönderildi</span>'
                                 : '<span class="badge badge-danger" title="' . e((string) ($l['error_message'] ?? '')) . '">Başarısız</span>' ?></td>
                         <td>
