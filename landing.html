@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexora - The Future of Smarter Automation</title>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        :root {
+            --background: 0 0% 100%;
+            --foreground: 210 14% 17%;
+            --primary: 210 14% 17%;
+            --primary-foreground: 0 0% 100%;
+            --secondary: 0 0% 96%;
+            --secondary-foreground: 0 0% 9%;
+            --muted: 0 0% 96%;
+            --muted-foreground: 184 5% 55%;
+            --accent: 239 84% 67%;
+            --accent-foreground: 0 0% 100%;
+            --border: 0 0% 90%;
+            --ring: 239 84% 67%;
+            --radius: 0.5rem;
+            --font-display: 'Instrument Serif', serif;
+            --font-body: 'Inter', sans-serif;
+            --shadow-dashboard: 0 25px 80px -12px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.06);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-body);
+            background-color: hsl(var(--background));
+            color: hsl(var(--foreground));
+            overflow: hidden;
+        }
+
+        .font-display {
+            font-family: var(--font-display);
+        }
+
+        .font-body {
+            font-family: var(--font-body);
+        }
+
+        .text-foreground {
+            color: hsl(var(--foreground));
+        }
+
+        .text-muted-foreground {
+            color: hsl(var(--muted-foreground));
+        }
+
+        .text-accent {
+            color: hsl(var(--accent));
+        }
+
+        .bg-background {
+            background-color: hsl(var(--background));
+        }
+
+        .bg-secondary {
+            background-color: hsl(var(--secondary));
+        }
+
+        .bg-muted {
+            background-color: hsl(var(--muted));
+        }
+
+        .border-border {
+            border-color: hsl(var(--border));
+        }
+
+        .hover\:text-foreground:hover {
+            color: hsl(var(--foreground));
+        }
+
+        /* Animations */
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(var(--tw-translate-y, 0));
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-fade-up {
+            animation: fadeUp forwards;
+        }
+
+        .animate-fade-up-0 {
+            --tw-translate-y: 10px;
+            animation-duration: 0.5s;
+            animation-delay: 0s;
+            animation-timing-function: ease-out;
+        }
+
+        .animate-fade-up-1 {
+            --tw-translate-y: 16px;
+            animation-duration: 0.6s;
+            animation-delay: 0.1s;
+            animation-timing-function: ease-out;
+        }
+
+        .animate-fade-up-2 {
+            --tw-translate-y: 16px;
+            animation-duration: 0.6s;
+            animation-delay: 0.2s;
+            animation-timing-function: ease-out;
+        }
+
+        .animate-fade-up-3 {
+            --tw-translate-y: 16px;
+            animation-duration: 0.6s;
+            animation-delay: 0.3s;
+            animation-timing-function: ease-out;
+        }
+
+        .animate-fade-up-4 {
+            --tw-translate-y: 30px;
+            animation-duration: 0.8s;
+            animation-delay: 0.5s;
+            animation-timing-function: ease-out;
+        }
+
+        /* Button Styles */
+        .btn-primary {
+            background-color: hsl(var(--primary));
+            color: hsl(var(--primary-foreground));
+            border-radius: 9999px;
+            padding: 0.625rem 1.5rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+            font-family: var(--font-body);
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            opacity: 0.9;
+        }
+
+        .btn-ghost {
+            background-color: hsl(var(--background));
+            border: none;
+            border-radius: 9999px;
+            width: 2.75rem;
+            height: 2.75rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
+        }
+
+        .btn-ghost:hover {
+            background-color: hsl(var(--background) / 0.8);
+        }
+
+        .btn-ghost svg {
+            width: 1rem;
+            height: 1rem;
+            fill: hsl(var(--foreground));
+        }
+
+        /* Badge */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+            border-radius: 9999px;
+            border: 1px solid hsl(var(--border));
+            background-color: hsl(var(--background));
+            padding: 0.375rem 1rem;
+            font-size: 0.875rem;
+            color: hsl(var(--muted-foreground));
+            font-family: var(--font-body);
+        }
+
+        /* Frosted Glass */
+        .frosted-glass {
+            background: rgba(255, 255, 255, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: var(--shadow-dashboard);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        /* Dashboard Styles */
+        .dashboard-container {
+            background-color: hsl(var(--secondary) / 0.3);
+            border-radius: 1rem;
+            padding: 1.5rem;
+        }
+
+        .dashboard-item {
+            font-size: 0.6875rem;
+            user-select: none;
+            pointer-events: none;
+        }
+
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.625rem;
+            font-weight: 500;
+            display: inline-block;
+        }
+
+        .status-pending {
+            background-color: rgba(217, 119, 6, 0.1);
+            color: rgb(120, 53, 15);
+        }
+
+        .status-completed {
+            background-color: rgba(34, 197, 94, 0.1);
+            color: rgb(20, 83, 11);
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        .modal-content {
+            background-color: hsl(var(--background));
+            border-radius: 1rem;
+            padding: 2rem;
+            max-width: 800px;
+            width: 90%;
+            position: relative;
+            animation: slideUp 0.3s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 1.5rem;
+            right: 1.5rem;
+            background: none;
+            border: none;
+            cursor: pointer;
+            width: 2rem;
+            height: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: hsl(var(--muted-foreground));
+            transition: color 0.2s;
+        }
+
+        .modal-close:hover {
+            color: hsl(var(--foreground));
+        }
+
+        /* Video Background */
+        .video-background {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 0;
+        }
+
+        .hero-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.4);
+            z-index: 1;
+        }
+
+        /* Navbar */
+        .navbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1.25rem 1.5rem;
+            font-family: var(--font-body);
+            z-index: 20;
+            position: relative;
+        }
+
+        @media (min-width: 768px) {
+            .navbar {
+                padding-left: 3rem;
+                padding-right: 3rem;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .navbar {
+                padding-left: 5rem;
+                padding-right: 5rem;
+            }
+        }
+
+        .logo {
+            font-size: 1.25rem;
+            font-weight: 600;
+            letter-spacing: -0.025em;
+            color: hsl(var(--foreground));
+        }
+
+        .nav-links {
+            display: none;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        @media (min-width: 768px) {
+            .nav-links {
+                display: flex;
+            }
+        }
+
+        .nav-link {
+            font-size: 0.875rem;
+            color: hsl(var(--muted-foreground));
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        .nav-link:hover {
+            color: hsl(var(--foreground));
+        }
+
+        /* Main Content */
+        .hero-content {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+
+        .italic-text {
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="h-screen flex flex-col bg-background overflow-hidden">
+        <!-- Video Background -->
+        <video class="video-background" autoplay muted loop>
+            <source src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260319_015952_e1deeb12-8fb7-4071-a42a-60779fc64ab6.mp4" type="video/mp4">
+        </video>
+        <div class="hero-overlay"></div>
+
+        <!-- Navbar -->
+        <nav class="navbar">
+            <div class="logo">✦ Nexora</div>
+            <div class="nav-links">
+                <a href="#" class="nav-link">Home</a>
+                <a href="#" class="nav-link">Pricing</a>
+                <a href="#" class="nav-link">About</a>
+                <a href="#" class="nav-link">Contact</a>
+            </div>
+            <button class="btn-primary hidden md:block">Get Started</button>
+        </nav>
+
+        <!-- Hero Content -->
+        <div class="hero-content flex-1 justify-center pt-8 md:pt-0">
+            <!-- Badge -->
+            <div class="badge animate-fade-up animate-fade-up-0" style="margin-bottom: 1.5rem;">
+                <span>Now with GPT-5 support</span>
+                <span>✨</span>
+            </div>
+
+            <!-- Headline -->
+            <h1 class="font-display text-5xl md:text-6xl lg:text-[5rem] leading-[0.95] tracking-tight text-foreground max-w-xl text-center animate-fade-up animate-fade-up-1 px-4">
+                The Future of <span class="italic-text">Smarter</span> Automation
+            </h1>
+
+            <!-- Subheading -->
+            <p class="mt-4 text-center text-base md:text-lg text-muted-foreground max-w-[650px] leading-relaxed font-body animate-fade-up animate-fade-up-2 px-4">
+                Automate your busywork with intelligent agents that learn, adapt, and execute—so your team can focus on what matters most.
+            </p>
+
+            <!-- CTA Buttons -->
+            <div class="mt-5 flex items-center gap-3 animate-fade-up animate-fade-up-3">
+                <button class="btn-primary">Book a demo</button>
+                <button class="btn-ghost" id="playButton" title="Watch demo">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M8 5v14l11-7z"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Dashboard Preview -->
+            <div class="mt-8 w-full max-w-5xl px-4 animate-fade-up animate-fade-up-4">
+                <div class="frosted-glass rounded-2xl overflow-hidden p-3 md:p-4" style="margin: 0 auto;">
+                    <!-- Dashboard -->
+                    <div class="dashboard-container">
+                        <!-- Top Bar -->
+                        <div class="flex items-center justify-between mb-4 pb-4 border-b border-border">
+                            <div class="flex items-center gap-2">
+                                <div class="w-6 h-6 rounded bg-foreground flex items-center justify-center text-white text-xs font-bold">N</div>
+                                <span class="font-body font-semibold text-sm text-foreground">Nexora</span>
+                                <svg class="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                </svg>
+                            </div>
+                            <div class="flex-1 mx-8 hidden sm:flex items-center bg-muted rounded-lg px-3 py-2">
+                                <span class="text-muted-foreground text-xs">Search...</span>
+                                <span class="ml-auto text-xs text-muted-foreground">⌘K</span>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span class="font-body text-xs text-foreground font-medium hidden sm:inline">Move Money</span>
+                                <svg class="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                                </svg>
+                                <div class="w-6 h-6 rounded-full bg-foreground/20 flex items-center justify-center text-xs font-bold text-foreground">JB</div>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-4">
+                            <!-- Sidebar -->
+                            <div class="w-40 hidden md:block space-y-1">
+                                <div class="px-3 py-2 rounded-lg bg-secondary text-sm font-semibold text-foreground dashboard-item">Home</div>
+                                <div class="px-3 py-2 rounded-lg text-sm text-muted-foreground dashboard-item flex items-center justify-between">
+                                    <span>Tasks</span>
+                                    <span class="bg-accent text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">10</span>
+                                </div>
+                                <div class="px-3 py-2 rounded-lg text-sm text-muted-foreground dashboard-item">Transactions</div>
+                                <div class="px-3 py-2 rounded-lg text-sm text-muted-foreground dashboard-item flex items-center justify-between">
+                                    <span>Payments</span>
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                    </svg>
+                                </div>
+                                <div class="px-3 py-2 rounded-lg text-sm text-muted-foreground dashboard-item">Cards</div>
+                                <div class="px-3 py-2 rounded-lg text-sm text-muted-foreground dashboard-item">Capital</div>
+                                <div class="px-3 py-2 rounded-lg text-sm text-muted-foreground dashboard-item flex items-center justify-between">
+                                    <span>Accounts</span>
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                    </svg>
+                                </div>
+                                <div class="mt-4 pt-4 border-t border-border">
+                                    <p class="px-3 text-xs font-semibold text-muted-foreground mb-2">Workflows</p>
+                                    <div class="px-3 py-1.5 text-xs text-muted-foreground dashboard-item">Trake routes</div>
+                                    <div class="px-3 py-1.5 text-xs text-muted-foreground dashboard-item">Payments</div>
+                                    <div class="px-3 py-1.5 text-xs text-muted-foreground dashboard-item">Notifications</div>
+                                    <div class="px-3 py-1.5 text-xs text-muted-foreground dashboard-item">Settings</div>
+                                </div>
+                            </div>
+
+                            <!-- Main Content -->
+                            <div class="flex-1">
+                                <!-- Welcome -->
+                                <div class="flex items-center justify-between mb-4">
+                                    <h2 class="font-semibold text-sm text-foreground dashboard-item">Welcome, Jane</h2>
+                                    <button class="text-accent text-xs dashboard-item cursor-default">Customize</button>
+                                </div>
+
+                                <!-- Action Buttons -->
+                                <div class="flex flex-wrap gap-2 mb-6">
+                                    <button class="btn-primary" style="padding: 0.5rem 1rem; font-size: 0.625rem;">Send</button>
+                                    <button class="border border-border rounded-full px-3 py-2 text-xs text-foreground bg-white hover:bg-muted dashboard-item cursor-default">Request</button>
+                                    <button class="border border-border rounded-full px-3 py-2 text-xs text-foreground bg-white hover:bg-muted dashboard-item cursor-default">Transfer</button>
+                                    <button class="border border-border rounded-full px-3 py-2 text-xs text-foreground bg-white hover:bg-muted dashboard-item cursor-default">Deposit</button>
+                                    <button class="border border-border rounded-full px-3 py-2 text-xs text-foreground bg-white hover:bg-muted dashboard-item cursor-default">Pay Bill</button>
+                                    <button class="border border-border rounded-full px-3 py-2 text-xs text-foreground bg-white hover:bg-muted dashboard-item cursor-default">Create Invoice</button>
+                                </div>
+
+                                <!-- Cards Row -->
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                                    <!-- Balance Card -->
+                                    <div class="border border-border rounded-xl p-4 bg-white">
+                                        <div class="flex items-center justify-between mb-3">
+                                            <h3 class="text-sm font-semibold text-foreground dashboard-item">Mercury Balance</h3>
+                                            <svg class="w-4 h-4 text-accent" fill="currentColor" viewBox="0 0 24 24">
+                                                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
+                                            </svg>
+                                        </div>
+                                        <div class="mb-3">
+                                            <div class="text-lg font-semibold text-foreground dashboard-item">$8,450,190<span class="text-xs text-muted-foreground">.32</span></div>
+                                        </div>
+                                        <div class="flex gap-4 mb-3">
+                                            <div>
+                                                <p class="text-xs text-muted-foreground dashboard-item mb-1">Last 30 Days</p>
+                                                <p class="text-sm font-semibold text-green-600 dashboard-item">+$1.8M</p>
+                                            </div>
+                                            <div>
+                                                <p class="text-xs text-muted-foreground dashboard-item mb-1">Expenses</p>
+                                                <p class="text-sm font-semibold text-red-600 dashboard-item">-$900K</p>
+                                            </div>
+                                        </div>
+                                        <!-- SVG Chart -->
+                                        <svg viewBox="0 0 300 80" class="w-full h-20" style="margin-top: 0.5rem;">
+                                            <defs>
+                                                <linearGradient id="chartGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                                                    <stop offset="0%" style="stop-color: hsl(var(--accent)); stop-opacity: 0.15" />
+                                                    <stop offset="100%" style="stop-color: hsl(var(--accent)); stop-opacity: 0" />
+                                                </linearGradient>
+                                            </defs>
+                                            <path d="M 0 50 Q 75 30 150 40 T 300 35" stroke="hsl(var(--accent))" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+                                            <path d="M 0 50 Q 75 30 150 40 T 300 35 L 300 80 L 0 80 Z" fill="url(#chartGradient)"/>
+                                        </svg>
+                                    </div>
+
+                                    <!-- Accounts Card -->
+                                    <div class="border border-border rounded-xl p-4 bg-white">
+                                        <div class="flex items-center justify-between mb-4">
+                                            <h3 class="text-sm font-semibold text-foreground dashboard-item">Accounts</h3>
+                                            <div class="flex gap-2">
+                                                <button class="text-accent text-xs dashboard-item cursor-default">+</button>
+                                                <button class="text-muted-foreground text-xs dashboard-item cursor-default">⋮</button>
+                                            </div>
+                                        </div>
+                                        <div class="space-y-3">
+                                            <div class="flex items-center justify-between py-3">
+                                                <span class="text-xs text-foreground dashboard-item">Credit</span>
+                                                <span class="text-xs font-semibold text-foreground dashboard-item">$98,125.50</span>
+                                            </div>
+                                            <div class="flex items-center justify-between py-3">
+                                                <span class="text-xs text-foreground dashboard-item">Treasury</span>
+                                                <span class="text-xs font-semibold text-foreground dashboard-item">$6,750,200.00</span>
+                                            </div>
+                                            <div class="flex items-center justify-between py-3">
+                                                <span class="text-xs text-foreground dashboard-item">Operations</span>
+                                                <span class="text-xs font-semibold text-foreground dashboard-item">$1,592,864.82</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Transactions Table -->
+                                <div>
+                                    <h3 class="text-sm font-semibold text-foreground dashboard-item mb-3">Recent Transactions</h3>
+                                    <table class="w-full">
+                                        <thead>
+                                            <tr class="border-b border-border">
+                                                <th class="text-left py-2 px-3 text-xs font-semibold text-muted-foreground dashboard-item">Date</th>
+                                                <th class="text-left py-2 px-3 text-xs font-semibold text-muted-foreground dashboard-item">Description</th>
+                                                <th class="text-right py-2 px-3 text-xs font-semibold text-muted-foreground dashboard-item">Amount</th>
+                                                <th class="text-right py-2 px-3 text-xs font-semibold text-muted-foreground dashboard-item">Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr class="border-b border-border">
+                                                <td class="py-3 px-3 text-xs text-muted-foreground dashboard-item">Mar 15</td>
+                                                <td class="py-3 px-3 text-xs text-foreground dashboard-item">AWS</td>
+                                                <td class="py-3 px-3 text-xs text-right text-red-600 dashboard-item">-$5,200</td>
+                                                <td class="py-3 px-3 text-right"><span class="status-badge status-pending">Pending</span></td>
+                                            </tr>
+                                            <tr class="border-b border-border">
+                                                <td class="py-3 px-3 text-xs text-muted-foreground dashboard-item">Mar 14</td>
+                                                <td class="py-3 px-3 text-xs text-foreground dashboard-item">Client Payment</td>
+                                                <td class="py-3 px-3 text-xs text-right text-green-600 dashboard-item">+$125,000</td>
+                                                <td class="py-3 px-3 text-right"><span class="status-badge status-completed">Completed</span></td>
+                                            </tr>
+                                            <tr class="border-b border-border">
+                                                <td class="py-3 px-3 text-xs text-muted-foreground dashboard-item">Mar 13</td>
+                                                <td class="py-3 px-3 text-xs text-foreground dashboard-item">Payroll</td>
+                                                <td class="py-3 px-3 text-xs text-right text-red-600 dashboard-item">-$85,450</td>
+                                                <td class="py-3 px-3 text-right"><span class="status-badge status-completed">Completed</span></td>
+                                            </tr>
+                                            <tr>
+                                                <td class="py-3 px-3 text-xs text-muted-foreground dashboard-item">Mar 12</td>
+                                                <td class="py-3 px-3 text-xs text-foreground dashboard-item">Office Supplies</td>
+                                                <td class="py-3 px-3 text-xs text-right text-red-600 dashboard-item">-$1,200</td>
+                                                <td class="py-3 px-3 text-right"><span class="status-badge status-completed">Completed</span></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal" id="videoModal">
+        <div class="modal-content">
+            <button class="modal-close" id="modalClose">&times;</button>
+            <h2 class="font-display text-3xl mb-4 text-foreground">Watch Demo</h2>
+            <div style="aspect-ratio: 16/9; background-color: hsl(var(--muted)); border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; color: hsl(var(--muted-foreground));">
+                <div style="text-align: center;">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">▶</div>
+                    <p>Demo video would play here</p>
+                </div>
+            </div>
+            <p class="mt-4 text-muted-foreground text-sm">This is a placeholder for the demo video. In a real implementation, replace this with an embedded YouTube, Vimeo, or custom video player.</p>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // Modal functionality
+        const playButton = document.getElementById('playButton');
+        const videoModal = document.getElementById('videoModal');
+        const modalClose = document.getElementById('modalClose');
+
+        playButton.addEventListener('click', () => {
+            videoModal.classList.add('active');
+        });
+
+        modalClose.addEventListener('click', () => {
+            videoModal.classList.remove('active');
+        });
+
+        videoModal.addEventListener('click', (e) => {
+            if (e.target === videoModal) {
+                videoModal.classList.remove('active');
+            }
+        });
+
+        // Keyboard close
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && videoModal.classList.contains('active')) {
+                videoModal.classList.remove('active');
+            }
+        });
+    </script>
+</body>
+</html>
