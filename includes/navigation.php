@@ -46,6 +46,8 @@ function nav_sidebar_groups(): array
              'match' => ['prefix' => ['modules/leads/my-lists']]],
             ['perm' => 'leads', 'title' => 'Lead Hatırlatmaları', 'path' => 'modules/leads/reminders.php', 'icon' => 'bell-ring',
              'match' => ['prefix' => ['modules/leads/reminders']]],
+            ['perm' => 'leads.trash', 'title' => 'Lead Çöp Kutusu', 'path' => 'modules/leads/trash.php', 'icon' => 'trash-2',
+             'match' => ['prefix' => ['modules/leads/trash']]],
             ['perm' => 'international_customers', 'title' => 'Yurtdışı Müşteriler', 'path' => 'modules/international-customers/index.php', 'icon' => 'globe',
              'match' => ['prefix' => ['modules/international-customers/']]],
             ['perm' => 'product_lists', 'title' => 'Ürün Listeleri', 'path' => 'modules/product-lists/index.php', 'icon' => 'list-checks',

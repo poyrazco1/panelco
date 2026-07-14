@@ -209,12 +209,87 @@ function update_lead(int $id, array $d, ?int $userId): bool
     } catch (Throwable $e) { log_error('update_lead: ' . $e->getMessage()); return false; }
 }
 
-function delete_lead(int $id, ?int $userId): bool
+/** Yumuşak silme (§10): is_deleted + deleted_at/by/reason; denetim kaydı korunur. */
+function delete_lead(int $id, ?int $userId, string $reason = ''): bool
 {
     try {
-        return db()->prepare('UPDATE leads SET is_deleted = 1, updated_by = :uby WHERE id = :id')
-            ->execute([':uby' => $userId, ':id' => $id]);
+        $ok = db()->prepare('UPDATE leads SET is_deleted = 1, deleted_at = NOW(), deleted_by = :dby, delete_reason = :r, updated_by = :uby WHERE id = :id AND is_deleted = 0')
+            ->execute([':dby' => $userId, ':r' => mb_substr($reason, 0, 255) ?: null, ':uby' => $userId, ':id' => $id]);
+        if ($ok && function_exists('lead_audit_log')) {
+            lead_audit_log($id, 'lead_soft_delete', $reason !== '' ? 'Sebep: ' . $reason : '', $userId);
+        }
+        return (bool) $ok;
     } catch (Throwable $e) { log_error('delete_lead: ' . $e->getMessage()); return false; }
+}
+
+/** Çöp kutusundaki (yumuşak silinmiş) lead'ler. */
+function get_trashed_leads(string $search = ''): array
+{
+    $where = ['is_deleted = 1'];
+    $params = [];
+    if ($search !== '') {
+        $where[] = '(company_name LIKE :q OR phone LIKE :q OR city LIKE :q)';
+        $params[':q'] = '%' . $search . '%';
+    }
+    try {
+        $st = db()->prepare('SELECT l.*, u.full_name AS deleted_by_name FROM leads l LEFT JOIN users u ON u.id = l.deleted_by WHERE ' . implode(' AND ', $where) . ' ORDER BY l.deleted_at DESC LIMIT 500');
+        $st->execute($params);
+        return $st->fetchAll();
+    } catch (Throwable $e) { log_error('get_trashed_leads: ' . $e->getMessage()); return []; }
+}
+
+function trashed_lead_count(): int
+{
+    try { return (int) db()->query('SELECT COUNT(*) FROM leads WHERE is_deleted = 1')->fetchColumn(); }
+    catch (Throwable $e) { return 0; }
+}
+
+/** Tek çöp kaydı (silinmiş dahil). */
+function get_lead_including_deleted(int $id): ?array
+{
+    try {
+        $st = db()->prepare('SELECT * FROM leads WHERE id = :id LIMIT 1');
+        $st->execute([':id' => $id]);
+        return $st->fetch() ?: null;
+    } catch (Throwable $e) { return null; }
+}
+
+/** Çöpten geri yükler. */
+function lead_restore(int $id, ?int $userId): bool
+{
+    try {
+        $ok = db()->prepare('UPDATE leads SET is_deleted = 0, deleted_at = NULL, deleted_by = NULL, delete_reason = NULL, updated_by = :uby WHERE id = :id AND is_deleted = 1')
+            ->execute([':uby' => $userId, ':id' => $id]);
+        if ($ok && function_exists('lead_audit_log')) { lead_audit_log($id, 'lead_restore', '', $userId); }
+        return (bool) $ok;
+    } catch (Throwable $e) { log_error('lead_restore: ' . $e->getMessage()); return false; }
+}
+
+/**
+ * KALICI silme (§10): yalnızca çöpteki kayıt. Denetim logu (lead_audit_logs)
+ * silinmeden ÖNCE ayrı olarak korunur (lead_id null'a düşer ama kayıt kalır).
+ * Çağıran taraf Süper Admin + 2. onay denetimini yapar.
+ */
+function lead_purge(int $id, ?int $userId): bool
+{
+    try {
+        $lead = get_lead_including_deleted($id);
+        if (!$lead || (int) ($lead['is_deleted'] ?? 0) !== 1) { return false; }
+        // Denetim kaydını önce yaz (kalıcı silme öncesi anlık görüntü)
+        if (function_exists('lead_audit_log')) {
+            lead_audit_log(null, 'lead_purge', 'Kalıcı silinen lead #' . $id . ': ' . (string) ($lead['company_name'] ?? '')
+                . ' · tel ' . (string) ($lead['phone'] ?? '') . ' · place ' . (string) ($lead['place_id'] ?? ''), $userId);
+        }
+        // İlişkili kayıtlar FK ON DELETE CASCADE ile temizlenir.
+        return db()->prepare('DELETE FROM leads WHERE id = :id AND is_deleted = 1')->execute([':id' => $id]);
+    } catch (Throwable $e) { log_error('lead_purge: ' . $e->getMessage()); return false; }
+}
+
+/** Süper Admin mi? (kalıcı silme yetkisi) */
+function lead_is_super_admin(): bool
+{
+    $perms = function_exists('current_permissions') ? current_permissions() : [];
+    return in_array('all', $perms, true);
 }
 
 function set_lead_status(int $id, string $status, ?int $userId, string $note = ''): bool
