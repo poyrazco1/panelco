@@ -283,6 +283,24 @@ function nav_settings_catalog(): array
             ],
         ],
 
+        'E-Posta Ayarları' => [
+            'icon' => 'mail',
+            'cards' => [
+                ['title' => 'SMTP Profilleri', 'icon' => 'server', 'perm' => 'settings', 'url' => 'modules/settings/smtp-profiles.php',
+                 'desc' => 'Çoklu SMTP hesabı; şifreli saklama ve bağlantı testi.',
+                 'kw' => 'smtp profil sunucu port tls ssl sifre gonderim mail eposta test'],
+                ['title' => 'Departman E-Postaları', 'icon' => 'users', 'perm' => 'settings', 'url' => 'modules/settings/department-emails.php',
+                 'desc' => 'Modül/departman gönderen hesapları; From, Reply-To, CC/BCC, SMTP ve şablon eşleştirme.',
+                 'kw' => 'departman modul gonderen from reply-to cc bcc mutabakat teklif servis muhasebe'],
+                ['title' => 'E-Posta Şablonları', 'icon' => 'file-text', 'perm' => 'settings', 'url' => 'modules/settings/email-templates.php',
+                 'desc' => 'Belge e-postaları için düzenlenebilir şablonlar ({{degisken}} destekli).',
+                 'kw' => 'sablon template mail eposta degisken mutabakat teklif metin'],
+                ['title' => 'Belge Gönderim Geçmişi', 'icon' => 'history', 'perm' => 'settings', 'url' => 'modules/settings/email-logs.php',
+                 'desc' => 'Gönderilen belge e-postaları: alıcı, durum, hata ve yeniden gönderim.',
+                 'kw' => 'gonderim gecmis log mail eposta durum hata yeniden gonder'],
+            ],
+        ],
+
         'Entegrasyon Ayarları' => [
             'icon' => 'plug',
             'cards' => [

@@ -357,6 +357,15 @@ function document_email_log_insert(array $d): int
     } catch (Throwable $e) { log_error('document_email_log_insert: ' . $e->getMessage()); return 0; }
 }
 
+/** Son gönderim logları (global geçmiş görünümü için). */
+function document_email_logs_recent(int $limit = 200): array
+{
+    $limit = max(1, min(1000, $limit));
+    try {
+        return db()->query('SELECT * FROM document_email_logs ORDER BY created_at DESC, id DESC LIMIT ' . $limit)->fetchAll();
+    } catch (Throwable $e) { log_error('document_email_logs_recent: ' . $e->getMessage()); return []; }
+}
+
 function document_email_logs_for(string $type, int $id): array
 {
     try {
