@@ -14,33 +14,81 @@ require_once __DIR__ . '/helpers.php';
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/leave.php'; // app_setting_get / app_setting_set
 
-/** Lead durumları. */
-function lead_statuses(): array
+/**
+ * Lead durum satırları — yönetilebilir `lead_statuses` tablosundan (§6).
+ * Tablo yok/boşsa güvenli varsayılanlara döner. code => satır dizisi.
+ * @param bool $activeOnly Yalnızca aktif durumlar
+ * @return array<string,array>
+ */
+function lead_status_rows(bool $activeOnly = false): array
 {
-    return [
-        'new'          => 'Yeni',
-        'to_call'      => 'Aranacak',
-        'called'       => 'Arandı',
-        'unreachable'  => 'Ulaşılamadı',
-        'wants_quote'  => 'Teklif İstiyor',
-        'quote_sent'   => 'Teklif Gönderildi',
-        'following'    => 'Takipte',
-        'converted'    => 'Müşteri Oldu',
-        'not_interested' => 'İlgilenmiyor',
-        'blacklist'    => 'Kara Liste',
+    static $cache = null;
+    if ($cache === null) {
+        $cache = [];
+        try {
+            foreach (db()->query('SELECT * FROM lead_statuses ORDER BY sort_order ASC, id ASC')->fetchAll() as $r) {
+                $cache[(string) $r['code']] = $r;
+            }
+        } catch (Throwable $e) {
+            $cache = [];
+        }
+        if (!$cache) { $cache = lead_status_defaults(); }
+    }
+    if ($activeOnly) {
+        return array_filter($cache, static fn($r) => !empty($r['is_active']));
+    }
+    return $cache;
+}
+
+/** Statik durum önbelleğini sıfırlar (yönetim ekranında kayıttan sonra). */
+function lead_status_cache_reset(): void
+{
+    // lead_status_rows statik önbelleğini bozmanın taşınabilir yolu yok; ayrı
+    // istekte tazedir. Aynı istekte tekrar okumak gerekirse doğrudan sorgulanır.
+}
+
+/** Tablo yoksa kullanılan güvenli varsayılan durumlar (install.sql ile aynı küme). */
+function lead_status_defaults(): array
+{
+    $mk = static fn(string $code, string $name, string $color, int $so, int $c = 0, int $ok = 0, int $f = 0): array =>
+        ['code' => $code, 'name' => $name, 'color' => $color, 'sort_order' => $so,
+         'is_active' => 1, 'is_completed' => $c, 'is_success' => $ok, 'is_failure' => $f];
+    $rows = [
+        $mk('new', 'Yeni Lead', 'badge-info', 10),
+        $mk('to_review', 'İncelenecek', 'badge-muted', 20),
+        $mk('to_call', 'Arama Bekliyor', 'badge-warning', 30),
+        $mk('called', 'Arandı', 'badge-info', 40),
+        $mk('unreachable', 'Ulaşılamadı', 'badge-warning', 50),
+        $mk('call_again', 'Tekrar Aranacak', 'badge-warning', 60),
+        $mk('wa_to_send', 'WhatsApp Gönderilecek', 'badge-warning', 70),
+        $mk('wa_sent', 'WhatsApp Gönderildi', 'badge-info', 80),
+        $mk('email_sent', 'E-posta Gönderildi', 'badge-info', 90),
+        $mk('met', 'Görüşme Yapıldı', 'badge-info', 100),
+        $mk('wants_quote', 'Teklif İstiyor', 'badge-info', 110),
+        $mk('quote_sent', 'Teklif Gönderildi', 'badge-info', 120),
+        $mk('positive', 'Olumlu', 'badge-success', 130),
+        $mk('converted', 'Müşteriye Dönüştü', 'badge-success', 140, 1, 1, 0),
+        $mk('not_interested', 'İlgilenmiyor', 'badge-muted', 150, 1, 0, 1),
+        $mk('wrong_number', 'Yanlış Numara', 'badge-muted', 160, 1, 0, 1),
+        $mk('closed', 'Firma Kapalı', 'badge-muted', 170, 1, 0, 1),
+        $mk('blacklist', 'Kara Liste', 'badge-danger', 180, 1, 0, 1),
     ];
+    $out = [];
+    foreach ($rows as $r) { $out[$r['code']] = $r; }
+    return $out;
 }
-function lead_status_label(string $k): string { return lead_statuses()[$k] ?? $k; }
-function lead_status_class(string $k): string
+
+/** Lead durumları — code => etiket (geriye dönük uyum). */
+function lead_statuses(bool $activeOnly = false): array
 {
-    return match ($k) {
-        'converted'   => 'badge-success',
-        'blacklist', 'not_interested' => 'badge-danger',
-        'wants_quote', 'quote_sent' => 'badge-info',
-        'following', 'to_call' => 'badge-leave',
-        default       => 'badge-muted',
-    };
+    $out = [];
+    foreach (lead_status_rows($activeOnly) as $code => $r) { $out[$code] = (string) $r['name']; }
+    return $out;
 }
+function lead_status_label(string $k): string { return (string) (lead_status_rows()[$k]['name'] ?? $k); }
+function lead_status_class(string $k): string { return (string) (lead_status_rows()[$k]['color'] ?? 'badge-muted'); }
+/** Durum satırı (is_completed/is_success/is_failure için). */
+function lead_status_meta(string $k): ?array { return lead_status_rows()[$k] ?? null; }
 
 /** Lead kara listede mi? (mesaj gönderilemez) */
 function lead_is_blacklisted(array $lead): bool
@@ -169,13 +217,139 @@ function delete_lead(int $id, ?int $userId): bool
     } catch (Throwable $e) { log_error('delete_lead: ' . $e->getMessage()); return false; }
 }
 
-function set_lead_status(int $id, string $status, ?int $userId): bool
+function set_lead_status(int $id, string $status, ?int $userId, string $note = ''): bool
 {
-    if (!isset(lead_statuses()[$status])) { return false; }
+    if (!isset(lead_status_rows()[$status])) { return false; }
     try {
-        return db()->prepare('UPDATE leads SET status = :s, updated_by = :uby WHERE id = :id AND is_deleted = 0')
+        $lead = get_lead($id);
+        if (!$lead) { return false; }
+        $old = (string) ($lead['status'] ?? '');
+        if ($old === $status && $note === '') { return true; } // değişiklik yok
+
+        $ok = db()->prepare('UPDATE leads SET status = :s, updated_by = :uby WHERE id = :id AND is_deleted = 0')
             ->execute([':s' => $status, ':uby' => $userId, ':id' => $id]);
+        if ($ok && $old !== $status) {
+            lead_status_history_add($id, $old, $status, $note, $userId);
+            lead_activity_add($id, 'status', lead_status_label($old) . ' → ' . lead_status_label($status)
+                . ($note !== '' ? ' · ' . $note : ''), null, $userId);
+        }
+        return (bool) $ok;
     } catch (Throwable $e) { log_error('set_lead_status: ' . $e->getMessage()); return false; }
+}
+
+/** Durum geçişini geçmişe yazar (lead_status_history). */
+function lead_status_history_add(int $leadId, string $old, string $new, string $note, ?int $userId): void
+{
+    try {
+        db()->prepare('INSERT INTO lead_status_history (lead_id, old_status, new_status, note, created_by) VALUES (:l,:o,:n,:note,:by)')
+            ->execute([':l' => $leadId, ':o' => $old, ':n' => $new, ':note' => mb_substr($note, 0, 500), ':by' => $userId]);
+    } catch (Throwable $e) { log_error('lead_status_history_add: ' . $e->getMessage()); }
+}
+
+/** Lead durum geçmişi (son N). */
+function lead_status_history(int $leadId, int $limit = 100): array
+{
+    try {
+        $st = db()->prepare('SELECT h.*, u.full_name FROM lead_status_history h LEFT JOIN users u ON u.id = h.created_by WHERE h.lead_id = :l ORDER BY h.id DESC LIMIT ' . max(1, min(500, $limit)));
+        $st->execute([':l' => $leadId]);
+        return $st->fetchAll();
+    } catch (Throwable $e) { return []; }
+}
+
+/** Genel aktivite kaydı (lead_activities): status/call/whatsapp/note/mail/assign vb. */
+function lead_activity_add(int $leadId, string $type, string $summary, ?array $meta, ?int $userId): void
+{
+    try {
+        db()->prepare('INSERT INTO lead_activities (lead_id, type, summary, meta_json, created_by) VALUES (:l,:t,:s,:m,:by)')
+            ->execute([
+                ':l' => $leadId, ':t' => mb_substr($type, 0, 40), ':s' => mb_substr($summary, 0, 500),
+                ':m' => $meta ? json_encode($meta, JSON_UNESCAPED_UNICODE) : null, ':by' => $userId,
+            ]);
+    } catch (Throwable $e) { log_error('lead_activity_add: ' . $e->getMessage()); }
+}
+
+/** Lead aktivite akışı (son N). */
+function lead_activities(int $leadId, int $limit = 200): array
+{
+    try {
+        $st = db()->prepare('SELECT a.*, u.full_name FROM lead_activities a LEFT JOIN users u ON u.id = a.created_by WHERE a.lead_id = :l ORDER BY a.id DESC LIMIT ' . max(1, min(500, $limit)));
+        $st->execute([':l' => $leadId]);
+        return $st->fetchAll();
+    } catch (Throwable $e) { return []; }
+}
+
+/* ---- Durum yönetimi (ayar ekranı) ---- */
+
+/** Tüm durum satırları (yönetim ekranı; aktif+pasif, sıralı). */
+function lead_status_manage_list(): array
+{
+    try {
+        return db()->query('SELECT * FROM lead_statuses ORDER BY sort_order ASC, id ASC')->fetchAll();
+    } catch (Throwable $e) { log_error('lead_status_manage_list: ' . $e->getMessage()); return []; }
+}
+
+/** Durum ekler/günceller. code benzersizdir; boş kod/isim reddedilir. */
+function lead_status_save(array $in, ?int $id): array
+{
+    $name = trim((string) ($in['name'] ?? ''));
+    $code = trim((string) ($in['code'] ?? ''));
+    if ($id === null) {
+        // Yeni: koddan slug üret
+        if ($code === '') { $code = $name; }
+        $code = strtolower(preg_replace('/[^a-z0-9_]+/', '_', strtr(mb_strtolower($code, 'UTF-8'),
+            ['ç'=>'c','ğ'=>'g','ı'=>'i','ö'=>'o','ş'=>'s','ü'=>'u'])) ?? '');
+        $code = trim($code, '_');
+    }
+    if ($name === '' || $code === '') { return ['ok' => false, 'error' => 'Kod ve isim zorunludur.']; }
+
+    $color = trim((string) ($in['color'] ?? 'badge-muted')) ?: 'badge-muted';
+    $sort  = (int) ($in['sort_order'] ?? 0);
+    $active = !empty($in['is_active']) ? 1 : 0;
+    $comp   = !empty($in['is_completed']) ? 1 : 0;
+    $succ   = !empty($in['is_success']) ? 1 : 0;
+    $fail   = !empty($in['is_failure']) ? 1 : 0;
+
+    try {
+        if ($id === null) {
+            db()->prepare('INSERT INTO lead_statuses (code,name,color,sort_order,is_active,is_completed,is_success,is_failure) VALUES (:c,:n,:col,:so,:a,:comp,:s,:f)')
+                ->execute([':c'=>$code, ':n'=>$name, ':col'=>$color, ':so'=>$sort, ':a'=>$active, ':comp'=>$comp, ':s'=>$succ, ':f'=>$fail]);
+        } else {
+            // Kod değiştirilemez (var olan lead'lerle tutarlılık); yalnızca diğerleri.
+            db()->prepare('UPDATE lead_statuses SET name=:n,color=:col,sort_order=:so,is_active=:a,is_completed=:comp,is_success=:s,is_failure=:f WHERE id=:id')
+                ->execute([':n'=>$name, ':col'=>$color, ':so'=>$sort, ':a'=>$active, ':comp'=>$comp, ':s'=>$succ, ':f'=>$fail, ':id'=>$id]);
+        }
+        return ['ok' => true, 'error' => ''];
+    } catch (Throwable $e) {
+        log_error('lead_status_save: ' . $e->getMessage());
+        return ['ok' => false, 'error' => 'Durum kaydedilemedi (kod zaten kullanılıyor olabilir).'];
+    }
+}
+
+/** Durumu siler. Kullanımdaki (lead'lere atanmış) durum silinemez → pasife alınır. */
+function lead_status_delete(int $id): array
+{
+    try {
+        $st = db()->prepare('SELECT code FROM lead_statuses WHERE id = :id');
+        $st->execute([':id' => $id]);
+        $code = (string) ($st->fetchColumn() ?: '');
+        if ($code === '') { return ['ok' => false, 'error' => 'Durum bulunamadı.']; }
+
+        $cnt = db()->prepare('SELECT COUNT(*) FROM leads WHERE status = :c AND is_deleted = 0');
+        $cnt->execute([':c' => $code]);
+        if ((int) $cnt->fetchColumn() > 0) {
+            db()->prepare('UPDATE lead_statuses SET is_active = 0 WHERE id = :id')->execute([':id' => $id]);
+            return ['ok' => false, 'error' => 'Bu durum lead\'lere atanmış; silinemez, pasife alındı.'];
+        }
+        db()->prepare('DELETE FROM lead_statuses WHERE id = :id')->execute([':id' => $id]);
+        return ['ok' => true, 'error' => ''];
+    } catch (Throwable $e) { log_error('lead_status_delete: ' . $e->getMessage()); return ['ok' => false, 'error' => 'Durum silinemedi.']; }
+}
+
+/** Rozet renk seçenekleri (durum yönetimi). */
+function lead_status_color_options(): array
+{
+    return ['badge-info' => 'Mavi', 'badge-success' => 'Yeşil', 'badge-warning' => 'Turuncu',
+            'badge-danger' => 'Kırmızı', 'badge-muted' => 'Gri', 'badge-leave' => 'Mor'];
 }
 
 function lead_mark_messaged(int $id, ?int $userId): bool
