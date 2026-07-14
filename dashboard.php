@@ -39,12 +39,21 @@ $todayCtx   = dashboard_today_context();
 $notifUnread = $uid > 0 ? get_unread_notification_count($uid) : 0;
 
 // Lead takip (follow-up) kartı verisi (§21) — yalnız yetkili kullanıcı
-$leadFollowData = null; $leadFollowCounts = null; $leadTeam = null;
+$leadFollowData = null; $leadFollowCounts = null; $leadTeam = null; $leadLoginModal = false;
 if ($uid > 0 && can('leads.view')) {
     require_once __DIR__ . '/includes/lead_followup_render.php';
+    require_once __DIR__ . '/includes/lead_notifications.php';
     $leadFollowCounts = lead_reminder_counts($uid, false);
     $leadFollowData   = lead_reminder_dashboard($uid, null);
     if (lead_reminders_can_see_team()) { $leadTeam = lead_reminder_team_by_user(); }
+    // Girişte tamamlanmamış takip özeti modalı (oturumda bir kez, tercihe bağlı)
+    $lnp = lead_notif_prefs($uid);
+    if (!empty($lnp['show_pending_on_login']) && empty($_SESSION['lead_fu_modal_seen'])) {
+        if (($leadFollowCounts['overdue'] ?? 0) > 0 || ($leadFollowCounts['today_open'] ?? 0) > 0) {
+            $leadLoginModal = true;
+        }
+        $_SESSION['lead_fu_modal_seen'] = 1;
+    }
 }
 
 $fmtRate = static fn($v) => $v !== null ? number_format((float) $v, 2, ',', '.') : '—';
@@ -236,5 +245,39 @@ layout_top('Genel Bakış', 'dashboard');
     </div>
 </div>
 
+<?php if ($leadLoginModal):
+    $mOverdue = $leadFollowData['overdue'] ?? [];
+    $mNow     = $leadFollowData['now'] ?? [];
+    $mToday   = $leadFollowData['today'] ?? [];
+    $preview  = array_slice(array_merge($mOverdue, $mNow, $mToday), 0, 8); ?>
+<div id="leadFuModal" style="position:fixed;inset:0;background:rgba(17,24,39,.55);z-index:9998;display:flex;align-items:center;justify-content:center;padding:20px">
+    <div style="background:var(--surface,#fff);color:var(--text,#1f2937);border-radius:10px;max-width:560px;width:100%;box-shadow:0 12px 40px rgba(0,0,0,.3);overflow:hidden">
+        <div style="padding:16px 18px;border-bottom:1px solid var(--border,#eee);display:flex;justify-content:space-between;align-items:center">
+            <strong style="font-size:16px"><?= icon('bell-ring', 'icon-sm') ?> Bekleyen Lead Takipleriniz</strong>
+            <button type="button" onclick="document.getElementById('leadFuModal').remove()" style="background:none;border:none;font-size:22px;cursor:pointer;color:inherit;line-height:1">×</button>
+        </div>
+        <div style="padding:16px 18px">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+                <?php if (($leadFollowCounts['overdue'] ?? 0) > 0): ?><span class="badge badge-danger">Geciken: <?= (int) $leadFollowCounts['overdue'] ?></span><?php endif; ?>
+                <span class="badge badge-info">Bugün: <?= (int) ($leadFollowCounts['today_open'] ?? 0) ?></span>
+                <span class="badge badge-warning">1 saat içinde: <?= (int) ($leadFollowCounts['next_hour'] ?? 0) ?></span>
+            </div>
+            <ul style="list-style:none;margin:0;padding:0;max-height:280px;overflow:auto">
+                <?php foreach ($preview as $r): $od = strtotime((string) $r['remind_at']) < time(); ?>
+                    <li style="padding:7px 0;border-bottom:1px solid var(--border,#eee)">
+                        <a href="<?= e(url('modules/leads/view.php?id=' . (int) $r['lead_id'] . '&tab=reminders')) ?>"><strong><?= e((string) $r['company_name']) ?></strong></a>
+                        <span class="muted" style="font-size:12px">· <?= e(lead_reminder_type_label((string) $r['reminder_type'])) ?> · <?= e((string) $r['remind_at']) ?><?php if ($od): ?> · <span style="color:#b91c1c">gecikmiş</span><?php endif; ?></span>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+            <p class="muted small" style="margin:12px 0 0">Not: Bu özeti kapatmak görevleri tamamlamaz. Takipler ancak sonuç girilerek kapanır.</p>
+        </div>
+        <div style="padding:12px 18px;border-top:1px solid var(--border,#eee);display:flex;gap:8px;justify-content:flex-end">
+            <button type="button" class="btn btn-sm" onclick="document.getElementById('leadFuModal').remove()">Okudum</button>
+            <a class="btn btn-sm btn-primary" href="<?= e(url('modules/leads/reminders.php')) ?>">Takip Panosuna Git</a>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
 <?php
 layout_bottom();
