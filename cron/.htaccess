@@ -1,0 +1,11 @@
+# check_lead_reminders.php yalnızca CLI'den çalışır; web erişimini engelle.
+# (daily-notifications.php token ile HTTP üzerinden çağrılabildiğinden dokunulmaz.)
+<FilesMatch "^check_lead_reminders\.php$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>

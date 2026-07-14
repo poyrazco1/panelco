@@ -424,6 +424,55 @@ function lead_reminders_mark_overdue(): int
     } catch (Throwable $e) { log_error('lead_reminders_mark_overdue: ' . $e->getMessage()); return 0; }
 }
 
+/**
+ * Cron: yaklaşan/zamanı gelen ama henüz bildirim üretilmemiş takipler.
+ * Yalnız aktif kullanıcı + silinmemiş lead. remind_before_minutes dikkate alınır.
+ */
+function lead_reminders_needing_soon_notice(int $limit = 500): array
+{
+    try {
+        $st = db()->prepare(
+            "SELECT r.id, r.lead_id, r.assigned_user_id, r.reminder_type, r.remind_at, r.priority,
+                    r.remind_before_minutes, l.company_name
+             FROM lead_reminders r
+             INNER JOIN leads l ON l.id = r.lead_id AND l.is_deleted = 0
+             INNER JOIN users u ON u.id = r.assigned_user_id AND u.is_active = 1
+             WHERE r.deleted_at IS NULL AND r.status NOT IN ('done','cancelled')
+               AND r.notify_stage = ''
+               AND NOW() >= DATE_SUB(r.remind_at, INTERVAL r.remind_before_minutes MINUTE)
+             ORDER BY r.remind_at ASC LIMIT " . max(1, min(2000, $limit))
+        );
+        $st->execute();
+        return $st->fetchAll();
+    } catch (Throwable $e) { log_error('lead_reminders_needing_soon_notice: ' . $e->getMessage()); return []; }
+}
+
+/** Cron: zamanı geçmiş ama gecikme bildirimi üretilmemiş takipler. */
+function lead_reminders_needing_overdue_notice(int $limit = 500): array
+{
+    try {
+        $st = db()->prepare(
+            "SELECT r.id, r.lead_id, r.assigned_user_id, r.reminder_type, r.remind_at, r.priority, l.company_name
+             FROM lead_reminders r
+             INNER JOIN leads l ON l.id = r.lead_id AND l.is_deleted = 0
+             INNER JOIN users u ON u.id = r.assigned_user_id AND u.is_active = 1
+             WHERE r.deleted_at IS NULL AND r.status NOT IN ('done','cancelled')
+               AND r.remind_at < NOW() AND r.notify_stage <> 'overdue'
+             ORDER BY r.remind_at ASC LIMIT " . max(1, min(2000, $limit))
+        );
+        $st->execute();
+        return $st->fetchAll();
+    } catch (Throwable $e) { log_error('lead_reminders_needing_overdue_notice: ' . $e->getMessage()); return []; }
+}
+
+/** Cron: bir takibin bildirim aşamasını günceller (soon/overdue). */
+function lead_reminder_set_notify_stage(int $id, string $stage): void
+{
+    try {
+        db()->prepare('UPDATE lead_reminders SET notify_stage = :s WHERE id = :id')->execute([':s' => $stage, ':id' => $id]);
+    } catch (Throwable $e) { log_error('lead_reminder_set_notify_stage: ' . $e->getMessage()); }
+}
+
 /** Yaklaşan (henüz vakti gelmemiş ama pencere içindeki) takipleri "upcoming" yapar. */
 function lead_reminders_mark_upcoming(int $windowMinutes = 60): int
 {
