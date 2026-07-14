@@ -190,3 +190,88 @@ function commission_document_inner_html(array $c): string
     document_footer();
     return (string) ob_get_clean();
 }
+
+/** TAHSİLAT / ÖDEME MAKBUZU belge gövdesi (tek cari hareket). */
+function payment_document_inner_html(array $m): string
+{
+    require_once __DIR__ . '/finance.php';
+    $sym = quote_currency_symbol((string) ($m['currency'] ?? 'TRY'));
+    $title = match ((string) ($m['doc_type'] ?? 'manual')) {
+        'collection' => 'TAHSİLAT MAKBUZU',
+        'payment'    => 'ÖDEME MAKBUZU',
+        'invoice'    => 'FATURA / SATIŞ BELGESİ',
+        default      => 'CARİ HAREKET BELGESİ',
+    };
+    $methods = fin_methods();
+    ob_start();
+    document_header([
+        'title'      => $title,
+        'number'     => (string) ($m['receipt_no'] ?? ''),
+        'date'       => (string) ($m['movement_date'] ?? ''),
+        'department' => 'Muhasebe',
+        'extra'      => ['Tür' => fin_doc_type_label((string) ($m['doc_type'] ?? 'manual'))],
+    ]);
+    ?>
+    <div class="doc-party"><strong>Sayın:</strong> <?= e((string) ($m['customer_name'] ?? '')) ?></div>
+    <table class="table" style="margin-top:14px"><tbody>
+        <tr><th style="width:200px">Tutar</th><td><strong><?= e(fmt_money((float) ($m['amount'] ?? 0)) . ' ' . $sym) ?></strong></td></tr>
+        <tr><th>Yön</th><td><?= (string) ($m['direction'] ?? 'debit') === 'debit' ? 'Borç' : 'Alacak' ?></td></tr>
+        <?php if (!empty($m['method'])): ?><tr><th>Ödeme yöntemi</th><td><?= e($methods[$m['method']] ?? (string) $m['method']) ?></td></tr><?php endif; ?>
+        <?php if (!empty($m['reference'])): ?><tr><th>Referans</th><td><?= e((string) $m['reference']) ?></td></tr><?php endif; ?>
+    </tbody></table>
+    <?php if (trim((string) ($m['description'] ?? '')) !== ''): ?>
+        <p style="margin-top:14px"><strong>Açıklama:</strong><br><?= nl2br(e((string) $m['description'])) ?></p>
+    <?php endif; ?>
+    <?php
+    document_signatures('Teslim Eden', 'Teslim Alan / Kaşe-İmza');
+    document_footer();
+    return (string) ob_get_clean();
+}
+
+/**
+ * CARİ HESAP EKSTRESİ belge gövdesi.
+ * @param array $p ['customer_name','from','to','currency','stmt'=>fin_statement()]
+ */
+function statement_document_inner_html(array $p): string
+{
+    $sym  = quote_currency_symbol((string) ($p['currency'] ?? 'TRY'));
+    $stmt = (array) ($p['stmt'] ?? ['opening'=>0,'rows'=>[],'total_debit'=>0,'total_credit'=>0,'closing'=>0]);
+    $period = trim((string) ($p['from'] ?? '') . ' – ' . (string) ($p['to'] ?? ''), ' –');
+    ob_start();
+    document_header([
+        'title'      => 'CARİ HESAP EKSTRESİ',
+        'number'     => (string) ($p['customer_name'] ?? ''),
+        'date'       => date('d.m.Y'),
+        'department' => 'Muhasebe',
+        'extra'      => ['Dönem' => $period !== '' ? $period : 'Tümü'],
+    ]);
+    ?>
+    <div class="doc-party"><strong>Sayın:</strong> <?= e((string) ($p['customer_name'] ?? '')) ?></div>
+    <table class="table" style="margin-top:14px">
+        <thead><tr><th style="width:90px">Tarih</th><th>Belge / Açıklama</th><th class="nowrap">Borç</th><th class="nowrap">Alacak</th><th class="nowrap">Bakiye</th></tr></thead>
+        <tbody>
+            <tr><td></td><td><em>Devir / Açılış bakiyesi</em></td><td></td><td></td><td class="nowrap"><strong><?= e(fmt_money((float) $stmt['opening']) . ' ' . $sym) ?></strong></td></tr>
+            <?php foreach ($stmt['rows'] as $m): ?>
+                <tr>
+                    <td class="nowrap"><?= e((string) ($m['movement_date'] ?? '')) ?></td>
+                    <td><?= e(trim((string) ($m['receipt_no'] ?? '') . ' ' . (string) ($m['description'] ?? ''))) ?: '—' ?></td>
+                    <td class="nowrap"><?= (float) $m['_debit'] > 0 ? e(fmt_money((float) $m['_debit'])) : '' ?></td>
+                    <td class="nowrap"><?= (float) $m['_credit'] > 0 ? e(fmt_money((float) $m['_credit'])) : '' ?></td>
+                    <td class="nowrap"><?= e(fmt_money((float) $m['_balance']) . ' ' . $sym) ?></td>
+                </tr>
+            <?php endforeach; ?>
+        </tbody>
+        <tfoot>
+            <tr><th colspan="2" style="text-align:right">Dönem Toplamı</th>
+                <th class="nowrap"><?= e(fmt_money((float) $stmt['total_debit'])) ?></th>
+                <th class="nowrap"><?= e(fmt_money((float) $stmt['total_credit'])) ?></th>
+                <th class="nowrap"><?= e(fmt_money((float) $stmt['closing']) . ' ' . $sym) ?></th></tr>
+        </tfoot>
+    </table>
+    <p style="margin-top:14px;font-size:12.5px;color:#444">Kapanış bakiyesi: <strong><?= e(fmt_money((float) $stmt['closing']) . ' ' . $sym) ?></strong>
+        (pozitif bakiye, tarafınızın firmamıza olan borcunu gösterir). İşbu ekstreye <strong>7 gün</strong> içinde itiraz edilmezse mutabık sayılır.</p>
+    <?php
+    document_signatures('Düzenleyen', 'Mutabık / Kaşe-İmza');
+    document_footer();
+    return (string) ob_get_clean();
+}

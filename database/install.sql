@@ -2295,3 +2295,27 @@ CREATE TABLE IF NOT EXISTS `user_email_preferences` (
     PRIMARY KEY (`user_id`),
     CONSTRAINT `fk_uep_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+/* =========================================================================
+ |  FİNANS — Cari hareketler (ayrıntı: migrations/2026-07-finance-cari.sql)
+ * ====================================================================== */
+CREATE TABLE IF NOT EXISTS `cari_movements` (
+    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `customer_id` INT UNSIGNED DEFAULT NULL,
+    `customer_name` VARCHAR(190) NOT NULL DEFAULT '',
+    `movement_date` DATE DEFAULT NULL,
+    `doc_type` ENUM('collection','payment','invoice','manual') NOT NULL DEFAULT 'manual',
+    `direction` ENUM('debit','credit') NOT NULL DEFAULT 'debit',
+    `amount` DECIMAL(15,2) NOT NULL DEFAULT 0,
+    `currency` VARCHAR(10) NOT NULL DEFAULT 'TRY',
+    `method` VARCHAR(60) NOT NULL DEFAULT '',
+    `reference` VARCHAR(100) NOT NULL DEFAULT '',
+    `receipt_no` VARCHAR(40) NOT NULL DEFAULT '',
+    `description` VARCHAR(500) NOT NULL DEFAULT '',
+    `is_deleted` TINYINT(1) NOT NULL DEFAULT 0,
+    `created_by` INT UNSIGNED DEFAULT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`), KEY `idx_cari_customer` (`customer_id`), KEY `idx_cari_date` (`movement_date`),
+    KEY `idx_cari_deleted` (`is_deleted`), KEY `idx_cari_receipt` (`receipt_no`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

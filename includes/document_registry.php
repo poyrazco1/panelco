@@ -15,6 +15,8 @@ require_once __DIR__ . '/email_system.php';
 require_once __DIR__ . '/service.php';      // get_service_record
 require_once __DIR__ . '/rma.php';          // get_rma_record
 require_once __DIR__ . '/commissions.php';  // get_commission
+require_once __DIR__ . '/finance.php';      // fin_movement_get
+require_once __DIR__ . '/customers.php';    // get_customer_by_id (makbuz alıcı e-postası)
 
 /** Tüm belge türü tanımları. Yeni bir forma uygulamak için buraya bir giriş eklenir. */
 function document_types(): array
@@ -101,6 +103,27 @@ function document_types(): array
             'vars'        => static fn(array $c, array $actor, ?array $dept) => document_common_vars('Prim',
                 'PRM-' . (string) ($c['id'] ?? ''), (string) ($c['personnel_name'] ?? ''), (string) ($c['personnel_name'] ?? ''),
                 (string) ($c['created_at'] ?? ''), $actor, $dept),
+        ],
+
+        'payment' => [
+            'label'       => 'Makbuz',
+            'module'      => 'finance',
+            'index'       => 'modules/finance/index.php',
+            'orientation' => 'portrait',
+            'load'        => static fn(int $id) => fin_movement_get($id),
+            'no'          => static fn(array $r) => (string) ($r['receipt_no'] ?? ''),
+            'party'       => static fn(array $r) => (string) ($r['customer_name'] ?? ''),
+            'to_email'    => static function (array $r): string {
+                $cid = (int) ($r['customer_id'] ?? 0);
+                if ($cid <= 0) { return ''; }
+                $c = get_customer_by_id($cid);
+                return (string) ($c['email'] ?? '');
+            },
+            'inner'       => static fn(array $r) => payment_document_inner_html($r),
+            'vars'        => static fn(array $m, array $actor, ?array $dept) => document_common_vars(
+                fin_doc_type_label((string) ($m['doc_type'] ?? 'manual')), (string) ($m['receipt_no'] ?? ''),
+                (string) ($m['customer_name'] ?? ''), (string) ($m['customer_name'] ?? ''),
+                (string) ($m['movement_date'] ?? ''), $actor, $dept),
         ],
     ];
     return $types;

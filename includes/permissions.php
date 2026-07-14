@@ -88,6 +88,7 @@ function module_action_registry(): array
         'shipment_addresses' => ['Sevkiyat Adresleri', 'Sevkiyat',   ['view','create','edit','delete']],
         'shipments'       => ['Sevkiyat Takibi',       'Sevkiyat',   ['view','create','edit','delete','status','assign','complete','photo_upload','reports','route_plan','whatsapp','collection_view','collection_create','collection_edit','collection_complete']],
         'commissions'     => ['Primler',               'İK / Finans', ['view','create','edit','delete','export','print']],
+        'finance'         => ['Cari / Finans',         'İK / Finans', ['view','create','edit','delete','mail','pdf','print']],
         'reports'         => ['Raporlar',              'Raporlama',   ['view','export','print']],
         'leads'           => ['Lead Yönetimi',         'Satış',       ['view','create','edit','delete','export','whatsapp','mail']],
         'inventory'       => ['Envanter / Demirbaş',   'Operasyon',   ['view','create','edit','delete','export','print']],

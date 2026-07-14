@@ -55,6 +55,13 @@ function nav_sidebar_groups(): array
              'match' => ['prefix' => ['modules/tsoft-products/']]],
         ],
 
+        'Finans' => [
+            ['perm' => 'finance', 'title' => 'Cari Hareketler', 'path' => 'modules/finance/index.php', 'icon' => 'credit-card',
+             'match' => ['prefix' => ['modules/finance/'], 'not' => ['modules/finance/statement.php']]],
+            ['perm' => 'finance', 'title' => 'Cari Ekstre', 'path' => 'modules/finance/statement.php', 'icon' => 'file-text',
+             'match' => ['exact' => ['modules/finance/statement.php']]],
+        ],
+
         'Sevkiyat' => [
             ['perm' => 'shipments', 'title' => 'Sevkiyat Takibi', 'path' => 'modules/shipments/index.php', 'icon' => 'truck',
              'match' => ['prefix' => ['modules/shipments/'],
