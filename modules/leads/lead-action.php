@@ -22,6 +22,9 @@ $lead   = get_lead($id);
 if (!$lead) { flash('error', 'Lead bulunamadı.'); redirect('modules/leads/index.php'); }
 
 $back = 'modules/leads/view.php?id=' . $id;
+// İsteğe bağlı güvenli dönüş hedefi (yalnız leads modülü içi)
+$ret = (string) ($_POST['return'] ?? '');
+if ($ret !== '' && preg_match('#^modules/leads/[a-z0-9\-]+\.php(\?[a-z0-9=&_]*)?$#i', $ret)) { $back = $ret; }
 
 switch ($action) {
     case 'call':
@@ -51,18 +54,47 @@ switch ($action) {
         break;
 
     case 'reminder':
-        require_action('leads', 'edit');
-        if (lead_reminder_add($id, [
-            'type' => $_POST['type'] ?? 'call', 'remind_at' => $_POST['remind_at'] ?? '',
-            'note' => $_POST['note'] ?? '', 'assigned_to' => $_POST['assigned_to'] ?? 0,
-        ], $uid) > 0) { flash('success', 'Hatırlatma eklendi.'); }
-        else { flash('error', 'Hatırlatma tarihi gerekli.'); }
+        require_action('leads', 'remind');
+        $r = lead_reminder_create($id, [
+            'reminder_type' => $_POST['reminder_type'] ?? 'call', 'reminder_date' => $_POST['reminder_date'] ?? '',
+            'reminder_time' => $_POST['reminder_time'] ?? '', 'priority' => $_POST['priority'] ?? 'normal',
+            'remind_before_minutes' => $_POST['remind_before_minutes'] ?? 0, 'assigned_user_id' => $_POST['assigned_user_id'] ?? 0,
+            'note' => $_POST['note'] ?? '',
+        ], $uid);
+        flash($r['ok'] ? 'success' : 'error', $r['ok'] ? 'Takip planlandı.' : $r['error']);
         break;
 
-    case 'reminder_done':
-        require_action('leads', 'edit');
-        lead_reminder_done((int) ($_POST['reminder_id'] ?? 0), $uid);
-        flash('success', 'Hatırlatma tamamlandı.');
+    case 'reminder_postpone':
+        require_action('leads', 'remind');
+        $r = lead_reminder_postpone((int) ($_POST['reminder_id'] ?? 0), (string) ($_POST['postpone'] ?? ''),
+            (string) ($_POST['custom_at'] ?? ''), (string) ($_POST['reason'] ?? ''), $uid);
+        flash($r['ok'] ? 'success' : 'error', $r['ok'] ? 'Takip ertelendi.' : $r['error']);
+        break;
+
+    case 'reminder_complete':
+        require_action('leads', 'remind');
+        $r = lead_reminder_complete((int) ($_POST['reminder_id'] ?? 0), [
+            'completion_result' => $_POST['completion_result'] ?? '', 'completion_note' => $_POST['completion_note'] ?? '',
+            'contact_person' => $_POST['contact_person'] ?? '', 'new_status' => $_POST['new_status'] ?? '',
+            'need_followup' => isset($_POST['need_followup']) ? 1 : 0,
+            'next_date' => $_POST['next_date'] ?? '', 'next_time' => $_POST['next_time'] ?? '',
+            'next_type' => $_POST['next_type'] ?? '', 'next_priority' => $_POST['next_priority'] ?? '',
+            'next_note' => $_POST['next_note'] ?? '',
+        ], $uid);
+        flash($r['ok'] ? 'success' : 'error', $r['ok'] ? 'Takip tamamlandı.' : $r['error']);
+        break;
+
+    case 'reminder_cancel':
+        require_action('leads', 'remind');
+        lead_reminder_cancel((int) ($_POST['reminder_id'] ?? 0), $uid, (string) ($_POST['reason'] ?? ''));
+        flash('success', 'Takip iptal edildi.');
+        break;
+
+    case 'reminder_reassign':
+        require_action('leads', 'assign');
+        if (!lead_reminders_can_see_team()) { flash('error', 'Yeniden atama yetkiniz yok.'); break; }
+        lead_reminder_reassign((int) ($_POST['reminder_id'] ?? 0), (int) ($_POST['new_user_id'] ?? 0) ?: 0, $uid);
+        flash('success', 'Takip yeniden atandı.');
         break;
 
     case 'assign':

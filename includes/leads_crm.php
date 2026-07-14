@@ -14,6 +14,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/leads.php';
 require_once __DIR__ . '/lead_scan_places.php'; // lead_audit_log
+require_once __DIR__ . '/lead_reminders.php';   // takip (follow-up) yaşam döngüsü (§21)
 
 /* =========================================================================
  |  ARAMA (TELEFON) KAYITLARI  (§7)
@@ -185,64 +186,7 @@ function lead_notes_list(int $leadId, int $limit = 100): array
     } catch (Throwable $e) { return []; }
 }
 
-/* =========================================================================
- |  HATIRLATMALAR  (§13)
- * ====================================================================== */
-
-function lead_reminder_types(): array
-{
-    return ['call' => 'Arama', 'whatsapp' => 'WhatsApp', 'email' => 'E-posta', 'meeting' => 'Görüşme', 'other' => 'Diğer'];
-}
-
-function lead_reminder_add(int $leadId, array $in, ?int $userId): int
-{
-    $remindAt = trim((string) ($in['remind_at'] ?? ''));
-    if ($remindAt === '') { return 0; }
-    $type = (string) ($in['type'] ?? 'call');
-    if (!isset(lead_reminder_types()[$type])) { $type = 'call'; }
-    $assignedTo = (int) ($in['assigned_to'] ?? 0) ?: $userId;
-    try {
-        db()->prepare('INSERT INTO lead_reminders (lead_id, type, remind_at, note, assigned_to, created_by) VALUES (:l,:t,:at,:n,:asg,:by)')
-            ->execute([':l' => $leadId, ':t' => $type, ':at' => $remindAt, ':n' => trim((string) ($in['note'] ?? '')), ':asg' => $assignedTo, ':by' => $userId]);
-        $id = (int) db()->lastInsertId();
-        db()->prepare('UPDATE leads SET next_action_at = :at WHERE id = :id AND (next_action_at IS NULL OR next_action_at > :at2)')
-            ->execute([':at' => $remindAt, ':at2' => $remindAt, ':id' => $leadId]);
-        lead_activity_add($leadId, 'reminder', 'Hatırlatma: ' . $remindAt, ['reminder_id' => $id], $userId);
-        return $id;
-    } catch (Throwable $e) { log_error('lead_reminder_add: ' . $e->getMessage()); return 0; }
-}
-
-function lead_reminder_done(int $reminderId, ?int $userId): bool
-{
-    try {
-        return db()->prepare('UPDATE lead_reminders SET is_done = 1, done_at = NOW() WHERE id = :id')->execute([':id' => $reminderId]);
-    } catch (Throwable $e) { log_error('lead_reminder_done: ' . $e->getMessage()); return false; }
-}
-
-function lead_reminders_for_lead(int $leadId): array
-{
-    try {
-        $st = db()->prepare('SELECT r.*, u.full_name AS assignee FROM lead_reminders r LEFT JOIN users u ON u.id = r.assigned_to WHERE r.lead_id = :l ORDER BY r.is_done ASC, r.remind_at ASC');
-        $st->execute([':l' => $leadId]);
-        return $st->fetchAll();
-    } catch (Throwable $e) { return []; }
-}
-
-/** Kullanıcının bekleyen (vadesi gelen/geçen) hatırlatmaları. */
-function lead_due_reminders(?int $userId, int $limit = 50): array
-{
-    try {
-        $sql = 'SELECT r.*, l.company_name FROM lead_reminders r
-                INNER JOIN leads l ON l.id = r.lead_id AND l.is_deleted = 0
-                WHERE r.is_done = 0 AND r.remind_at <= (NOW() + INTERVAL 1 DAY)';
-        $params = [];
-        if ($userId !== null) { $sql .= ' AND (r.assigned_to = :u OR r.assigned_to IS NULL)'; $params[':u'] = $userId; }
-        $sql .= ' ORDER BY r.remind_at ASC LIMIT ' . max(1, min(200, $limit));
-        $st = db()->prepare($sql);
-        $st->execute($params);
-        return $st->fetchAll();
-    } catch (Throwable $e) { return []; }
-}
+/* Hatırlatma/Takip fonksiyonları includes/lead_reminders.php içine taşındı (§21). */
 
 /* =========================================================================
  |  ATAMALAR  (§12)

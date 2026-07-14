@@ -50,21 +50,24 @@ function lead_status_cache_reset(): void
 /** Tablo yoksa kullanılan güvenli varsayılan durumlar (install.sql ile aynı küme). */
 function lead_status_defaults(): array
 {
-    $mk = static fn(string $code, string $name, string $color, int $so, int $c = 0, int $ok = 0, int $f = 0): array =>
+    $mk = static fn(string $code, string $name, string $color, int $so, int $c = 0, int $ok = 0, int $f = 0, int $rf = 0): array =>
         ['code' => $code, 'name' => $name, 'color' => $color, 'sort_order' => $so,
-         'is_active' => 1, 'is_completed' => $c, 'is_success' => $ok, 'is_failure' => $f];
+         'is_active' => 1, 'is_completed' => $c, 'is_success' => $ok, 'is_failure' => $f, 'requires_followup' => $rf];
     $rows = [
         $mk('new', 'Yeni Lead', 'badge-info', 10),
         $mk('to_review', 'İncelenecek', 'badge-muted', 20),
         $mk('to_call', 'Arama Bekliyor', 'badge-warning', 30),
+        $mk('call_later', 'Daha Sonra Aranacak', 'badge-warning', 35, 0, 0, 0, 1),
         $mk('called', 'Arandı', 'badge-info', 40),
         $mk('unreachable', 'Ulaşılamadı', 'badge-warning', 50),
-        $mk('call_again', 'Tekrar Aranacak', 'badge-warning', 60),
-        $mk('wa_to_send', 'WhatsApp Gönderilecek', 'badge-warning', 70),
+        $mk('call_again', 'Tekrar Aranacak', 'badge-warning', 60, 0, 0, 0, 1),
+        $mk('wa_to_send', 'WhatsApp Gönderilecek', 'badge-warning', 70, 0, 0, 0, 1),
         $mk('wa_sent', 'WhatsApp Gönderildi', 'badge-info', 80),
         $mk('email_sent', 'E-posta Gönderildi', 'badge-info', 90),
         $mk('met', 'Görüşme Yapıldı', 'badge-info', 100),
+        $mk('meet_again', 'Tekrar Görüşülecek', 'badge-warning', 105, 0, 0, 0, 1),
         $mk('wants_quote', 'Teklif İstiyor', 'badge-info', 110),
+        $mk('quote_followup', 'Teklif İçin Dönüş Yapılacak', 'badge-warning', 115, 0, 0, 0, 1),
         $mk('quote_sent', 'Teklif Gönderildi', 'badge-info', 120),
         $mk('positive', 'Olumlu', 'badge-success', 130),
         $mk('converted', 'Müşteriye Dönüştü', 'badge-success', 140, 1, 1, 0),
@@ -76,6 +79,13 @@ function lead_status_defaults(): array
     $out = [];
     foreach ($rows as $r) { $out[$r['code']] = $r; }
     return $out;
+}
+
+/** Bu durum bir takip (tarih/saat) kaydı gerektiriyor mu? (§21) */
+function lead_status_requires_followup(string $code): bool
+{
+    $meta = lead_status_meta($code);
+    return $meta !== null && (int) ($meta['requires_followup'] ?? 0) === 1;
 }
 
 /** Lead durumları — code => etiket (geriye dönük uyum). */
@@ -217,6 +227,10 @@ function delete_lead(int $id, ?int $userId, string $reason = ''): bool
             ->execute([':dby' => $userId, ':r' => mb_substr($reason, 0, 255) ?: null, ':uby' => $userId, ':id' => $id]);
         if ($ok && function_exists('lead_audit_log')) {
             lead_audit_log($id, 'lead_soft_delete', $reason !== '' ? 'Sebep: ' . $reason : '', $userId);
+        }
+        // Silinen lead'in açık takipleri iptal edilir (§21)
+        if ($ok && function_exists('lead_reminders_cancel_for_lead')) {
+            lead_reminders_cancel_for_lead($id, $userId);
         }
         return (bool) $ok;
     } catch (Throwable $e) { log_error('delete_lead: ' . $e->getMessage()); return false; }

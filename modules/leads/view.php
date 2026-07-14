@@ -26,6 +26,7 @@ $notes       = lead_notes_list($id);
 $reminders   = lead_reminders_for_lead($id);
 $history     = lead_status_history($id);
 $waTemplates = lead_wa_templates();
+$assignUsers = lead_assignable_users();
 $tab         = (string) ($_GET['tab'] ?? 'activity');
 
 $actUrl = e(url('modules/leads/lead-action.php'));
@@ -160,28 +161,76 @@ $actTypeLabel = static fn(string $t): string => [
 
         <?php elseif ($tab === 'reminders'): ?>
             <?php if (can('leads.remind')): ?>
-            <div class="card"><div class="card-header"><strong>Hatırlatma Ekle</strong></div><div class="card-body">
+            <div class="card"><div class="card-header"><strong>Takip Planla</strong></div><div class="card-body">
                 <form method="post" action="<?= $actUrl ?>"><?= csrf_field() ?><input type="hidden" name="action" value="reminder"><input type="hidden" name="id" value="<?= $id ?>">
                     <div class="form-row">
-                        <div class="form-group"><label>Tür</label><select name="type"><?php foreach (lead_reminder_types() as $rk => $rl): ?><option value="<?= e($rk) ?>"><?= e($rl) ?></option><?php endforeach; ?></select></div>
-                        <div class="form-group"><label>Tarih/saat</label><input type="datetime-local" name="remind_at" required></div>
-                        <div class="form-group"><label>Sorumlu</label><select name="assigned_to"><option value="0">Ben</option><?php foreach ($people as $pid => $pn): ?><option value="<?= (int) $pid ?>"><?= e($pn) ?></option><?php endforeach; ?></select></div>
+                        <div class="form-group"><label>Takip türü</label><select name="reminder_type"><?php foreach (lead_reminder_types() as $rk => $rl): ?><option value="<?= e($rk) ?>"><?= e($rl) ?></option><?php endforeach; ?></select></div>
+                        <div class="form-group"><label>Tarih</label><input type="date" name="reminder_date" required></div>
+                        <div class="form-group"><label>Saat</label><input type="time" name="reminder_time" required></div>
                     </div>
-                    <div class="form-group"><label>Not</label><input type="text" name="note"></div>
-                    <button class="btn btn-primary btn-sm"><?= icon('bell') ?>Ekle</button>
+                    <div class="form-row">
+                        <div class="form-group"><label>Öncelik</label><select name="priority"><?php foreach (lead_reminder_priorities() as $pk => $pl): ?><option value="<?= e($pk) ?>"<?= $pk === 'normal' ? ' selected' : '' ?>><?= e($pl) ?></option><?php endforeach; ?></select></div>
+                        <div class="form-group"><label>Bildirim zamanı</label><select name="remind_before_minutes"><?php foreach (lead_remind_before_options() as $mk => $ml): ?><option value="<?= (int) $mk ?>"><?= e($ml) ?></option><?php endforeach; ?></select></div>
+                        <div class="form-group"><label>Atanan personel</label><select name="assigned_user_id"><option value="0">Ben</option><?php foreach ($assignUsers as $uido => $un): ?><option value="<?= (int) $uido ?>"><?= e($un) ?></option><?php endforeach; ?></select></div>
+                    </div>
+                    <div class="form-group"><label>Hatırlatma notu</label><input type="text" name="note" placeholder="Örn. fiyat teklifi hatırlat"></div>
+                    <button class="btn btn-primary btn-sm"><?= icon('bell') ?>Takip Ekle</button>
                 </form>
             </div></div>
             <?php endif; ?>
             <div class="card"><div class="card-body">
-                <?php if (!$reminders): ?><div class="empty">Hatırlatma yok.</div><?php else: ?>
-                <?php foreach ($reminders as $rm): $done = (int) $rm['is_done'] === 1; ?>
-                    <div style="padding:8px 0;border-bottom:1px solid var(--border,#eee);display:flex;justify-content:space-between;gap:10px;<?= $done ? 'opacity:.55' : '' ?>">
-                        <div><span class="badge badge-muted"><?= e(lead_reminder_types()[$rm['type']] ?? $rm['type']) ?></span>
-                            <strong><?= e((string) $rm['remind_at']) ?></strong> <?= e((string) ($rm['note'] ?? '')) ?>
-                            <div class="muted" style="font-size:12px"><?= e((string) ($rm['assignee'] ?? '')) ?></div></div>
-                        <?php if (!$done && can('leads.remind')): ?>
-                        <form method="post" action="<?= $actUrl ?>"><?= csrf_field() ?><input type="hidden" name="action" value="reminder_done"><input type="hidden" name="id" value="<?= $id ?>"><input type="hidden" name="reminder_id" value="<?= (int) $rm['id'] ?>"><button class="btn btn-xs"><?= icon('check') ?>Tamam</button></form>
-                        <?php elseif ($done): ?><span class="badge badge-success">Tamamlandı</span><?php endif; ?>
+                <?php if (!$reminders): ?><div class="empty">Takip kaydı yok.</div><?php else: ?>
+                <?php foreach ($reminders as $rm):
+                    $closed = in_array((string) $rm['status'], ['done', 'cancelled'], true);
+                    $rid = (int) $rm['id']; ?>
+                    <div style="padding:10px 0;border-bottom:1px solid var(--border,#eee);<?= $closed ? 'opacity:.6' : '' ?>">
+                        <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
+                            <div>
+                                <span class="badge <?= e(lead_reminder_status_class((string) $rm['status'])) ?>"><?= e(lead_reminder_status_label((string) $rm['status'])) ?></span>
+                                <span class="badge badge-muted"><?= e(lead_reminder_type_label((string) $rm['reminder_type'])) ?></span>
+                                <span class="badge <?= e(lead_reminder_priority_class((string) $rm['priority'])) ?>"><?= e(lead_reminder_priorities()[$rm['priority']] ?? $rm['priority']) ?></span>
+                                <strong><?= e((string) $rm['remind_at']) ?></strong>
+                                <?php if ((int) $rm['postpone_count'] > 0): ?><span class="muted small">· <?= (int) $rm['postpone_count'] ?>x ertelendi</span><?php endif; ?>
+                                <div><?= e((string) ($rm['note'] ?? '')) ?></div>
+                                <div class="muted" style="font-size:12px"><?= e((string) ($rm['assignee'] ?? '')) ?>
+                                    <?php if ($rm['completion_result']): ?> · Sonuç: <?= e(lead_reminder_result_label((string) $rm['completion_result'])) ?><?php endif; ?></div>
+                            </div>
+                            <?php if (!$closed && can('leads.remind')): ?>
+                            <div style="display:flex;gap:6px;align-items:flex-start">
+                                <button type="button" class="btn btn-xs btn-primary" onclick="document.getElementById('cmp<?= $rid ?>').hidden=!document.getElementById('cmp<?= $rid ?>').hidden"><?= icon('check', 'icon-xs') ?>Tamamla</button>
+                                <button type="button" class="btn btn-xs" onclick="document.getElementById('pp<?= $rid ?>').hidden=!document.getElementById('pp<?= $rid ?>').hidden"><?= icon('clock', 'icon-xs') ?>Ertele</button>
+                                <form method="post" action="<?= $actUrl ?>" style="display:inline" onsubmit="return confirm('Takip iptal edilsin mi?')"><?= csrf_field() ?><input type="hidden" name="action" value="reminder_cancel"><input type="hidden" name="id" value="<?= $id ?>"><input type="hidden" name="reminder_id" value="<?= $rid ?>"><button class="btn btn-xs"><?= icon('x', 'icon-xs') ?></button></form>
+                            </div>
+                            <?php endif; ?>
+                        </div>
+                        <?php if (!$closed && can('leads.remind')): ?>
+                        <!-- Tamamla formu -->
+                        <form method="post" action="<?= $actUrl ?>" id="cmp<?= $rid ?>" hidden style="margin-top:10px;background:var(--surface-2,#f7f8fa);padding:10px;border-radius:6px">
+                            <?= csrf_field() ?><input type="hidden" name="action" value="reminder_complete"><input type="hidden" name="id" value="<?= $id ?>"><input type="hidden" name="reminder_id" value="<?= $rid ?>">
+                            <div class="form-row">
+                                <div class="form-group"><label>İşlem sonucu</label><select name="completion_result" required><option value="">— Seçin —</option><?php foreach (lead_reminder_completion_results() as $ck => $cl): ?><option value="<?= e($ck) ?>"><?= e($cl) ?></option><?php endforeach; ?></select></div>
+                                <div class="form-group"><label>Görüşülen kişi</label><input type="text" name="contact_person"></div>
+                                <div class="form-group"><label>Yeni durum</label><select name="new_status"><option value="">(otomatik)</option><?php foreach (lead_statuses() as $sv => $sl): ?><option value="<?= e($sv) ?>"><?= e($sl) ?></option><?php endforeach; ?></select></div>
+                            </div>
+                            <div class="form-group"><label>Görüşme notu</label><input type="text" name="completion_note"></div>
+                            <label class="checkbox"><input type="checkbox" name="need_followup" value="1" onchange="document.getElementById('nf<?= $rid ?>').hidden=!this.checked"> Tekrar takip gerekli</label>
+                            <div id="nf<?= $rid ?>" hidden class="form-row" style="margin-top:6px">
+                                <div class="form-group"><label>Yeni tarih</label><input type="date" name="next_date"></div>
+                                <div class="form-group"><label>Yeni saat</label><input type="time" name="next_time"></div>
+                            </div>
+                            <div style="margin-top:8px"><button class="btn btn-sm btn-primary">Tamamla</button></div>
+                        </form>
+                        <!-- Ertele formu -->
+                        <form method="post" action="<?= $actUrl ?>" id="pp<?= $rid ?>" hidden style="margin-top:10px;background:var(--surface-2,#f7f8fa);padding:10px;border-radius:6px">
+                            <?= csrf_field() ?><input type="hidden" name="action" value="reminder_postpone"><input type="hidden" name="id" value="<?= $id ?>"><input type="hidden" name="reminder_id" value="<?= $rid ?>">
+                            <div class="form-row">
+                                <div class="form-group"><label>Ertele</label><select name="postpone"><?php foreach (lead_reminder_postpone_options() as $ok => $ol): ?><option value="<?= e($ok) ?>"><?= e($ol) ?></option><?php endforeach; ?></select></div>
+                                <div class="form-group"><label>Özel tarih/saat</label><input type="datetime-local" name="custom_at"></div>
+                                <div class="form-group" style="flex:2"><label>Açıklama</label><input type="text" name="reason"></div>
+                            </div>
+                            <button class="btn btn-sm">Ertele</button>
+                        </form>
+                        <?php endif; ?>
                     </div>
                 <?php endforeach; ?>
                 <?php endif; ?>

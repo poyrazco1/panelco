@@ -39,6 +39,7 @@ function permission_action_labels(): array
         'trash'    => 'Çöp Kutusu',
         'restore'  => 'Geri Yükle',
         'purge'    => 'Kalıcı Sil',
+        'team_reminders' => 'Ekip Takipleri',
         // Sevkiyat modülü işlemleri
         'assign'              => 'Ata',
         'complete'            => 'Tamamla',
@@ -99,7 +100,7 @@ function module_action_registry(): array
         'commissions'     => ['Primler',               'İK / Finans', ['view','create','edit','delete','export','print']],
         'finance'         => ['Cari / Finans',         'İK / Finans', ['view','create','edit','delete','mail','pdf','print']],
         'reports'         => ['Raporlar',              'Raporlama',   ['view','export','print']],
-        'leads'           => ['Lead Yönetimi',         'Satış',       ['view','create','edit','delete','export','whatsapp','mail','scan','call','note','remind','assign','status','worklist','trash','restore','purge','import','settings']],
+        'leads'           => ['Lead Yönetimi',         'Satış',       ['view','create','edit','delete','export','whatsapp','mail','scan','call','note','remind','assign','status','worklist','trash','restore','purge','import','settings','team_reminders','reports']],
         'inventory'       => ['Envanter / Demirbaş',   'Operasyon',   ['view','create','edit','delete','export','print']],
         'file_manager'    => ['Dosya Yöneticisi',      'Araçlar',     ['view','upload','delete']],
         'password_vault'  => ['Şifre Kasası',          'Araçlar',     ['view','reveal','create','edit','delete']],
