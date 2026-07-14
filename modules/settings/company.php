@@ -214,7 +214,7 @@ layout_top('Şirket Bilgileri', 'settings');
                         <input type="file" id="<?= e($meta['field']) ?>" name="<?= e($meta['field']) ?>" accept=".png,.jpg,.jpeg,.webp,.svg,image/*">
                         <div class="field-hint"><?= e($meta['hint']) ?></div>
                         <?php if ($val !== '' && is_file(APP_ROOT . '/' . ltrim($val, '/'))): ?>
-                            <div class="settings-media-preview"><img src="<?= e(asset(ltrim($val, '/'))) ?>" alt="<?= e($meta['label']) ?>"></div>
+                            <div class="settings-media-preview"><img src="<?= e(url(ltrim($val, '/'))) ?>" alt="<?= e($meta['label']) ?>"></div>
                         <?php endif; ?>
                     </div>
                 <?php endforeach; ?>
@@ -223,7 +223,7 @@ layout_top('Şirket Bilgileri', 'settings');
                     <input type="file" id="company_favicon_file" name="company_favicon_file" accept=".ico,.png,.svg,image/*">
                     <div class="field-hint">Tüm panel sekmelerinde tarayıcı ikonu olarak gösterilir.</div>
                     <?php if ($fav !== '' && is_file(APP_ROOT . '/' . ltrim($fav, '/'))): ?>
-                        <div class="settings-media-preview is-favicon"><img src="<?= e(asset(ltrim($fav, '/'))) ?>" alt="Favicon"></div>
+                        <div class="settings-media-preview is-favicon"><img src="<?= e(url(ltrim($fav, '/'))) ?>" alt="Favicon"></div>
                     <?php endif; ?>
                 </div>
             </div>

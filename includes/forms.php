@@ -117,7 +117,7 @@ function document_header(array $opts): void
     echo '<div class="doc-header">';
     echo   '<div class="doc-brand">';
     if ($logo !== null) {
-        echo '<img class="doc-logo" src="' . e(asset($logo)) . '" alt="' . e($name) . '">';
+        echo '<img class="doc-logo" src="' . e(url($logo)) . '" alt="' . e($name) . '">';
     }
     echo     '<div class="doc-brand-text">';
     echo       '<p class="doc-company-name">' . e($c['company_name'] !== '' ? $c['company_name'] : $name) . '</p>';
@@ -194,8 +194,8 @@ function document_signatures(string $leftLabel = 'Hazırlayan', string $rightLab
     $box = static function (string $label, ?string $img1, ?string $img2, string $name): void {
         echo '<div class="doc-sign-box">';
         echo   '<div class="doc-sign-media">';
-        if ($img1 !== null) { echo '<img src="' . e(asset($img1)) . '" alt="Kaşe">'; }
-        if ($img2 !== null) { echo '<img src="' . e(asset($img2)) . '" alt="İmza">'; }
+        if ($img1 !== null) { echo '<img src="' . e(url($img1)) . '" alt="Kaşe">'; }
+        if ($img2 !== null) { echo '<img src="' . e(url($img2)) . '" alt="İmza">'; }
         echo   '</div>';
         echo   '<div class="doc-sign-line">' . e($label) . '</div>';
         if ($name !== '') { echo '<div class="doc-sign-name">' . e($name) . '</div>'; }

@@ -90,7 +90,9 @@ $brandMark = static function (int $px) use ($logoUrl, $brand): void {
             <div class="flex items-center justify-between gap-4">
                 <div class="flex items-center gap-2 select-none">
                     <?php $brandMark(28); ?>
-                    <span class="text-white text-lg sm:text-xl font-medium tracking-tight"><?= e($brand) ?></span>
+                    <?php if ($logoUrl === null): ?>
+                        <span class="text-white text-lg sm:text-xl font-medium tracking-tight"><?= e($brand) ?></span>
+                    <?php endif; ?>
                 </div>
                 <div class="flex items-center gap-3">
                     <?php if ($website !== ''): ?>
@@ -143,7 +145,9 @@ $brandMark = static function (int $px) use ($logoUrl, $brand): void {
 
             <div class="flex items-center gap-2 mb-4">
                 <?php $brandMark(24); ?>
-                <span class="text-white text-lg font-medium tracking-tight"><?= e($brand) ?></span>
+                <?php if ($logoUrl === null): ?>
+                    <span class="text-white text-lg font-medium tracking-tight"><?= e($brand) ?></span>
+                <?php endif; ?>
             </div>
 
             <h2 id="loginTitle" class="text-white text-xl font-medium tracking-tight">Panele giriş</h2>

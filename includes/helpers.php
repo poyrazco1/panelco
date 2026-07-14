@@ -378,7 +378,8 @@ if (!function_exists('pub_logo_url')) {
             $path = trim((string) ($st->fetchColumn() ?: ''));
             if ($path === '') { return $val = null; }
             $rel = ltrim($path, '/');
-            if (is_file(APP_ROOT . '/' . $rel)) { return $val = asset($rel); }
+            // Yükleme yolu (uploads/…) web köküne göredir; asset() DEĞİL url() kullanılır.
+            if (is_file(APP_ROOT . '/' . $rel)) { return $val = url($rel); }
         } catch (Throwable $e) {
             // sessiz
         }
@@ -404,7 +405,8 @@ if (!function_exists('pub_favicon_url')) {
             $path = trim((string) ($st->fetchColumn() ?: ''));
             if ($path === '') { return $val = null; }
             $rel = ltrim($path, '/');
-            if (is_file(APP_ROOT . '/' . $rel)) { return $val = asset($rel); }
+            // Yükleme yolu (uploads/…) web köküne göredir; asset() DEĞİL url() kullanılır.
+            if (is_file(APP_ROOT . '/' . $rel)) { return $val = url($rel); }
         } catch (Throwable $e) {
             // sessiz
         }
