@@ -39,21 +39,25 @@ $todayCtx   = dashboard_today_context();
 $notifUnread = $uid > 0 ? get_unread_notification_count($uid) : 0;
 
 // Lead takip (follow-up) kartı verisi (§21) — yalnız yetkili kullanıcı
-$leadFollowData = null; $leadFollowCounts = null; $leadTeam = null; $leadLoginModal = false;
+$leadFollowData = null; $leadFollowCounts = null; $leadTeam = null; $leadLoginModal = false; $leadShowCard = false;
 if ($uid > 0 && can('leads.view')) {
     require_once __DIR__ . '/includes/lead_followup_render.php';
     require_once __DIR__ . '/includes/lead_notifications.php';
-    $leadFollowCounts = lead_reminder_counts($uid, false);
-    $leadFollowData   = lead_reminder_dashboard($uid, null);
-    if (lead_reminders_can_see_team()) { $leadTeam = lead_reminder_team_by_user(); }
-    // Girişte tamamlanmamış takip özeti modalı (oturumda bir kez, tercihe bağlı)
     $lnp = lead_notif_prefs($uid);
-    if (!empty($lnp['show_pending_on_login']) && empty($_SESSION['lead_fu_modal_seen'])) {
-        if (($leadFollowCounts['overdue'] ?? 0) > 0 || ($leadFollowCounts['today_open'] ?? 0) > 0) {
-            $leadLoginModal = true;
-        }
-        $_SESSION['lead_fu_modal_seen'] = 1;
+    $leadFollowCounts = lead_reminder_counts($uid, false);
+    $wantModal = !empty($lnp['show_pending_on_login']) && empty($_SESSION['lead_fu_modal_seen'])
+        && (($leadFollowCounts['overdue'] ?? 0) > 0 || ($leadFollowCounts['today_open'] ?? 0) > 0);
+    // Dashboard kartı verisi (tercihe bağlı) — modal da aynı veriyi kullanır
+    if (!empty($lnp['dashboard_enabled']) || $wantModal) {
+        $leadFollowData = lead_reminder_dashboard($uid, null);
     }
+    if (!empty($lnp['dashboard_enabled']) && lead_reminders_can_see_team()) {
+        $leadTeam = lead_reminder_team_by_user();
+    }
+    // Kart yalnız tercihi açıksa gösterilsin (modal ayrı)
+    $leadShowCard = !empty($lnp['dashboard_enabled']);
+    if ($wantModal) { $leadLoginModal = true; }
+    $_SESSION['lead_fu_modal_seen'] = 1;
 }
 
 $fmtRate = static fn($v) => $v !== null ? number_format((float) $v, 2, ',', '.') : '—';
@@ -117,7 +121,7 @@ layout_top('Genel Bakış', 'dashboard');
 <?php endif; ?>
 
 <!-- 2b) BUGÜNKÜ LEAD TAKİPLERİ (§21) -->
-<?php if ($leadFollowData !== null):
+<?php if ($leadShowCard && $leadFollowData !== null):
     $lfActUrl = e(url('modules/leads/lead-action.php'));
     lead_followup_dashboard_card($leadFollowData, $leadFollowCounts, $lfActUrl, 'dashboard.php');
     if ($leadTeam): ?>
