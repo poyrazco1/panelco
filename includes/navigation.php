@@ -245,6 +245,18 @@ function nav_settings_catalog(): array
             ],
         ],
 
+        'Lead / Tarama Ayarları' => [
+            'icon' => 'user-check',
+            'cards' => [
+                ['title' => 'Lead Tarama (Google Places)', 'icon' => 'map-pin', 'perm' => 'settings', 'url' => 'modules/settings/lead-scan-settings.php',
+                 'desc' => 'Google Places API anahtarı (şifreli), kota/maliyet limitleri, varsayılan ülke/şehir ve tarama davranışı.',
+                 'kw' => 'lead tarama google places api anahtar key kota maliyet kopya duplicate scan'],
+                ['title' => 'WhatsApp / Mesaj Şablonları', 'icon' => 'message-circle', 'perm' => 'settings', 'url' => 'modules/leads/settings.php',
+                 'desc' => 'Lead WhatsApp mesaj şablonu ve Chrome eklentisi güvenli API anahtarı.',
+                 'kw' => 'lead whatsapp mesaj sablon chrome eklenti api token'],
+            ],
+        ],
+
         'Dış Ticaret Ayarları' => [
             'icon' => 'globe',
             'cards' => [
