@@ -1,0 +1,10 @@
+# Git LFS is NOT enabled for binary assets right now: this development
+# container's outbound proxy returns 403 Forbidden on LFS object
+# uploads (verified this session -- see docs/KNOWN_ISSUES.md), so a
+# real `git lfs push` cannot succeed here. Binary assets are committed
+# as regular blobs for now. They are still small (the one generated
+# test-room GLB/blend and a handful of proof screenshots, all under
+# ~40KB each). Re-enable LFS tracking (`git lfs track "*.glb" ...`)
+# once real production-scale assets exist and a working environment is
+# available -- do not re-enable it here without first confirming a
+# push actually succeeds, or it will silently block every future push.

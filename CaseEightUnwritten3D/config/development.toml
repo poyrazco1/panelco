@@ -1,0 +1,11 @@
+# Overrides applied on top of default.toml when CASE_EIGHT_ENV=development (the default).
+[window]
+fullscreen = false
+
+[network]
+server_host = "127.0.0.1"
+
+[dev]
+window_type = "offscreen"   # this container has no GPU/display; see reports/ENVIRONMENT_AUDIT.md
+enable_debug_draw = true
+log_level = "DEBUG"

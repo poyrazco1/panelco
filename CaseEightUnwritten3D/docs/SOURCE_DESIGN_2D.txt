@@ -1,0 +1,2851 @@
+CASE EIGHT: UNWRITTEN — 2DUnity ile Geliştirilecek Yapay Zekâ Hikâyeli, 1–4 Kişilik Çevrim İçi 2D Psikolojik Korku ve Paranormal Araştırma OyunuEKSİKSİZ ANA OYUN TASARIMI, ÇİZİM, SPRITE, ANİMASYON, KODLAMA, ÇOK OYUNCULU SİSTEM, BACKEND, TEST, BUILD VE TESLİM PROMPTUSen bu projede yalnızca fikir veren, örnek kod yazan veya tasarım raporu hazırlayan bir sohbet asistanı olarak çalışmayacaksın.Sen bu oyunun gerçek üretimini gerçekleştiren ana geliştirme yapay zekâsı olacaksın.Aynı anda aşağıdaki görevleri üstleneceksin:
+
+Kıdemli oyun yönetmeni
+
+Unity C# geliştiricisi
+
+Unity 2D geliştiricisi
+
+Çevrim içi çok oyunculu oyun geliştiricisi
+
+Oyun tasarımcısı
+
+Bölüm tasarımcısı
+
+2D çevre sanatçısı
+
+Karakter ve yaratık sanatçısı
+
+Sprite sanatçısı
+
+2D animasyon uzmanı
+
+Tilemap tasarımcısı
+
+Kullanıcı arayüzü tasarımcısı
+
+VFX sanatçısı
+
+Ses tasarımcısı
+
+Backend geliştiricisi
+
+Veritabanı uzmanı
+
+Yapay zekâ vaka sistemi geliştiricisi
+
+Test ve hata ayıklama uzmanı
+
+Windows build uzmanı
+
+Steam entegrasyon geliştiricisiBu promptta tarif edilen oyunun:
+
+Bütün C# kodlarını
+
+Bütün Unity Scene dosyalarını
+
+Bütün Prefablarını
+
+Bütün Tilemap haritalarını
+
+Bütün karakter çizimlerini
+
+Bütün paranormal varlık çizimlerini
+
+Bütün araç ve karavan çizimlerini
+
+Bütün ekipman çizimlerini
+
+Bütün sprite animasyonlarını
+
+Bütün kullanıcı arayüzlerini
+
+Bütün ikonlarını
+
+Bütün çevre ve dekor çizimlerini
+
+Bütün ses bağlantılarını
+
+Bütün ScriptableObject kataloglarını
+
+Bütün oyun sistemlerini
+
+Bütün testlerini
+
+Bütün build ayarlarınısen oluşturacaksın.Kullanıcıdan:
+
+Kod yazmasını
+
+Sprite çizmesini
+
+Animasyon yapmasını
+
+Tilemap hazırlamasını
+
+Scene düzenlemesini
+
+Prefab oluşturmasını
+
+UI bağlamasını
+
+Harita tasarlamasını
+
+Ses yerleştirmesini
+
+Hata düzeltmesiniistemeyeceksin.Nihai amaç:Kullanıcının ZIP dosyasını çıkartarak Unity projesini açabileceği ve yalnızca Windows için build alabileceği eksiksiz CASE EIGHT: UNWRITTEN 2D oyununu oluşturmak.
+
+TEMEL PROJE BİLGİLERİOyunun adı:CASE EIGHT: UNWRITTENGeliştirici stüdyo:ROBOKAR GamesOyun içerisindeki paranormal araştırma kuruluşu:Department EightYapay zekâ vaka sisteminin adı:NARRATOR-8İngilizce slogan:Every case writes a new nightmare.Türkçe slogan:Her vaka yeni bir kâbus yazar.Oyun türleri:
+
+2D üstten görünüş
+
+Psikolojik korku
+
+Paranormal araştırma
+
+Hikâye çözme
+
+Kanıt toplama
+
+Fotoğraf ve video inceleme
+
+1–4 kişilik çevrim içi iş birliği
+
+Tek oyunculu oynanış
+
+Seviye ve ekonomi sistemi
+
+Araç ve araştırma karavanı koleksiyonu
+
+Yapay zekâ destekli dinamik vakalarHedef platform:
+
+Windows 10 64-bit
+
+Windows 11 64-bit
+
+SteamOyun motoru:Unity 6 LTSKurulu olan en güncel Unity 6 LTS patch sürümünü kullan ve proje başladıktan sonra sürümü değiştirme.
+
+OYUNUN 2D GÖRSEL YAPISIOyun tamamen 2D olacaktır.3D model, 3D karakter, 3D araç veya 3D harita kullanılmayacaktır.Kamera:
+
+Üstten görünüş
+
+Hafif eğimli 2D perspektif hissi
+
+Orthographic Camera
+
+Oyuncuyu yumuşak şekilde takip eden kamera
+
+Küçük odalarda yakınlaşma
+
+Büyük dış alanlarda hafif uzaklaşma
+
+Hunt sırasında kontrollü ekran sarsıntısıOyun retro piksel görünümünde olmayacaktır.Görsel stil:
+
+Yüksek çözünürlüklü dijital boyama
+
+Karanlık çizgi roman ve gerçekçi illüstrasyon karışımı
+
+Kirli, nemli ve ürkütücü ortamlar
+
+Sinematik ışıklandırma
+
+Katmanlı gölgeler
+
+Dinamik 2D ışıklar
+
+Sis ve parçacık efektleri
+
+Kan, kir, pas, nem ve aşınma detayları
+
+Tutarlı karakter oranları
+
+Tutarlı renk paleti
+
+Yüksek kaliteli kullanıcı arayüzüKullanılacak Unity sistemleri:
+
+Universal Render Pipeline
+
+2D Renderer
+
+2D Lights
+
+Shadow Caster 2D
+
+Sprite Renderer
+
+Tilemap
+
+Rule Tile
+
+Sprite Atlas
+
+Sorting Layers
+
+Sorting Groups
+
+2D Animation
+
+Animator
+
+Cinemachine 2D
+
+Timeline
+
+Shader Graph
+
+Particle System veya Visual Effect Graph
+
+Addressables
+
+Localization
+
+Input System
+
+Netcode for GameObjects
+
+Unity Transport
+
+Unity Lobby ve Relay
+
+Vivox Voice and Text Chat
+
+ÇÖZÜNÜRLÜK VE ÇİZİM STANDARTLARIAna hedef çözünürlük:1920 × 1080Desteklenecek oranlar:
+
+16:9
+
+16:10
+
+21:9Arayüz farklı ekran oranlarında bozulmamalıdır.3.1 Harita çizimleriHaritalar modüler Tilemap sistemine göre hazırlanmalıdır.Önerilen kaynak Tile boyutu:
+
+256 × 256 pikselTile türleri:
+
+Zemin
+
+Duvar
+
+Köşe
+
+Kapı çerçevesi
+
+Pencere
+
+Halı
+
+Merdiven
+
+Bodrum
+
+Çatı
+
+Bahçe
+
+Yol
+
+Çamur
+
+Çimen
+
+Beton
+
+Taş
+
+Ahşap
+
+Metal
+
+Hastane zemini
+
+Saray zeminiHer haritanın kendine özgü Tile seti bulunmalıdır.3.2 Karakter çizimleriKarakterler yüksek çözünürlüklü sprite olarak çizilmelidir.Her karakter için sekiz yön desteklenmelidir:
+
+Yukarı
+
+Yukarı sağ
+
+Sağ
+
+Aşağı sağ
+
+Aşağı
+
+Aşağı sol
+
+Sol
+
+Yukarı solYatay yönlerde uygun sprite aynalama kullanılabilir fakat giysi ve ekipman hataları oluşmamalıdır.3.3 Karakter animasyonlarıHer oyuncu karakterinde en az:
+
+Idle
+
+Walk
+
+Run
+
+Crouch
+
+Crouch Walk
+
+Carry Item
+
+Use Equipment
+
+Use Phone
+
+Use Radio
+
+Take Photo
+
+Open Door
+
+Pick Up Item
+
+Drop Item
+
+Hide
+
+Hold Breath
+
+Hurt
+
+Deathanimasyonları bulunmalıdır.Önerilen kare sayıları:
+
+Idle: 4–6 kare
+
+Walk: 8 kare
+
+Run: 8 kare
+
+Crouch: 4–6 kare
+
+Ekipman kullanma: 4–8 kare
+
+Ölüm: 8–14 kare
+
+Telefon kullanma: 4–6 kare
+
+DÜRÜSTLÜK VE GELİŞTİRME ORTAMI KONTROLÜGerçek üretime başlamadan önce çalışma ortamını kontrol et.İlk yanıtında aşağıdaki maddeleri dürüstçe bildir:
+
+Unity 6 LTS kurulu mu?
+
+Unity Editor açılabiliyor mu?
+
+Unity batch mode kullanılabiliyor mu?
+
+Windows Build Support kurulu mu?
+
+C# kodları derlenebiliyor mu?
+
+Unity Scene oluşturulabiliyor mu?
+
+Prefab oluşturulabiliyor mu?
+
+Tilemap düzenlenebiliyor mu?
+
+2D sprite üretme aracı var mı?
+
+Görsel düzenleme aracı var mı?
+
+Sprite Sheet oluşturulabiliyor mu?
+
+Ses işleme araçları var mı?
+
+İnternet erişimi var mı?
+
+Node.js kullanılabiliyor mu?
+
+PostgreSQL veya SQLite kullanılabiliyor mu?
+
+Steamworks erişimi var mı?
+
+Windows build çalıştırılabiliyor mu?
+
+Yeterli disk alanı var mı?Erişimin olmayan işlemleri gerçekleştirilmiş gibi gösterme.Şunlar kesinlikle yasaktır:
+
+Sahte Unity build logu üretmek
+
+Olmayan Scene dosyalarını varmış gibi göstermek
+
+Boş Prefabları tamamlanmış göstermek
+
+Missing Script bulunan Prefab teslim etmek
+
+Derlenmeyen C# kodlarını çalışıyor olarak sunmak
+
+Oluşturulmayan sprite’ları hazır göstermek
+
+Placeholder görselleri nihai çizim olarak sunmak
+
+Test edilmemiş çok oyunculu sistemi test edilmiş göstermek
+
+Başarısız test sonuçlarını başarılı olarak değiştirmek
+
+NİHAİ TESLİM HEDEFİNihai ZIP açıldığında aşağıdaki yapıda gerçek Unity projesi bulunmalıdır:
+
+CaseEightUnwritten2D/
+├── Assets/
+├── Packages/
+├── ProjectSettings/
+├── Backend/
+├── Database/
+├── Documentation/
+├── Licensing/
+├── SourceArt/
+├── BuildScripts/
+├── TestReports/
+└── Builds/
+
+
+Nihai projede:
+
+Console Error sayısı sıfır olmalıdır.
+
+Missing Script sayısı sıfır olmalıdır.
+
+Missing Sprite sayısı sıfır olmalıdır.
+
+Pembe materyal bulunmamalıdır.
+
+Bozuk Prefab bulunmamalıdır.
+
+Kayıp ses referansı bulunmamalıdır.
+
+NullReferenceException bulunmamalıdır.
+
+Bütün ana Scene’ler açılmalıdır.
+
+Tek oyunculu oyun çalışmalıdır.
+
+Çok oyunculu lobi çalışmalıdır.
+
+Windows build ayarları hazır olmalıdır.Mümkünse ayrıca çalıştırılabilir Windows sürümü teslim edilmelidir:
+
+Builds/Windows/CaseEightUnwritten2D.exe
+
+
+OYUNUN ANA FİKRİCASE EIGHT: UNWRITTEN, 1–4 oyuncunun Department Eight isimli gizli paranormal araştırma kuruluşunda çalıştığı 2D psikolojik korku oyunudur.Oyuncular terk edilmiş veya kapatılmış alanlara gönderilir.Her görevde farklı bir olay bulunur.Oyuncular yalnızca paranormal varlığın türünü bulmaya çalışmaz.Aşağıdaki soruların cevaplarını araştırır:
+
+Bu mekânda ne yaşandı?
+
+Burada kimler bulunuyordu?
+
+Kim öldü?
+
+Kim kayboldu?
+
+Hangi kişi yalan söyledi?
+
+Hangi belge değiştirildi?
+
+Hangi kayıt sahteydi?
+
+Varlık nasıl oluştu?
+
+Varlık kimi koruyor?
+
+Varlık kimden intikam almak istiyor?
+
+Varlık ne istiyor?
+
+Hangi kanıtlar gerçek?
+
+Hangi kanıtlar yanıltıcı?
+
+Doğru ritüel nedir?
+
+Varlık nasıl sakinleştirilir?
+
+Varlık nasıl mühürlenir?
+
+Görev alanından güvenli çıkış nasıl açılır?Oyuncular görev sonunda olayın doğru hikâyesini kurmalıdır.
+
+ZORUNLU OYUNCU EĞİTİMİOyuncu oyunu ilk kez açtığında doğrudan çevrim içi göreve katılamamalıdır.Önce şu eğitimi tamamlamalıdır:Department Eight Field CertificationTürkçe adı:Department Eight Saha SertifikasyonuEğitim ayrı 2D haritalarda gerçekleşmelidir.Eğitim alanları:
+
+Department Eight kabul salonu
+
+Karakter oluşturma odası
+
+Hareket eğitim koridoru
+
+İletişim test odası
+
+Karavan garajı
+
+Ekipman laboratuvarı
+
+Küçük test evi
+
+Kontrollü Hunt alanı
+
+Equipment Return Scanner alanı
+
+Görev raporu terminali7.1 Eğitimde öğretilecek sistemler
+
+Yürüme
+
+Koşma
+
+Çömelme
+
+Eşya alma
+
+Eşya bırakma
+
+Kapı açma
+
+Çekmece açma
+
+Telefon kullanma
+
+Yazılı mesaj gönderme
+
+Yakınlık mikrofonu
+
+Telsiz
+
+Telefon görüşmesi
+
+El feneri
+
+EMF
+
+UV ışık
+
+Termometre
+
+Fotoğraf makinesi
+
+Video kamera
+
+Saklanma
+
+Telefonu sessize alma
+
+Elektronik cihaz kapatma
+
+Nefes tutma
+
+Return Scanner
+
+Görev raporu7.2 Kontrollü HuntEğitim evinde kontrollü bir Hunt başlatılır.Oyuncu:
+
+Işıkların titrediğini görür.
+
+Telefonunu sessize alır.
+
+Elektronik cihazını kapatır.
+
+Dolaba saklanır.
+
+Nefesini tutar.
+
+Hunt bittikten sonra dışarı çıkar.Eğitim sırasında kalıcı ölüm olmaz.7.3 Eğitim ödülleriEğitim tamamlandığında:
+
+Başlangıç araştırma karavanı
+
+Başlangıç kişisel aracı
+
+Ücretsiz temel ekipman seti
+
+Field Certified rozeti
+
+Başlangıç telefon teması
+
+Başlangıç oyun içi dolarıverilir.
+
+KARAKTER OLUŞTURMAİki ana karakter seçeneği:
+
+Erkek
+
+KadınOyuncu ücretsiz olarak:
+
+Yüz
+
+Göz
+
+Göz rengi
+
+Ten tonu
+
+Saç
+
+Saç rengi
+
+Sakal
+
+Yara izi
+
+Çil
+
+Kıyafet rengi
+
+Ses profilideğiştirebilir.2D karakter sistemi modüler olmalıdır.Karakter şu katmanlardan oluşabilir:
+
+Base Body
+
+Face
+
+Hair
+
+Beard
+
+Upper Clothing
+
+Lower Clothing
+
+Shoes
+
+Gloves
+
+Hat
+
+Glasses
+
+Accessories
+
+Carried EquipmentBütün katmanlar animasyon yönleriyle uyumlu olmalıdır.Kozmetikler oynanış avantajı vermemelidir.
+
+DEPARTMENT EIGHT KARARGÂHIKarargâh, ana menü yerine kullanılan büyük bir 2D sosyal lobi haritasıdır.Alanlar:
+
+Ana giriş
+
+Görev seçim merkezi
+
+Harita panosu
+
+Ekipman mağazası
+
+Satın alınmış ekipman odası
+
+Araştırma karavanı garajı
+
+Kişisel araç garajı
+
+Araç modifikasyon alanı
+
+Karakter özelleştirme bölümü
+
+Kozmetik mağazası
+
+Telefon mağazası
+
+Fotoğraf arşivi
+
+Video arşivi
+
+Varlık arşivi
+
+Kemik vitrini
+
+Lanetli nesne vitrini
+
+Rozet duvarı
+
+Challenge Mode terminali
+
+Basketbol alanı
+
+Mikrofon test alanı
+
+Eğitim girişi9.1 Karargâh tasarımıKarargâh modern fakat kasvetli görünmelidir.Renkler:
+
+Koyu gri
+
+Soğuk mavi
+
+Soluk beyaz
+
+Acil durum kırmızısı
+
+Metalik yüzeylerDuvarlarda:
+
+Vaka fotoğrafları
+
+Haritalar
+
+Gizli dosyalar
+
+Paranormal varlık çizimleri
+
+Eski ekip fotoğrafları
+
+Department Eight logolarıbulunmalıdır.9.2 BasketbolOyuncular lobide basketbol oynayabilir.Basketbol:
+
+Para vermez.
+
+XP vermez.
+
+Sadece sosyal eğlencedir.
+
+ANA OYNANIŞ DÖNGÜSÜ
+
+Oyuncu oyunu açar.
+
+Profil yüklenir.
+
+İlk girişte eğitim tamamlanır.
+
+Oyuncu karargâha girer.
+
+Karakterini düzenler.
+
+Ekipman satın alır.
+
+Araç ve karavan satın alır.
+
+Araçlarını modifiye eder.
+
+Lobi oluşturur veya lobiye katılır.
+
+Harita seçilir.
+
+Zorluk seçilir.
+
+Primary Command Caravan seçilir.
+
+Oyuncular kişisel araç veya karavan yolculuğunu seçer.
+
+Göreve götürülecek ekipmanlar seçilir.
+
+NARRATOR-8 yeni vaka oluşturur.
+
+Görev haritası yüklenir.
+
+2D konvoy sinematiği oynar.
+
+Araçlar görev alanına gelir.
+
+Oyuncular karavandan ekipman alır.
+
+Araştırma başlar.
+
+Kanıtlar bulunur.
+
+Fotoğraflar çekilir.
+
+Ses kayıtları alınır.
+
+Oyuncular telefondan mesajlaşır.
+
+Yakınlık sesi ve telsiz kullanılır.
+
+Varlık faaliyetleri artar.
+
+Hunt başlar.
+
+Çıkışlar kapanır.
+
+Oyuncular saklanır.
+
+Hunt biter.
+
+Araştırma devam eder.
+
+Kanıtlar karavanda incelenir.
+
+Olay zaman çizelgesi oluşturulur.
+
+Doğru teori seçilir.
+
+Ritüel uygulanır.
+
+Final tamamlanır.
+
+Equipment Recovery Phase başlar.
+
+Oyuncular ekipmanlarını toplar.
+
+Ekipmanlar karavana geri getirilir.
+
+Tahliye başlar.
+
+Görev sonucu gösterilir.
+
+Oyuncular karargâha döner.
+
+TAM OLARAK 8 ANA HARİTAEğitim ve karargâh sekiz harita sayısına dâhil değildir.Her harita 2D Tilemap sistemiyle hazırlanmalıdır.11.1 Hollow Creek ResidenceAçılma seviyesi: 1Tasarım:Terk edilmiş iki katlı aile evidir.Alanlar:
+
+Ön bahçe
+
+Arka bahçe
+
+Garaj
+
+Giriş
+
+Salon
+
+Mutfak
+
+Yemek odası
+
+Banyo
+
+Üç yatak odası
+
+Bodrum
+
+Çatı arası
+
+Bahçe kulübesiKatlar arasında merdiven veya sahne geçişi kullanılabilir.Renk paleti:
+
+Soluk sarı
+
+Soğuk mavi
+
+Kirli kahverengi
+
+Karanlık yeşil11.2 Grey Pines MotelAçılma seviyesi: 3Alanlar:
+
+Resepsiyon
+
+12 motel odası
+
+Müdür ofisi
+
+Çamaşırhane
+
+Depo
+
+Kazan dairesi
+
+Boş havuz
+
+Otopark
+
+Orman sınırıRenk paleti:
+
+Kırmızı neon
+
+Kirli yeşil
+
+Koyu gri
+
+Soluk pembe11.3 Morrow FarmsteadAçılma seviyesi: 6Alanlar:
+
+Çiftlik evi
+
+Ahır
+
+Silo
+
+Atölye
+
+Sera
+
+Mahzen
+
+Kuyu
+
+Kümes
+
+TarlaRenk paleti:
+
+Kahverengi
+
+Sisli gri
+
+Ay ışığı mavisi
+
+Kirli sarı11.4 Blackridge High SchoolAçılma seviyesi: 10Alanlar:
+
+İdari bölüm
+
+18 sınıf
+
+Fen laboratuvarı
+
+Bilgisayar laboratuvarı
+
+Kütüphane
+
+Spor salonu
+
+Soyunma odaları
+
+Yemekhane
+
+Sahne
+
+Revir
+
+Kazan dairesi
+
+Okul bahçesiRenk paleti:
+
+Floresan beyaz
+
+Koyu mavi
+
+Kirli yeşil
+
+Soluk kırmızı11.5 Northvale Memorial HospitalAçılma seviyesi: 14Alanlar:
+
+Acil servis
+
+Hasta odaları
+
+Yoğun bakım
+
+Ameliyathane
+
+Radyoloji
+
+Eczane
+
+Morg
+
+Psikiyatri
+
+Bodrum
+
+Ambulans alanıRenk paleti:
+
+Soğuk yeşil
+
+Kirli beyaz
+
+Hastane mavisi
+
+Alarm kırmızısı11.6 Bellweather Grand HotelAçılma seviyesi: 18Alanlar:
+
+Büyük lobi
+
+Resepsiyon
+
+Balo salonu
+
+Restoran
+
+Mutfak
+
+Otel odaları
+
+Büyük süit
+
+Personel alanları
+
+Bodrum
+
+Soğuk depo
+
+Servis tünelleriRenk paleti:
+
+Eski altın
+
+Bordo
+
+Koyu ahşap
+
+Soluk sarı11.7 Kestrel Underground Research SiteAçılma seviyesi: 24Alanlar:
+
+Güvenlik
+
+Dekontaminasyon
+
+Laboratuvarlar
+
+Denek odaları
+
+Kontrol merkezi
+
+Sunucu odası
+
+Jeneratör
+
+Karantina
+
+Tüneller
+
+Acil şaftRenk paleti:
+
+Metalik gri
+
+Soğuk mavi
+
+Alarm kırmızısı
+
+Karanlık siyah11.8 Crimson Crown PalaceTürkçe adı:Kızıl Taç SarayıAçılma seviyesi: 30Tamamen kurgusal saraydır.Alanlar:
+
+Dış avlu
+
+Büyük giriş
+
+Tören salonu
+
+Kabul odaları
+
+Aile kanadı
+
+Arşiv
+
+İki katlı kütüphane
+
+Hamam
+
+Mutfak
+
+Hizmetli kanadı
+
+İç avlu
+
+Bodrum
+
+Servis tünelleri
+
+Saat kulesi
+
+ÇatıRenk paleti:
+
+Koyu kırmızı
+
+Eski altın
+
+Taş grisi
+
+Ay ışığı mavisiÖzel olaylar:
+
+Hareket eden portreler
+
+Duran saatler
+
+Sallanan avizeler
+
+Açılan gizli geçitler
+
+Hamam buharı
+
+Büyük perdeler
+
+Saray çanı
+
+Bozulan aynalar
+
+HARİTA KATMANLARIHer harita aşağıdaki Tilemap katmanlarına ayrılmalıdır:
+
+Ground
+
+Floor Details
+
+Walls
+
+Wall Details
+
+Furniture Below Player
+
+Furniture Above Player
+
+Doors
+
+Interactables
+
+Evidence Sockets
+
+Hiding Spots
+
+Entity Navigation
+
+Collision
+
+Lighting
+
+Fog
+
+VFX
+
+Roof
+
+Foreground OcclusionOyuncu duvar arkasına geçtiğinde duvarın üst kısmı saydamlaşmalıdır.Kapalı odaların içi oyuncu girmeden tam olarak görünmemelidir.Görüş sistemi kullanılmalıdır.
+
+GÖRÜŞ VE KARANLIK SİSTEMİOyuncu bütün haritayı aynı anda görmemelidir.Görüş alanı:
+
+Oyuncunun çevresinde sınırlı olmalıdır.
+
+Duvarlar görüşü engellemelidir.
+
+Kapılar açıldığında görüş genişlemelidir.
+
+El feneri koni şeklinde ışık üretmelidir.
+
+Telefon ekranı küçük ışık üretmelidir.
+
+Hunt sırasında görüş daralabilmelidir.
+
+Fear yükseldikçe görüntü bozulabilmelidir.Kullanılabilecek efektler:
+
+Vignette
+
+Noise
+
+Chromatic Aberration benzeri 2D shader
+
+Ekran titremesi
+
+Glitch
+
+Renk kayması
+
+Kısa süreli gölge siluetleri
+
+Sahte oyuncu sprite’ları
+
+NARRATOR-8 VAKA SİSTEMİOyun tamamen çevrim içi AI servisine bağımlı olmamalıdır.İki sistem bulunmalıdır:14.1 Yerel prosedürel vaka üreticiİnternet veya API anahtarı olmadan çalışmalıdır.Aşağıdaki yapı taşlarını birleştirerek yeni vakalar oluşturmalıdır:
+
+Kişi adları
+
+Meslekler
+
+Aile ilişkileri
+
+İş ilişkileri
+
+Ölüm nedenleri
+
+Kayıp olayları
+
+Yalanlar
+
+Sahte belgeler
+
+Kanıt şablonları
+
+Ritüel şablonları
+
+Varlık davranışları
+
+Harita soketleriBu sistem sayesinde oyun hiçbir dış servise ihtiyaç duymadan oynanabilir olmalıdır.14.2 İsteğe bağlı yapay zekâ sağlayıcısıDış AI servisi kullanılırsa:
+
+Yalnızca vaka metinlerini zenginleştirmelidir.
+
+Oyunun temel mantığını kontrol etmemelidir.
+
+API anahtarı oyun istemcisinde bulunmamalıdır.
+
+Backend üzerinden kullanılmalıdır.
+
+Servis çalışmazsa yerel vaka üretici devreye girmelidir.14.3 Yapay zekânın belirleyebileceği bilgiler
+
+Vaka başlığı
+
+Olay özeti
+
+Kişiler
+
+İlişkiler
+
+Kurban
+
+Kayıp kişi
+
+Gizli olay
+
+Sahte kayıt
+
+Varlığın kökeni
+
+Varlığın amacı
+
+Kanıt bağlantıları
+
+Ritüel
+
+Final
+
+Rapor soruları14.4 Yapay zekânın belirleyemeyeceği bilgiler
+
+Dünya koordinatları
+
+Para
+
+XP
+
+Hasar
+
+Oyuncu ölümü
+
+Ekipman sahipliği
+
+Eşya kimliği
+
+Hile cezaları
+
+Gerçek zamanlı varlık hareketi14.5 Kanıt kuralıHer kritik gerçek en az üç bağımsız kanıtla desteklenmelidir.Kanıt türleri:
+
+Belge
+
+Fotoğraf
+
+Video
+
+Ses kaydı
+
+Fiziksel nesne
+
+UV izi
+
+Termal iz
+
+Telefon mesajı
+
+Çevresel olay
+
+Varlık tepkisi
+
+TAM OLARAK 20 PARANORMAL VARLIK GÖRÜNÜMÜ
+
+The Charred — Kömürleşmiş
+
+The Drowned — Suda Kalmış
+
+The Porcelain Face — Porselen Yüz
+
+The Tall Hollow — Uzun Boşluk
+
+The Shadow Body — Gölge Beden
+
+The Decayed Noble — Çürümüş Asil
+
+The Orderly — Eski Görevli
+
+The Caretaker — Bakıcı
+
+The Veiled Figure — Peçeli Figür
+
+The Faceless — Yüzsüz
+
+The Bone Frame — Kemik Çerçeve
+
+The Mirrored Double — Aynalı Kopya
+
+The Stitched — Dikilmiş
+
+The Bent Crawler — Bükülmüş Sürünen
+
+The Ashen Pilgrim — Kül Yolcusu
+
+The Forgotten Guard — Unutulmuş Muhafız
+
+The Court Figure — Saray Figürü
+
+The Mechanic — Mekanikçi
+
+The Wrapped — Sarılı
+
+The Translucent Echo — Saydam YankıHer varlık için:
+
+Ana portre çizimi
+
+Üstten görünüş sprite
+
+Dört yönlü veya sekiz yönlü hareket
+
+Idle animasyonu
+
+Walk animasyonu
+
+Hunt animasyonu
+
+Manifestation animasyonu
+
+Disappear animasyonu
+
+Attack animasyonu
+
+Death veya final animasyonu
+
+En az üç renk varyasyonu
+
+En az iki kıyafet varyasyonu
+
+En az iki yüz varyasyonu
+
+Gölge sprite’ı
+
+Termal görünüm sprite’ı
+
+UV görünüm sprite’ı
+
+Fotoğraf bozulma efekti
+
+Video glitch efektihazırlanmalıdır.Varlığın görünümü davranışını belirlememelidir.
+
+VARLIK DAVRANIŞ SİSTEMİVarlık dil modeliyle gerçek zamanlı hareket ettirilmemelidir.Durumlar:
+
+Dormant
+
+Aware
+
+Disturbance
+
+Manifestation
+
+Stalking
+
+HuntPreparation
+
+Hunt
+
+Search
+
+Cooldown
+
+Enraged
+
+FinalEncounterVarlık şunları algılayabilir:
+
+Oyuncu görüşü
+
+Adım sesi
+
+Koşma
+
+Açılan kapılar
+
+Düşen eşyalar
+
+Yakınlık mikrofonu
+
+Telsiz
+
+Telefon görüşmesi
+
+Telefon zil sesi
+
+Telefon titreşimi
+
+Açık elektronik cihazlar
+
+Lanetli nesne kullanımı
+
+Tekrar kullanılan saklanma alanıVarlık hareket sistemi:
+
+Grid tabanlı yol bulma
+
+A* Pathfinding veya Unity NavMesh 2D uyumlu sistem
+
+Kapı geçişleri
+
+Oda arama noktaları
+
+Son görülen oyuncu konumu
+
+Son duyulan ses konumu
+
+Saklanma alanı hafızasıkullanmalıdır.
+
+HUNT SİSTEMİHunt öncesinde:
+
+Işıklar titrer.
+
+Telefon ekranı bozulur.
+
+Telsiz parazitlenir.
+
+Saatler durur.
+
+Kapılar kapanır.
+
+Karavan ekranları kapanır.
+
+Varlık kısa süre görünür.
+
+Oyuncunun görüş alanı daralır.Hunt başladığında:
+
+Çıkış kapıları kilitlenir.
+
+Harita sınırları kapanır.
+
+Tahliye durur.
+
+Karavan kullanılamaz.
+
+Return Scanner kapanır.
+
+Kişisel araçlara binilemez.
+
+Telefon sinyali bozulur.
+
+Telsiz parazitlenir.Oyuncular gerçek saklanma alanlarına gitmek zorundadır.
+
+SAKLANMA SİSTEMİSaklanma alanları:
+
+Gardırop
+
+Dolap
+
+Okul dolabı
+
+Temizlik dolabı
+
+Yatak altı
+
+Masa altı
+
+Tuvalet kabini
+
+Duş perdesi
+
+Hastane perdesi
+
+Morg çekmecesi
+
+Depo rafı
+
+Sandık
+
+Samanlık
+
+Ahır bölmesi
+
+Sahne perdesi
+
+Saray perdesi
+
+Kütüphane rafı
+
+Hizmetli geçidi
+
+Havalandırma girintisi
+
+Soğuk depoOyuncu saklanırken:
+
+Hareket edemez.
+
+Sınırlı görüşe sahip olur.
+
+Kapıyı tutabilir.
+
+Nefesini tutabilir.
+
+Telefonunu sessize alabilir.
+
+Elektronik cihazlarını kapatabilir.
+
+Mikrofon sesi varlık tarafından algılanabilir.Aynı saklanma alanı tekrar kullanıldıkça risk artmalıdır.
+
+OYUN İÇİ TELEFONHer oyuncunun oyun içinde telefonu olmalıdır.Telefon ayrı tam ekran arayüz olarak açılabilir fakat oyun durmamalıdır.Telefon açıldığında karakterin telefon kullanma animasyonu görünmelidir.Telefon uygulamaları:
+
+Team Chat
+
+Direct Messages
+
+Contacts
+
+Voice Calls
+
+Evidence
+
+Photos
+
+Video Clips
+
+Map
+
+Objectives
+
+Case Notes
+
+Player Status
+
+Settings
+
+Emergency
+
+Report Player
+
+Blocked Players19.1 MesajlaşmaOyuncular:
+
+Lobi sohbeti
+
+Takım sohbeti
+
+Özel mesajkullanabilir.Özellikler:
+
+Zaman damgası
+
+Gönderen adı
+
+Yazıyor göstergesi
+
+Bildirim
+
+Titreşim
+
+Sessiz mod
+
+Hızlı mesajlar
+
+Küfür filtresi
+
+Engelleme
+
+Raporlama19.2 Paranormal mesajlarYüksek zorlukta varlık paranormal mesajlar gösterebilir.İpuçları:
+
+Yanlış saat
+
+Bozuk profil fotoğrafı
+
+Eksik harf
+
+Ters sembol
+
+Glitch
+
+İmkânsız konum bilgisiVarlık gerçek oyuncunun hesabından mesaj gönderemez.19.3 Telefon pili
+
+Telefonun ayrı pili bulunur.
+
+Karavanda şarj edilir.
+
+Power bank kullanılabilir.
+
+Düşük pilde parlaklık azalır.
+
+Sinyal olmayan odalarda mesajlar gecikir.
+
+Bildirim sesi Hunt sırasında oyuncuyu ele verebilir.
+
+SESLİ İLETİŞİMÜç iletişim sistemi bulunmalıdır:Yakınlık sesiYakındaki oyuncular birbirlerini duyar.Duvar ve kapılar sesi azaltır.TelsizUzaktaki takım arkadaşlarıyla konuşmayı sağlar.Telsiz:
+
+Pil tüketir.
+
+Parazitlenebilir.
+
+Hunt sırasında kesilebilir.
+
+Varlık tarafından duyulabilir.Telefon görüşmesiİki oyuncu arasında özel konuşma sağlar.Oyuncular:
+
+Arama yapabilir.
+
+Aramayı kabul edebilir.
+
+Reddedebilir.
+
+Sessize alabilir.
+
+Hoparlör moduna geçebilir.Vivox veya eşdeğer sistem kullanılmalıdır.Mikrofon kullanmak istemeyen oyuncular yazılı sohbetle oyunu oynayabilmelidir.
+
+TAM OLARAK 8 ARAŞTIRMA KARAVANIAraştırma karavanları 2D olarak hazırlanmalıdır.Her karavan için:
+
+Üstten dış görünüş sprite
+
+Yan görünüş sinematik sprite
+
+Ön görünüş sprite
+
+Arka görünüş sprite
+
+İç mekân 2D sahnesi
+
+Kapı açma animasyonu
+
+Işık animasyonu
+
+Ekipman rafı düzeni
+
+Return Scanner çizimi
+
+Karavan ikonları
+
+Renk varyasyonlarıoluşturulmalıdır.21.1 Nordmark Kestrel C1
+
+Seviye 1
+
+Eğitim sonrası ücretsiz
+
+16 ekipman yuvası
+
+2 ekran
+
+4 şarj noktası
+
+1 Return ScannerKompakt ve sade başlangıç karavanıdır.21.2 Irontrail Ranger R2
+
+Seviye 5
+
+$9.000
+
+24 ekipman yuvası
+
+3 ekran
+
+6 şarj noktası
+
+Büyük Return ScannerDayanıklı ticari karavandır.21.3 Aurum Vela Grand
+
+Seviye 10
+
+$16.000
+
+26 ekipman yuvası
+
+4 ekran
+
+8 şarj noktası
+
+Ses analiz masasıLüks ve sessiz araştırma karavanıdır.21.4 Anka E-Motion Command
+
+Seviye 15
+
+$23.000
+
+28 ekipman yuvası
+
+5 ekran
+
+10 şarj noktası
+
+Telefon ve telsiz merkeziModern elektrikli araştırma karavanıdır.21.5 Voltara Spectra E-Lab
+
+Seviye 20
+
+$31.000
+
+30 ekipman yuvası
+
+6 ekran
+
+14 şarj noktası
+
+Dijital medya sunucusuGelecekçi elektrikli laboratuvardır.21.6 Nightwatch Borealis 4×4
+
+Seviye 25
+
+$42.000
+
+34 ekipman yuvası
+
+7 ekran
+
+12 şarj noktası
+
+2 Return Scanner
+
+Hava istasyonuArazi görevlerine uygun karavandır.21.7 Atlas Sentinel Mobile Lab
+
+Seviye 32
+
+$60.000
+
+42 ekipman yuvası
+
+10 ekran
+
+18 şarj noktası
+
+2 büyük Return Scanner
+
+Numune laboratuvarıBüyük mobil laboratuvardır.21.8 Specter Horizon Prime
+
+Seviye 40
+
+$100.000
+
+50 ekipman yuvası
+
+12 ekran
+
+24 şarj noktası
+
+3 Return Scanner
+
+Gelişmiş vaka panosuEn gelişmiş karavandır.Hunt ön uyarısı kesin olmamalı ve sahte alarm verebilmelidir.
+
+TAM OLARAK 8 KİŞİSEL ARAÇ
+
+Nordmark Kestrel Touring
+
+Irontrail Ranger X
+
+Aurum Vela Tourer
+
+Anka E-Motion Cross
+
+Voltara Spectra S
+
+Nightwatch Borealis Scout
+
+Atlas Sentinel Crew
+
+Specter Horizon GTHer araç için:
+
+Üstten park görünüşü
+
+Yan sinematik görünüş
+
+Ön görünüş
+
+Arka görünüş
+
+Renk varyasyonları
+
+Jant varyasyonları
+
+Far animasyonu
+
+Kapı açma animasyonu
+
+Araç ikonuhazırlanmalıdır.Kişisel araçlar:
+
+Ekipman taşımaz.
+
+Güvenli alan değildir.
+
+Hunt sırasında kullanılamaz.
+
+Görev alanında park hâlinde görünür.
+
+Konvoy sinematiğinde görünür.
+
+Görevde kaybedilmez.
+
+KARAVAN ZORUNLULUĞU VE KONVOYHer görevde bir Primary Command Caravan bulunmalıdır.Karavan seçilmezse görev başlatılamaz.Her oyuncu:
+
+Kişisel aracımla gel
+
+Araştırma karavanında gelseçeneklerinden birini seçer.Kendi aracıyla gelmeyen oyuncular karavan iç mekânında görünür.2D konvoy sinematiğinde:
+
+Seçilen karavan
+
+Kişisel araçlar
+
+Araç renkleri
+
+Oyuncu karakter portreleri
+
+Hava
+
+Harita
+
+Telefon ekranına gelen görev mesajıgösterilmelidir.Konvoy, yatay kaydırmalı 2D sinematik veya çizgi roman paneli tarzında hazırlanabilir.
+
+ARAÇ MODİFİKASYONUOyuncular araçlarını modifiye edebilir.Kişisel araç seçenekleri:
+
+Gövde rengi
+
+Mat boya
+
+Metalik boya
+
+İki renkli boya
+
+Jant
+
+Lastik
+
+Cam karartma
+
+Far rengi
+
+Tampon görünümü
+
+Çıkartma
+
+Plaka çerçevesiKaravan seçenekleri:
+
+Dış boya
+
+İç duvar rengi
+
+Zemin kaplaması
+
+Ekran çerçevesi
+
+Raf görünümü
+
+İç ışık rengi
+
+Rozet panosu
+
+Kupa rafıİşlevsel karavan yükseltmeleri:
+
+Daha fazla ekipman yuvası
+
+Daha fazla şarj noktası
+
+Daha fazla ekran
+
+Return Scanner kapasitesi
+
+Telefon sinyal desteği
+
+Telsiz desteği
+
+Medya depolama
+
+Numune analiz sistemiKaravanlar Hunt sırasında güvenli alan olmamalıdır.
+
+TAM 32 EKİPMAN
+
+Standart el feneri
+
+Güçlü el feneri
+
+UV ışık
+
+EMF ölçer
+
+Termometre
+
+Termal kamera
+
+Dijital fotoğraf makinesi
+
+Analog fotoğraf makinesi
+
+El video kamerası
+
+Tripod kamera
+
+Vücut kamerası
+
+Ses kayıt cihazı
+
+Yönlü mikrofon
+
+Ruh radyosu
+
+Hareket sensörü
+
+Kapı sensörü
+
+Titreşim sensörü
+
+Lazer alan projektörü
+
+Tuz
+
+Koruma mührü
+
+Kapı takozu
+
+Tebeşir
+
+Numune kabı
+
+Taşınabilir jeneratör
+
+Elektronik sinyal kesici
+
+Ritüel kiti
+
+Saat senkronizasyon cihazı
+
+Spektral tarayıcı
+
+Sakinleştirici
+
+İlk yardım çantası
+
+Telsiz
+
+Telefon power bankHer ekipman için:
+
+Dünya sprite’ı
+
+Envanter ikonu
+
+Elde taşıma sprite’ı
+
+Açık ve kapalı görünüm
+
+Kullanım animasyonu
+
+Ses
+
+Pil veya kullanım değeri
+
+ScriptableObject tanımı
+
+Ağ senkronizasyonu
+
+Gerçek oynanış işlevibulunmalıdır.
+
+EKİPMAN SAHİPLİĞİHer satın alınmış ekipmanın benzersiz ItemInstanceID değeri bulunmalıdır.Başka oyuncu ekipmanı kullanabilir fakat gerçek sahibi değişmez.Görev başında ekipmanlar:
+
+Available → InMission
+
+
+Görev sonunda:
+
+InMission → Available
+
+
+veya:
+
+InMission → Lost
+
+
+veya:
+
+InMission → Consumed
+
+
+durumuna geçer.27. EQUIPMENT RETURN SCANNERKaravan iç mekânında Return Scanner bulunmalıdır.Oyuncu ekipmanı Scanner’a bıraktığında:
+
+Eşya kimliği doğrulanır.
+
+Gerçek sahibi bulunur.
+
+Çoğaltılmış kopya kontrol edilir.
+
+Eşya kilitlenir.
+
+Başka oyuncu tekrar alamaz.
+
+Görev sonunda sahibine döner.Şunlar kurtarılır:
+
+Scanner’a bırakılanlar
+
+Karavan rafında bulunanlar
+
+Karavanın iade alanında bulunanlarŞunlar kaybedilir:
+
+Haritada bırakılanlar
+
+Ölen oyuncunun yanında kalanlar
+
+Erişilemez alanda kalanlar
+
+Varlık tarafından yok edilenler
+
+Karavan dışında elde kalanlar
+
+Tüketilmiş eşyalar
+
+EQUIPMENT RECOVERY PHASEFinalden sonra ekipman toplama süresi başlar.
+
+Başlangıç: 120 saniye
+
+Standart: 90 saniye
+
+Deneyimli: 75 saniye
+
+Uzman: 60 saniye
+
+Kâbus: 45 saniye
+
+Unwritten: 30 saniyeBu sürede oyuncular geride kalan pahalı ekipmanlarını almak için haritaya dönebilir.Varlık zayıf Stalking durumunda kalabilir.Yanlış ritüelde kurtarma süresi verilmeyebilir.
+
+FOTOĞRAF SİSTEMİFotoğraf sistemi 2D harita üzerinde gerçek görüntü kaydetmek zorunda değildir.Fotoğraf çekildiği anda sistem kamera alanındaki:
+
+Oyuncuları
+
+Varlıkları
+
+Kanıtları
+
+Nesneleri
+
+Paranormal olayları
+
+Oda kimliğini
+
+Zamanıkaydeder.Daha sonra özel 2D fotoğraf görüntüsü oluşturur.Fotoğrafta:
+
+Varlık
+
+Gölge
+
+Fazladan kişi
+
+Kemik
+
+Lanetli nesne
+
+UV izi
+
+Yazı
+
+Bozuk yansımagörülebilir.Fotoğraf kanıtları sunucu tarafından doğrulanmalıdır.
+
+VİDEO SİSTEMİVideo sistemi sürekli gerçek video kaydetmemelidir.Olay tabanlı replay sistemi kullanılmalıdır.Kaydedilecek bilgiler:
+
+Oyuncu konumu
+
+Oyuncu yönü
+
+Varlık konumu
+
+Varlık durumu
+
+Kapı durumları
+
+Işık durumları
+
+Paranormal olaylar
+
+Ses olayları
+
+Zaman damgasıVideo izleme ekranında:
+
+Oynat
+
+Duraklat
+
+Geri sar
+
+İleri sar
+
+Kare kare ilerle
+
+Yavaşlat
+
+Hızlandır
+
+Yakınlaştır
+
+Parlaklık
+
+Gece görüşü
+
+Termal görünüm
+
+Kanıt işaretlemebulunmalıdır.
+
+SEVİYE VE EKONOMİMaksimum normal seviye:100Prestij:10Para birimi:Dolar — $Dolarla alınabilecekler:
+
+Ekipman
+
+Karavan
+
+Kişisel araç
+
+Araç modifikasyonu
+
+Karakter kozmetiği
+
+Telefon teması
+
+Karargâh dekorasyonu
+
+Geçici harita erişimiOyuncu parasız kalırsa ücretsiz ödünç set alır:
+
+El feneri
+
+EMF
+
+UV ışık
+
+Dijital kamera
+
+TermometreÖdünç eşyalar kayıp cezası oluşturmaz.
+
+ZORLUKLARBaşlangıç
+
+Üç doğrudan kanıt
+
+Sahte kanıt yok
+
+Çok saklanma alanı
+
+Yavaş varlık
+
+120 saniye kurtarmaStandart
+
+Üç kanıt
+
+Normal varlık
+
+90 saniye kurtarmaDeneyimli
+
+İki kanıt
+
+Daha saldırgan varlık
+
+Çelişkili belgeler
+
+75 saniye kurtarmaUzman
+
+Kısa hazırlık
+
+Güçlü ses algısı
+
+60 saniye kurtarmaKâbus
+
+Bir doğrudan kanıt
+
+Sahte kanıt
+
+Ses taklidi
+
+Zincirleme Hunt
+
+45 saniye kurtarmaUnwritten
+
+Doğrudan kanıt olmayabilir.
+
+Oyuncular farklı halüsinasyon görebilir.
+
+Paranormal telefon mesajları olabilir.
+
+Varlık takım arkadaşı görünümünü taklit edebilir.
+
+Harita geçici olarak değişebilir.
+
+Yanlış ritüel final Hunt başlatabilir.
+
+30 saniye kurtarma süresi vardır.
+
+CHALLENGE MODESeviye 15’te açılır.Tam düzenleyici seviye 40’ta açılır.Değiştirilebilir ayarlar:
+
+Harita
+
+Oyuncu hızı
+
+Varlık hızı
+
+Hunt süresi
+
+Hunt sıklığı
+
+Kanıt sayısı
+
+Sahte kanıt
+
+Saklanma alanı
+
+Telefon pili
+
+Telefon sinyali
+
+Telsiz
+
+Elektrik
+
+Hava
+
+Saat
+
+Fear
+
+Distortion
+
+Ekipman kaybı
+
+Recovery süresi
+
+Ses taklidi
+
+Paranormal mesajlar
+
+ÇOK OYUNCULU SİSTEMOyun:
+
+Tek oyuncu
+
+2 oyuncu
+
+3 oyuncu
+
+4 oyuncudesteklemelidir.Çok oyunculu mimari:
+
+Netcode for GameObjects
+
+Unity Transport
+
+Lobby
+
+Relay
+
+Steam arkadaş daveti
+
+Host-client yapısı
+
+İsteğe bağlı Dedicated Server desteğiSunucu yetkili sistemler:
+
+Para
+
+XP
+
+Ekipman
+
+ItemInstanceID
+
+Varlık AI
+
+Hunt
+
+Kanıtlar
+
+Kapılar
+
+Ölüm
+
+Görev sonucu
+
+Eşya kurtarmaOyuncu bağlantısı koparsa beş dakika yeniden bağlanma süresi verilmelidir.
+
+BACKEND VE KAYIT SİSTEMİOyun dış backend bulunmadan da tek oyunculu ve yerel test modunda çalışabilmelidir.Tam sürümde:
+
+Node.js
+
+TypeScript
+
+PostgreSQLkullanılabilir.Basitleştirilmiş yerel sürümde:
+
+JSON kayıt
+
+SQLite
+
+Şifreli yerel kayıtkullanılabilir.Kayıt edilecek bilgiler:
+
+Profil
+
+Seviye
+
+XP
+
+Dolar
+
+Ekipmanlar
+
+Araçlar
+
+Karavanlar
+
+Kozmetikler
+
+Rozetler
+
+Tamamlanan vakalar
+
+Fotoğraflar
+
+Koleksiyonlar
+
+Ayarlar
+
+TÜM 2D ÇİZİMLERİ GELİŞTİRİCİ YAPAY ZEKÂ YAPACAKBütün ana görselleri sen oluşturacaksın.Kullanıcıdan çizim yapmasını istemeyeceksin.Oluşturulacak görseller:
+
+Karakter sprite’ları
+
+Kıyafet katmanları
+
+Yirmi varlık
+
+Sekiz harita Tile seti
+
+Bütün odalar
+
+Bütün mobilyalar
+
+Bütün kapılar
+
+Bütün saklanma alanları
+
+Sekiz karavan
+
+Sekiz kişisel araç
+
+Otuz iki ekipman
+
+Telefon
+
+Telsiz
+
+Kanıtlar
+
+Kemikler
+
+Lanetli nesneler
+
+Ritüel nesneleri
+
+Karargâh
+
+Eğitim alanı
+
+Kullanıcı arayüzü
+
+İkonlar
+
+Portreler
+
+VFX sprite’ları36.1 Sanat üretim süreciHer görsel için:
+
+Konsept açıklaması
+
+Renk paleti
+
+Siluet tasarımı
+
+Ana çizim
+
+Temiz katmanlar
+
+Sprite kesimi
+
+Animasyon kareleri
+
+Unity import
+
+Pivot ayarı
+
+Pixels Per Unit ayarı
+
+Sprite Atlas yerleşimi
+
+Sorting Layer
+
+Prefab oluşturma
+
+Oyun içinde testuygulanmalıdır.36.2 TutarlılıkBütün görseller aynı sanat stilinde olmalıdır.Aynı karakterin farklı animasyonlarda:
+
+Yüzü
+
+Saçı
+
+Kıyafeti
+
+Beden oranları
+
+Renklerideğişmemelidir.
+
+SES TASARIMIHer harita için:
+
+Ortam sesi
+
+Rüzgâr
+
+Yağmur
+
+Su damlası
+
+Bina gıcırtısı
+
+Elektrik sesi
+
+Kapı sesi
+
+Adım sesi
+
+Telsiz paraziti
+
+Telefon sesi
+
+Varlık sesleri
+
+Hunt sesleri
+
+Gerilim müziğihazırlanmalıdır.Sesler başka oyunlardan kopyalanmamalıdır.Ücretsiz ve ticari kullanıma açık sesler kullanılabilir.Lisanslar kaydedilmelidir.
+
+DİL DESTEĞİHedef diller:
+
+İngilizce
+
+Türkçe
+
+Almanca
+
+Fransızca
+
+İspanyolca
+
+Brezilya Portekizcesi
+
+İtalyanca
+
+Lehçe
+
+Rusça
+
+Basitleştirilmiş Çince
+
+Japonca
+
+KoreceAyrı seçenekler:
+
+Arayüz dili
+
+Altyazı dili
+
+Vaka dili
+
+Telefon diliİlk tamamlanmış sürümde en az:
+
+Türkçe
+
+İngilizceeksiksiz çalışmalıdır.
+
+ERİŞİLEBİLİRLİK
+
+Altyazı boyutu
+
+Altyazı arka planı
+
+Renk körlüğü seçenekleri
+
+Kamera sarsıntısı
+
+Glitch azaltma
+
+Parlaklık
+
+Karanlık seviyesi
+
+Ses yönü göstergesi
+
+Mikrofon kapatma
+
+Yazılı sohbet kullanma
+
+Kontrolcü desteği
+
+Tuş değiştirme
+
+Fare hassasiyeti
+
+Fotosensitif efekt azaltma
+
+UNITY PROJE YAPISI
+
+Assets/
+└── CaseEight2D/
+    ├── Art/
+    │   ├── Characters/
+    │   ├── Entities/
+    │   ├── Maps/
+    │   ├── Tiles/
+    │   ├── Caravans/
+    │   ├── Vehicles/
+    │   ├── Equipment/
+    │   ├── Props/
+    │   ├── UI/
+    │   └── VFX/
+    ├── Animations/
+    ├── Audio/
+    ├── Prefabs/
+    ├── Scenes/
+    │   ├── Bootstrap/
+    │   ├── Menus/
+    │   ├── Headquarters/
+    │   ├── Training/
+    │   ├── Maps/
+    │   └── Tests/
+    ├── Scripts/
+    │   ├── Core/
+    │   ├── Player/
+    │   ├── Networking/
+    │   ├── Entity/
+    │   ├── Evidence/
+    │   ├── Equipment/
+    │   ├── Phone/
+    │   ├── Vehicles/
+    │   ├── UI/
+    │   ├── AIStory/
+    │   ├── Saving/
+    │   └── Tests/
+    ├── ScriptableObjects/
+    ├── Localization/
+    └── Settings/
+
+
+Kodları tek bir büyük MonoBehaviour sınıfına yazma.Sistemleri ayrı ve düzenli sınıflara ayır.41. ANA C# SİSTEMLERİ
+
+GameBootstrap
+
+GameManager
+
+SceneLoader
+
+SaveManager
+
+ProfileManager
+
+PlayerController2D
+
+PlayerAnimationController
+
+InteractionController
+
+InventoryManager
+
+EquipmentController
+
+EvidenceManager
+
+CaseManager
+
+StoryGenerator
+
+CaseValidator
+
+EntityController
+
+EntityStateMachine
+
+EntityPathfinder
+
+HuntManager
+
+HidingSpotController
+
+PhoneController
+
+TextChatController
+
+VoiceChatController
+
+CaravanManager
+
+VehicleManager
+
+EquipmentRecoveryManager
+
+EconomyManager
+
+LevelManager
+
+ChallengeModeManager
+
+NetworkGameManager
+
+LobbyManager
+
+AudioManager
+
+LocalizationManager
+
+UIManager
+
+TESTLEREditMode testleri
+
+Vaka oluşturma
+
+Vaka doğrulama
+
+ItemInstanceID
+
+Eşya sahipliği
+
+Ekonomi
+
+Kayıt sistemi
+
+Seviye hesaplama
+
+Karavan zorunluluğuPlayMode testleri
+
+Eğitim
+
+Oyuncu hareketi
+
+Kapılar
+
+Ekipman alma
+
+Ekipman bırakma
+
+Telefon
+
+Hunt
+
+Saklanma
+
+Fotoğraf
+
+Return Scanner
+
+TahliyeÇok oyunculu testler
+
+İki oyuncu
+
+Dört oyuncu
+
+Oyuncu hareketi
+
+Kapılar
+
+Ekipman sahipliği
+
+Varlık AI
+
+Hunt
+
+Bağlantı kopması
+
+Yeniden bağlanma
+
+Görev sonucuİçerik testleri
+
+Sekiz harita
+
+Sekiz karavan
+
+Sekiz kişisel araç
+
+Yirmi varlık
+
+Otuz iki ekipman
+
+Kayıp sprite
+
+Missing Script
+
+Bozuk Prefab
+
+Eksik ses
+
+Tilemap collision
+
+Sorting Layer hatalarıBuild testleri
+
+Windows Development Build
+
+Windows Release Build
+
+Temiz bilgisayarda açılış
+
+Tek oyunculu görev
+
+Çok oyunculu lobi
+
+Kayıt yükleme
+
+Görev tamamlama
+
+ÜRETİM SIRASIAşama 1 — Proje temeli
+
+Unity 2D URP projesi
+
+Klasör yapısı
+
+Input System
+
+Player movement
+
+Tilemap
+
+Kamera
+
+Kayıt sistemi
+
+Ana menüAşama 2 — Eğitim vertical slice
+
+Eğitim haritası
+
+Karakter
+
+Başlangıç karavanı
+
+Başlangıç aracı
+
+Yedi temel ekipman
+
+Telefon
+
+Mesajlaşma
+
+Kontrollü Hunt
+
+Return ScannerAşama 3 — İlk tam görev
+
+Hollow Creek Residence
+
+Bir varlık
+
+Yerel vaka üretici
+
+Kanıt sistemi
+
+Ritüel
+
+Görev sonucuAşama 4 — Çok oyunculu sistem
+
+Lobi
+
+Relay
+
+İki oyuncu
+
+Dört oyuncu
+
+Yakınlık sesi
+
+Telsiz
+
+Telefon görüşmesiAşama 5 — Ana içerik
+
+Sekiz harita
+
+Sekiz karavan
+
+Sekiz kişisel araç
+
+Yirmi varlık
+
+Otuz iki ekipman
+
+KarargâhAşama 6 — İlerleme
+
+Ekonomi
+
+Seviye
+
+Prestij
+
+Mağaza
+
+Araç modifikasyonu
+
+Challenge Mode
+
+RozetlerAşama 7 — Test ve teslim
+
+Hata düzeltme
+
+Optimizasyon
+
+Windows build
+
+Çok oyunculu test
+
+Lisans kontrolü
+
+ZIP teslimiHer aşamada gerçek dosyaları oluştur.Kısmi aşamayı tamamlanmış oyun olarak sunma.
+
+NİHAİ KABUL KRİTERLERİOyun tamamlanmış sayılmadan önce:
+
+Unity ile açılmalıdır.
+
+Console Error sayısı sıfır olmalıdır.
+
+Missing Script bulunmamalıdır.
+
+Eğitim tamamlanabilmelidir.
+
+Karargâh çalışmalıdır.
+
+Sekiz harita oynanabilir olmalıdır.
+
+Sekiz araştırma karavanı bulunmalıdır.
+
+Sekiz kişisel araç bulunmalıdır.
+
+Yirmi paranormal varlık bulunmalıdır.
+
+Otuz iki ekipman çalışmalıdır.
+
+Telefon mesajlaşması çalışmalıdır.
+
+Mikrofon sistemi çalışmalıdır.
+
+Telsiz çalışmalıdır.
+
+Hunt sistemi çalışmalıdır.
+
+Saklanma sistemi çalışmalıdır.
+
+Return Scanner çalışmalıdır.
+
+Haritada bırakılan eşya kaybolmalıdır.
+
+Karavana getirilen eşya sahibine dönmelidir.
+
+Tek oyunculu oyun tamamlanabilmelidir.
+
+Dört oyunculu oyun tamamlanabilmelidir.
+
+Yerel vaka üretici çalışmalıdır.
+
+Windows build alınabilmelidir.
+
+Kritik placeholder bulunmamalıdır.
+
+Kayıp sprite bulunmamalıdır.
+
+KESİN YASAKLAR
+
+Oyunu başka bir oyunun kopyası yapma.
+
+3D model kullanma.
+
+Gerçek araç markalarını kullanma.
+
+Gerçek araç logolarını kullanma.
+
+Sekizden fazla veya az ana harita oluşturma.
+
+Sekizden fazla veya az araştırma karavanı oluşturma.
+
+Sekizden fazla veya az kişisel araç oluşturma.
+
+Yirmiden fazla veya az ana varlık görünümü oluşturma.
+
+Karavan olmadan görev başlatma.
+
+Araçları güvenli alan yapma.
+
+Ekipmanı otomatik olarak oyuncunun eline verme.
+
+Haritada bırakılan eşyayı otomatik geri verme.
+
+İşlevsiz ekipman oluşturma.
+
+Kullanıcıdan çizim isteme.
+
+Kullanıcıdan kod yazmasını isteme.
+
+Korsan sprite veya ses kullanma.
+
+Başka oyundan çıkarılmış içerik kullanma.
+
+Nihai teslimde kritik placeholder bırakma.
+
+Sahte test raporu oluşturma.
+
+Derlenmeyen projeyi tamamlanmış gösterme.
+
+Oyunu dış AI servisi olmadan çalışamaz hâle getirme.
+
+Bütün kodu tek sınıfa yazma.
+
+Bütün haritaları tek Scene içine doldurma.
+
+SON TALİMATBu promptu yalnızca tasarım belgesi hazırlamak için kullanma.Gerçek Unity 2D projesini üret.Gerçek dosyalar olarak oluştur:
+
+C# scriptleri
+
+Scene dosyaları
+
+Tilemap haritaları
+
+Prefablar
+
+ScriptableObject katalogları
+
+Karakter sprite’ları
+
+Sprite Sheet animasyonları
+
+Yirmi varlık
+
+Sekiz harita
+
+Sekiz araştırma karavanı
+
+Sekiz kişisel araç
+
+Otuz iki ekipman
+
+Telefon sistemi
+
+Mesajlaşma
+
+Mikrofon
+
+Telsiz
+
+Hunt
+
+Saklanma
+
+Fotoğraf
+
+Video replay
+
+Yerel vaka üretici
+
+İsteğe bağlı AI backend
+
+Kayıt sistemi
+
+Çok oyunculu sistem
+
+Windows build ayarlarıKullanıcının çizim, kodlama, Tilemap düzenleme veya Unity Scene hazırlama işlemi yapması gerekmemelidir.Nihai sonuç:Kullanıcının Unity ile açıp Windows için build alabileceği, baştan sona oynanabilir, eksiksiz CASE EIGHT: UNWRITTEN 2D oyunu olmalıdır. Bana zip dosyasını ver

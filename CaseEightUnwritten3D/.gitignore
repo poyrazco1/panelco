@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Env / secrets
+.env
+*.local.toml
+
+# Saves (local player data, not source)
+saves/*.sqlite3
+saves/*.db
+saves/*.json
+!saves/.gitkeep
+
+# Build output
+builds/windows/*
+!builds/windows/.gitkeep
+
+# Blender autosave/backup
+*.blend1
+*.blend2
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+reports/*.tmp
+
+# Large generated binary assets are tracked via Git LFS (see .gitattributes),
+# not ignored — but caches/tmp render output are ignored:
+assets/**/*.tmp
+tools/**/__pycache__/

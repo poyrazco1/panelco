@@ -1,0 +1,8 @@
+# Overrides applied on top of default.toml when CASE_EIGHT_ENV=production.
+[window]
+fullscreen = true
+
+[dev]
+window_type = "onscreen"
+enable_debug_draw = false
+log_level = "INFO"

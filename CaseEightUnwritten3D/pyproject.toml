@@ -1,0 +1,37 @@
+[project]
+name = "case-eight-unwritten-3d"
+version = "0.1.0"
+description = "CASE EIGHT: UNWRITTEN - Python/Panda3D 3D psychological horror investigation game"
+requires-python = ">=3.11"
+readme = "README.md"
+license = { text = "Proprietary" }
+
+dependencies = [
+    "panda3d>=1.10.14",
+    "panda3d-gltf>=1.2.0",
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.29.0",
+    "websockets>=12.0",
+    "pydantic>=2.6.0",
+    "sqlmodel>=0.0.16",
+    "alembic>=1.13.0",
+    "python-dotenv>=1.0.0",
+    "toml>=0.10.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "httpx>=0.27.0",
+    "pygltflib>=1.16.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "server/tests"]
+pythonpath = ["."]
+asyncio_mode = "auto"
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
