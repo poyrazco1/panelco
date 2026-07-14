@@ -203,6 +203,36 @@ function lead_reminder_open_count(int $leadId): int
     } catch (Throwable $e) { return 0; }
 }
 
+/**
+ * Durum değişimini uygular; takip gerektiren durumlarda ÖNCE takip kaydı
+ * oluşturur (yoksa durum değişmez) — "takip kaydı olmadan kaydedilemez" (§21).
+ * @return array{ok:bool, error:string, reminder_id:int}
+ */
+function lead_status_apply_with_followup(int $leadId, string $status, array $followup, ?int $userId): array
+{
+    if (!isset(lead_status_rows()[$status])) {
+        return ['ok' => false, 'error' => 'Geçersiz durum.', 'reminder_id' => 0];
+    }
+    $reminderId = 0;
+    if (lead_status_requires_followup($status)) {
+        $r = lead_reminder_create($leadId, [
+            'reminder_type'         => $followup['reminder_type'] ?? 'call',
+            'reminder_date'         => $followup['reminder_date'] ?? '',
+            'reminder_time'         => $followup['reminder_time'] ?? '',
+            'priority'              => $followup['priority'] ?? 'normal',
+            'remind_before_minutes' => $followup['remind_before_minutes'] ?? 0,
+            'assigned_user_id'      => $followup['assigned_user_id'] ?? 0,
+            'note'                  => $followup['note'] ?? '',
+        ], $userId);
+        if (!$r['ok']) {
+            return ['ok' => false, 'error' => 'Bu durum için takip zorunludur: ' . $r['error'], 'reminder_id' => 0];
+        }
+        $reminderId = $r['id'];
+    }
+    set_lead_status($leadId, $status, $userId, (string) ($followup['status_note'] ?? ''));
+    return ['ok' => true, 'error' => '', 'reminder_id' => $reminderId];
+}
+
 /* ----------------------------------------------------------------------- *
  |  Erteleme
  * ----------------------------------------------------------------------- */

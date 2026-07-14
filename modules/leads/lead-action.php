@@ -119,10 +119,18 @@ switch ($action) {
         break;
 
     case 'status':
-        require_action('leads', 'edit');
-        if (set_lead_status($id, (string) ($_POST['status'] ?? ''), $uid, trim((string) ($_POST['status_note'] ?? '')))) {
-            flash('success', 'Durum güncellendi.');
-        } else { flash('error', 'Durum güncellenemedi.'); }
+        require_action('leads', 'status');
+        $r = lead_status_apply_with_followup($id, (string) ($_POST['status'] ?? ''), [
+            'status_note'           => $_POST['status_note'] ?? '',
+            'reminder_type'         => $_POST['reminder_type'] ?? 'call',
+            'reminder_date'         => $_POST['reminder_date'] ?? '',
+            'reminder_time'         => $_POST['reminder_time'] ?? '',
+            'priority'              => $_POST['priority'] ?? 'normal',
+            'remind_before_minutes' => $_POST['remind_before_minutes'] ?? 0,
+            'assigned_user_id'      => $_POST['assigned_user_id'] ?? 0,
+            'note'                  => $_POST['followup_note'] ?? '',
+        ], $uid);
+        flash($r['ok'] ? 'success' : 'error', $r['ok'] ? 'Durum güncellendi.' : $r['error']);
         break;
 
     default:

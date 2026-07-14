@@ -273,13 +273,45 @@ $actTypeLabel = static fn(string $t): string => [
             <?php if (!empty($l['maps_url'])): ?><div class="dl-row"><span class="dl-k">Harita</span><span class="dl-v"><a href="<?= e((string) $l['maps_url']) ?>" target="_blank" rel="noopener">Google Maps</a></span></div><?php endif; ?>
         </div></div></div>
 
-        <?php if (can('leads.edit')): ?>
+        <?php if (can('leads.edit')):
+            $followupCodes = array_keys(array_filter(lead_status_rows(), static fn($r) => !empty($r['requires_followup']))); ?>
         <div class="card"><div class="card-header"><strong>Durum & Atama</strong></div><div class="card-body">
-            <form method="post" action="<?= $actUrl ?>" style="margin-bottom:12px"><?= csrf_field() ?><input type="hidden" name="action" value="status"><input type="hidden" name="id" value="<?= $id ?>">
-                <div class="form-group"><label>Durum</label><select name="status"><?php foreach (lead_statuses() as $sv => $sl): ?><option value="<?= e($sv) ?>"<?= (string) $l['status'] === $sv ? ' selected' : '' ?>><?= e($sl) ?></option><?php endforeach; ?></select></div>
+            <form method="post" action="<?= $actUrl ?>" style="margin-bottom:12px" id="statusForm"><?= csrf_field() ?><input type="hidden" name="action" value="status"><input type="hidden" name="id" value="<?= $id ?>">
+                <div class="form-group"><label>Durum</label><select name="status" id="statusSelect"><?php foreach (lead_statuses() as $sv => $sl): ?><option value="<?= e($sv) ?>"<?= (string) $l['status'] === $sv ? ' selected' : '' ?>><?= e($sl) ?></option><?php endforeach; ?></select></div>
                 <div class="form-group"><input type="text" name="status_note" placeholder="Durum notu (ops.)"></div>
+                <!-- Takip gerektiren durumlar için zorunlu alanlar -->
+                <div id="statusFollowup" hidden style="background:var(--surface-2,#f7f8fa);padding:10px;border-radius:6px;margin-bottom:8px">
+                    <div class="field-hint" style="margin-bottom:6px">Bu durum için takip zorunludur.</div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Takip türü</label><select name="reminder_type"><?php foreach (lead_reminder_types() as $rk => $rl): ?><option value="<?= e($rk) ?>"><?= e($rl) ?></option><?php endforeach; ?></select></div>
+                        <div class="form-group"><label>Öncelik</label><select name="priority"><?php foreach (lead_reminder_priorities() as $pk => $pl): ?><option value="<?= e($pk) ?>"<?= $pk === 'normal' ? ' selected' : '' ?>><?= e($pl) ?></option><?php endforeach; ?></select></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Tarih</label><input type="date" name="reminder_date" id="fuDate"></div>
+                        <div class="form-group"><label>Saat</label><input type="time" name="reminder_time" id="fuTime"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Bildirim zamanı</label><select name="remind_before_minutes"><?php foreach (lead_remind_before_options() as $mk => $ml): ?><option value="<?= (int) $mk ?>"<?= (int) $mk === 15 ? ' selected' : '' ?>><?= e($ml) ?></option><?php endforeach; ?></select></div>
+                        <div class="form-group"><label>Atanan personel</label><select name="assigned_user_id"><option value="0">Ben</option><?php foreach ($assignUsers as $uido => $un): ?><option value="<?= (int) $uido ?>"><?= e($un) ?></option><?php endforeach; ?></select></div>
+                    </div>
+                    <div class="form-group"><label>Hatırlatma notu</label><input type="text" name="followup_note"></div>
+                </div>
                 <button class="btn btn-sm btn-primary"><?= icon('refresh-cw') ?>Durumu Güncelle</button>
             </form>
+            <script>
+            (function(){
+                var codes = <?= json_encode(array_values($followupCodes), JSON_UNESCAPED_UNICODE) ?>;
+                var sel = document.getElementById('statusSelect');
+                var box = document.getElementById('statusFollowup');
+                var d = document.getElementById('fuDate'), t = document.getElementById('fuTime');
+                function sync(){
+                    var need = codes.indexOf(sel.value) !== -1;
+                    box.hidden = !need;
+                    if (d) d.required = need; if (t) t.required = need;
+                }
+                if (sel) { sel.addEventListener('change', sync); sync(); }
+            }());
+            </script>
             <form method="post" action="<?= $actUrl ?>"><?= csrf_field() ?><input type="hidden" name="action" value="assign"><input type="hidden" name="id" value="<?= $id ?>">
                 <div class="form-group"><label>Sorumlu personel</label><select name="personnel_id"><option value="0">— Yok —</option><?php foreach ($people as $pid => $pn): ?><option value="<?= (int) $pid ?>"<?= (int) ($l['assigned_personnel_id'] ?? 0) === (int) $pid ? ' selected' : '' ?>><?= e($pn) ?></option><?php endforeach; ?></select></div>
                 <button class="btn btn-sm"><?= icon('user-check') ?>Ata</button>

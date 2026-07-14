@@ -135,7 +135,8 @@ layout_top('Lead Tara (Google Places)', 'leads');
                     </select>
                 </div>
                 <div class="form-group"><label>Başlangıç durumu</label>
-                    <select name="status"><?php foreach (lead_statuses(true) as $k => $lab): ?><option value="<?= e($k) ?>"<?= $k === 'new' ? ' selected' : '' ?>><?= e($lab) ?></option><?php endforeach; ?></select>
+                    <select name="status"><?php foreach (lead_statuses(true) as $k => $lab): if (lead_status_requires_followup($k)) { continue; } ?><option value="<?= e($k) ?>"<?= $k === 'new' ? ' selected' : '' ?>><?= e($lab) ?></option><?php endforeach; ?></select>
+                    <div class="field-hint">Takip gerektiren durumlar tek tek lead ekranından atanır.</div>
                 </div>
                 <div class="form-group"><label>Paket / not</label><input type="text" name="package" placeholder="opsiyonel"></div>
                 <div class="form-group"><label>Kaynak</label><input type="text" name="source" value="google_places"></div>
