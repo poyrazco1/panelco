@@ -54,8 +54,8 @@ $vars = [
     'belge_turu'     => 'Mutabakat',
     'belge_no'       => (string) $r['recon_no'],
     'belge_tarihi'   => (string) ($r['recon_date'] ?? ''),
-    'donem_baslangic'=> (string) ($r['period'] ?? ''),
-    'donem_bitis'    => '',
+    'donem_baslangic'=> (string) ($r['period_start'] ?? ($r['period'] ?? '')),
+    'donem_bitis'    => (string) ($r['period_end'] ?? ''),
     'borc'           => fmt_money((float) $r['debit']),
     'alacak'         => fmt_money((float) $r['credit']),
     'bakiye'         => fmt_money((float) $r['balance']),
@@ -109,13 +109,17 @@ $row = static fn(string $l, ?string $v): string => trim((string) $v) !== '' ? '<
     <span class="badge <?= e(recon_agreement_class((string) $r['agreement'])) ?>"><?= e(recon_agreement_label((string) $r['agreement'])) ?></span></div>
     <div class="card-body"><div class="dl">
         <?= $row('Cari kod', $r['cari_code']) ?>
+        <?= $row('Tür', recon_type_label((string) ($r['recon_type'] ?? 'cari'))) ?>
         <?= $row('Dönem', $r['period']) ?>
+        <?= $row('Dönem başlangıç', $r['period_start'] ?? '') ?>
+        <?= $row('Dönem bitiş', $r['period_end'] ?? '') ?>
         <?= $row('Tarih', $r['recon_date']) ?>
         <?= $row('Borç', fmt_money((float) $r['debit']) . ' ' . $sym) ?>
         <?= $row('Alacak', fmt_money((float) $r['credit']) . ' ' . $sym) ?>
         <?= $row('Bakiye', fmt_money((float) $r['balance']) . ' ' . $sym) ?>
         <?= $row('Yetkili', $r['authorized_name']) ?>
         <?= $row('Açıklama', $r['description']) ?>
+        <?= $row('Ek not', $r['extra_note'] ?? '') ?>
     </div></div>
 </div>
 

@@ -13,6 +13,8 @@ require_once __DIR__ . '/forms.php';
 function recon_document_inner_html(array $r): string
 {
     $sym = quote_currency_symbol((string) $r['currency']);
+    $donem = trim((string) ($r['period_start'] ?? '') . ' – ' . (string) ($r['period_end'] ?? ''), ' –');
+    if ($donem === '') { $donem = (string) ($r['period'] ?? ''); }
     ob_start();
     document_header([
         'title'       => 'MUTABAKAT',
@@ -20,7 +22,7 @@ function recon_document_inner_html(array $r): string
         'date'        => (string) ($r['recon_date'] ?? ''),
         'department'  => 'Muhasebe',
         'prepared_by' => (string) ($r['created_by_name'] ?? ''),
-        'extra'       => ['Dönem' => (string) ($r['period'] ?? '')],
+        'extra'       => ['Tür' => recon_type_label((string) ($r['recon_type'] ?? 'cari')), 'Dönem' => $donem],
     ]);
     ?>
     <div class="doc-party"><strong>Sayın:</strong> <?= e((string) $r['customer_name']) ?><?php if (!empty($r['cari_code'])): ?> · Cari: <?= e((string) $r['cari_code']) ?><?php endif; ?></div>
@@ -36,6 +38,9 @@ function recon_document_inner_html(array $r): string
 
     <?php if (trim((string) ($r['description'] ?? '')) !== ''): ?>
         <p style="margin-top:14px"><strong>Açıklama:</strong><br><?= nl2br(e((string) $r['description'])) ?></p>
+    <?php endif; ?>
+    <?php if (trim((string) ($r['extra_note'] ?? '')) !== ''): ?>
+        <p style="margin-top:10px"><strong>Ek not:</strong><br><?= nl2br(e((string) $r['extra_note'])) ?></p>
     <?php endif; ?>
 
     <p style="margin-top:18px;font-size:12.5px;color:#444">İşbu mutabakat mektubuna <strong>7 gün</strong> içinde itiraz edilmediği takdirde bakiye kabul edilmiş sayılır.</p>

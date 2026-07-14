@@ -19,6 +19,12 @@ $customers = $customers ?? [];
         <div class="form-group"><label for="recon_date">Tarih</label><input type="date" id="recon_date" name="recon_date" value="<?= $val('recon_date', date('Y-m-d')) ?>"></div>
     </div>
     <div class="form-row">
+        <div class="form-group"><label for="recon_type">Mutabakat türü</label>
+            <select id="recon_type" name="recon_type"><?php foreach (recon_types() as $tv => $tl): ?><option value="<?= e($tv) ?>"<?= (string) ($r['recon_type'] ?? 'cari') === $tv ? ' selected' : '' ?>><?= e($tl) ?></option><?php endforeach; ?></select></div>
+        <div class="form-group"><label for="period_start">Dönem başlangıç</label><input type="date" id="period_start" name="period_start" value="<?= $val('period_start') ?>"></div>
+        <div class="form-group"><label for="period_end">Dönem bitiş</label><input type="date" id="period_end" name="period_end" value="<?= $val('period_end') ?>"></div>
+    </div>
+    <div class="form-row">
         <div class="form-group"><label for="debit">Borç</label><input type="text" id="debit" name="debit" value="<?= $val('debit', '0') ?>" inputmode="decimal"></div>
         <div class="form-group"><label for="credit">Alacak</label><input type="text" id="credit" name="credit" value="<?= $val('credit', '0') ?>" inputmode="decimal"></div>
         <div class="form-group"><label for="currency">Para birimi</label>
@@ -30,5 +36,6 @@ $customers = $customers ?? [];
         <div class="form-group"><label for="authorized_name">Yetkili adı soyadı</label><input type="text" id="authorized_name" name="authorized_name" value="<?= $val('authorized_name') ?>"></div>
     </div>
     <div class="form-group"><label for="description">Açıklama</label><textarea id="description" name="description" rows="3"><?= $val('description') ?></textarea></div>
+    <div class="form-group"><label for="extra_note">Ek not</label><textarea id="extra_note" name="extra_note" rows="2"><?= $val('extra_note') ?></textarea></div>
 </div></div>
 <script>(function(){var s=document.getElementById('customer_id');if(!s)return;s.addEventListener('change',function(){var o=s.options[s.selectedIndex];if(!o||o.value==='0')return;var n=document.getElementById('customer_name'),v=o.getAttribute('data-name');if(n&&v)n.value=v;});})();</script>

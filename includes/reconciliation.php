@@ -20,6 +20,13 @@ function recon_agreement_class(string $k): string
     return match ($k) { 'agreed' => 'badge-success', 'disagreed' => 'badge-danger', default => 'badge-muted' };
 }
 
+/** Mutabakat türleri (§5). */
+function recon_types(): array
+{
+    return ['ba' => 'BA Mutabakatı', 'bs' => 'BS Mutabakatı', 'cari' => 'Cari Hesap Mutabakatı', 'bakiye' => 'Bakiye Mutabakatı'];
+}
+function recon_type_label(string $k): string { return recon_types()[$k] ?? $k; }
+
 function recon_generate_no(): string
 {
     $year = date('Y');
@@ -70,17 +77,23 @@ function recon_fields_from_input(array $in): array
     if (!isset(quote_currencies()[$cur])) { $cur = 'TRY'; }
     $debit  = (float) str_replace(',', '.', (string) ($in['debit'] ?? '0'));
     $credit = (float) str_replace(',', '.', (string) ($in['credit'] ?? '0'));
+    $rtype  = (string) ($in['recon_type'] ?? 'cari');
+    if (!isset(recon_types()[$rtype])) { $rtype = 'cari'; }
     return [
         'customer_id'     => (int) ($in['customer_id'] ?? 0) ?: null,
         'customer_name'   => trim((string) ($in['customer_name'] ?? '')),
         'cari_code'       => trim((string) ($in['cari_code'] ?? '')),
+        'recon_type'      => $rtype,
         'period'          => trim((string) ($in['period'] ?? '')),
+        'period_start'    => trim((string) ($in['period_start'] ?? '')) ?: null,
+        'period_end'      => trim((string) ($in['period_end'] ?? '')) ?: null,
         'debit'           => $debit,
         'credit'          => $credit,
         'balance'         => round($debit - $credit, 2),
         'currency'        => $cur,
         'agreement'       => $ag,
         'description'     => trim((string) ($in['description'] ?? '')),
+        'extra_note'      => trim((string) ($in['extra_note'] ?? '')),
         'authorized_name' => trim((string) ($in['authorized_name'] ?? '')),
         'recon_date'      => trim((string) ($in['recon_date'] ?? '')) ?: null,
     ];
@@ -97,9 +110,13 @@ function recon_bind(array $d, ?string $no, ?int $userId, bool $isNew): array
 {
     $p = [
         ':cid' => $d['customer_id'], ':cname' => $d['customer_name'], ':cari' => $d['cari_code'] ?: null,
-        ':period' => $d['period'] ?: null, ':debit' => $d['debit'], ':credit' => $d['credit'],
+        ':rtype' => $d['recon_type'] ?? 'cari',
+        ':period' => $d['period'] ?: null, ':pstart' => $d['period_start'] ?? null, ':pend' => $d['period_end'] ?? null,
+        ':debit' => $d['debit'], ':credit' => $d['credit'],
         ':balance' => $d['balance'], ':cur' => $d['currency'], ':ag' => $d['agreement'],
-        ':desc' => $d['description'] ?: null, ':auth' => $d['authorized_name'] ?: null,
+        ':desc' => $d['description'] ?: null, ':enote' => ($d['extra_note'] ?? '') ?: null,
+        ':auth' => $d['authorized_name'] ?: null,
+        ':approved' => (($d['agreement'] ?? 'pending') !== 'pending') ? $userId : null,
         ':rdate' => $d['recon_date'], ':uby' => $userId,
     ];
     if ($isNew) { $p[':no'] = $no; $p[':prep'] = $userId; $p[':cby'] = $userId; }
@@ -112,10 +129,11 @@ function create_reconciliation(array $d, ?int $userId): int
         $no = recon_generate_no();
         $st = db()->prepare(
             'INSERT INTO reconciliations
-                (recon_no, customer_id, customer_name, cari_code, period, debit, credit, balance, currency,
-                 agreement, description, authorized_name, recon_date, prepared_by, created_by, updated_by)
+                (recon_no, customer_id, customer_name, cari_code, recon_type, period, period_start, period_end,
+                 debit, credit, balance, currency, agreement, description, extra_note, authorized_name,
+                 recon_date, prepared_by, approved_by, created_by, updated_by)
              VALUES
-                (:no,:cid,:cname,:cari,:period,:debit,:credit,:balance,:cur,:ag,:desc,:auth,:rdate,:prep,:cby,:uby)'
+                (:no,:cid,:cname,:cari,:rtype,:period,:pstart,:pend,:debit,:credit,:balance,:cur,:ag,:desc,:enote,:auth,:rdate,:prep,:approved,:cby,:uby)'
         );
         $st->execute(recon_bind($d, $no, $userId, true));
         return (int) db()->lastInsertId();
@@ -127,9 +145,10 @@ function update_reconciliation(int $id, array $d, ?int $userId): bool
     try {
         $st = db()->prepare(
             'UPDATE reconciliations SET
-                customer_id=:cid, customer_name=:cname, cari_code=:cari, period=:period, debit=:debit,
-                credit=:credit, balance=:balance, currency=:cur, agreement=:ag, description=:desc,
-                authorized_name=:auth, recon_date=:rdate, updated_by=:uby
+                customer_id=:cid, customer_name=:cname, cari_code=:cari, recon_type=:rtype, period=:period,
+                period_start=:pstart, period_end=:pend, debit=:debit, credit=:credit, balance=:balance,
+                currency=:cur, agreement=:ag, description=:desc, extra_note=:enote, authorized_name=:auth,
+                recon_date=:rdate, approved_by=:approved, updated_by=:uby
              WHERE id=:id AND is_deleted = 0'
         );
         $params = recon_bind($d, null, $userId, false);
