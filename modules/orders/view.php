@@ -59,4 +59,8 @@ $row = static fn(string $l, ?string $v): string => trim((string) $v) !== '' ? '<
     </form>
 </div></div>
 <?php endif; ?>
+<?php
+$docType = 'order'; $docId = $id; $docRow = $o; $docBackUrl = 'modules/orders/view.php?id=' . $id;
+require __DIR__ . '/../../includes/_document_send_ui.php';
+?>
 <?php layout_bottom();

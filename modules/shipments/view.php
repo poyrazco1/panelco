@@ -136,4 +136,7 @@ $row = static fn(string $l, ?string $v): string => trim((string) $v) !== '' ? '<
     sel.addEventListener('change', t); t();
 })();
 </script>
-<?php layout_bottom();
+<?php
+$docType = 'shipment'; $docId = $id; $docRow = $s; $docBackUrl = 'modules/shipments/view.php?id=' . $id;
+require __DIR__ . '/../../includes/_document_send_ui.php';
+layout_bottom();

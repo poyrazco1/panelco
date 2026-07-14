@@ -275,3 +275,68 @@ function statement_document_inner_html(array $p): string
     document_footer();
     return (string) ob_get_clean();
 }
+
+/** SİPARİŞ FORMU belge gövdesi. */
+function order_document_inner_html(array $o): string
+{
+    $sym = quote_currency_symbol((string) ($o['currency'] ?? 'TRY'));
+    ob_start();
+    document_header([
+        'title'      => 'SİPARİŞ FORMU',
+        'number'     => (string) ($o['order_no'] ?? ''),
+        'date'       => (string) ($o['order_date'] ?? ''),
+        'department' => 'Satış',
+    ]);
+    ?>
+    <div class="doc-party"><strong>Müşteri:</strong> <?= e((string) ($o['customer_name'] ?? '')) ?>
+        <?php if (!empty($o['tracking_no'])): ?><br>Kargo: <?= e((string) ($o['cargo_company'] ?? '')) ?> · Takip: <?= e((string) $o['tracking_no']) ?><?php endif; ?>
+    </div>
+    <table class="table" style="margin-top:14px">
+        <thead><tr><th>Kod</th><th>Ürün</th><th class="nowrap">Adet</th><th class="nowrap">B.Fiyat</th><th class="nowrap">Tutar</th></tr></thead>
+        <tbody>
+        <?php foreach (($o['items'] ?? []) as $it): ?>
+            <tr><td class="nowrap"><?= e((string) ($it['product_code'] ?? '')) ?></td><td><?= e((string) $it['name']) ?></td>
+            <td class="nowrap"><?= e(rtrim(rtrim((string) $it['qty'], '0'), '.')) ?></td><td class="nowrap"><?= e(fmt_money((float) $it['unit_price'])) ?></td>
+            <td class="nowrap"><?= e(fmt_money((float) $it['line_total']) . ' ' . $sym) ?></td></tr>
+        <?php endforeach; ?>
+        </tbody>
+    </table>
+    <table class="quote-total-table" style="margin-left:auto;margin-top:12px">
+        <tr><td>Ara Toplam</td><td><?= e(fmt_money((float) ($o['subtotal'] ?? 0)) . ' ' . $sym) ?></td></tr>
+        <tr><td>KDV</td><td><?= e(fmt_money((float) ($o['vat_total'] ?? 0)) . ' ' . $sym) ?></td></tr>
+        <tr class="grand"><td>Genel Toplam</td><td><?= e(fmt_money((float) ($o['grand_total'] ?? 0)) . ' ' . $sym) ?></td></tr>
+    </table>
+    <?php
+    document_footer();
+    return (string) ob_get_clean();
+}
+
+/** SEVKİYAT FİŞİ belge gövdesi. */
+function shipment_document_inner_html(array $s): string
+{
+    require_once __DIR__ . '/shipments.php';
+    ob_start();
+    document_header([
+        'title'      => 'SEVKİYAT FİŞİ',
+        'number'     => (string) ($s['shipment_no'] ?? ''),
+        'date'       => (string) ($s['shipment_date'] ?? ''),
+        'department' => 'Sevkiyat',
+        'extra'      => ['Tip' => function_exists('shipment_type_label') ? shipment_type_label((string) ($s['shipment_type'] ?? '')) : (string) ($s['shipment_type'] ?? '')],
+    ]);
+    $addr = trim((string) ($s['addr_text'] ?? '') . ' ' . (string) ($s['addr_district'] ?? '') . ' ' . (string) ($s['addr_city'] ?? ''));
+    ?>
+    <div class="doc-party"><strong>Müşteri:</strong> <?= e((string) ($s['customer_name'] ?? ($s['addr_company'] ?? ''))) ?>
+        <?php if ($addr !== ''): ?><br>Adres: <?= e($addr) ?><?php endif; ?>
+        <?php if (!empty($s['courier_name'])): ?><br>Sevkiyatçı: <?= e((string) $s['courier_name']) ?><?php endif; ?>
+    </div>
+    <?php if (!empty($s['items'])): ?>
+    <table class="table" style="margin-top:14px"><thead><tr><th>Ürün</th><th>Kod</th><th class="nowrap">Adet</th></tr></thead><tbody>
+        <?php foreach ($s['items'] as $it): ?><tr><td><?= e((string) $it['name']) ?></td><td><?= e((string) ($it['product_code'] ?? '')) ?></td><td class="nowrap"><?= e(rtrim(rtrim((string) $it['qty'], '0'), '.')) ?></td></tr><?php endforeach; ?>
+    </tbody></table>
+    <?php endif; ?>
+    <p style="margin-top:14px">Durum: <strong><?= e(function_exists('shipment_status_label') ? shipment_status_label((string) ($s['status'] ?? '')) : (string) ($s['status'] ?? '')) ?></strong></p>
+    <?php
+    document_signatures('Teslim Eden', 'Teslim Alan');
+    document_footer();
+    return (string) ob_get_clean();
+}

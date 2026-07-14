@@ -17,6 +17,8 @@ require_once __DIR__ . '/rma.php';          // get_rma_record
 require_once __DIR__ . '/commissions.php';  // get_commission
 require_once __DIR__ . '/finance.php';      // fin_movement_get
 require_once __DIR__ . '/customers.php';    // get_customer_by_id (makbuz alıcı e-postası)
+require_once __DIR__ . '/orders.php';       // get_order
+require_once __DIR__ . '/shipments.php';    // get_shipment
 
 /** Tüm belge türü tanımları. Yeni bir forma uygulamak için buraya bir giriş eklenir. */
 function document_types(): array
@@ -124,6 +126,41 @@ function document_types(): array
                 fin_doc_type_label((string) ($m['doc_type'] ?? 'manual')), (string) ($m['receipt_no'] ?? ''),
                 (string) ($m['customer_name'] ?? ''), (string) ($m['customer_name'] ?? ''),
                 (string) ($m['movement_date'] ?? ''), $actor, $dept),
+        ],
+
+        'order' => [
+            'label'       => 'Sipariş',
+            'module'      => 'orders',
+            'index'       => 'modules/orders/index.php',
+            'orientation' => 'portrait',
+            'load'        => static fn(int $id) => get_order($id),
+            'no'          => static fn(array $r) => (string) ($r['order_no'] ?? ''),
+            'party'       => static fn(array $r) => (string) ($r['customer_name'] ?? ''),
+            'to_email'    => static function (array $r): string {
+                $cid = (int) ($r['customer_id'] ?? 0);
+                if ($cid <= 0) { return (string) ($r['email'] ?? ''); }
+                $c = get_customer_by_id($cid);
+                return (string) ($c['email'] ?? '');
+            },
+            'inner'       => static fn(array $r) => order_document_inner_html($r),
+            'vars'        => static fn(array $o, array $actor, ?array $dept) => document_common_vars('Sipariş',
+                (string) ($o['order_no'] ?? ''), (string) ($o['customer_name'] ?? ''), (string) ($o['customer_name'] ?? ''),
+                (string) ($o['order_date'] ?? ''), $actor, $dept),
+        ],
+
+        'shipment' => [
+            'label'       => 'Sevkiyat',
+            'module'      => 'shipments',
+            'index'       => 'modules/shipments/index.php',
+            'orientation' => 'portrait',
+            'load'        => static fn(int $id) => get_shipment($id),
+            'no'          => static fn(array $r) => (string) ($r['shipment_no'] ?? ''),
+            'party'       => static fn(array $r) => (string) ($r['customer_name'] ?? ''),
+            'to_email'    => static fn(array $r) => (string) ($r['email'] ?? ''),
+            'inner'       => static fn(array $r) => shipment_document_inner_html($r),
+            'vars'        => static fn(array $s, array $actor, ?array $dept) => document_common_vars('Sevkiyat',
+                (string) ($s['shipment_no'] ?? ''), (string) ($s['customer_name'] ?? ''), (string) ($s['customer_name'] ?? ''),
+                (string) ($s['shipment_date'] ?? ''), $actor, $dept),
         ],
     ];
     return $types;
