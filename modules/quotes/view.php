@@ -100,16 +100,13 @@ layout_top('Teklif ' . $q['quote_no'], 'quotes');
         </form>
         <?php endif; ?>
 
-        <?php if (can('quotes.mail') && trim((string) ($q['email'] ?? '')) !== ''): ?>
-        <form method="post" action="<?= e(url('modules/quotes/send-mail.php')) ?>">
-            <?= csrf_field() ?>
-            <input type="hidden" name="id" value="<?= (int) $id ?>">
-            <button type="submit" class="btn btn-sm"><?= icon('mail') ?>Teklifi Mail Gönder</button>
-        </form>
-        <?php elseif (can('quotes.mail')): ?>
-            <span class="birthday-note">Mail için müşteri e-postası gerekli</span>
-        <?php endif; ?>
     </div>
 </div>
+
+<?php
+// Ortak belge çıktısı & gönderim arayüzü (PDF indir + e-posta modalı + geçmiş).
+$docType = 'quote'; $docId = $id; $docRow = $q; $docBackUrl = 'modules/quotes/view.php?id=' . $id;
+require __DIR__ . '/../../includes/_document_send_ui.php';
+?>
 
 <?php layout_bottom();
