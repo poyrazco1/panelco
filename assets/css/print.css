@@ -32,7 +32,13 @@
 
 /* ---- Baskı kuralları ---- */
 @media print {
-    @page { size: A4 portrait; margin: 14mm; }
+    /* Tarayıcı yazdırmasında sayfa numarası (destekleyen motorlarda; Chrome kendi
+       üst/alt bilgi seçeneğini kullanır). PDF çıktısında numara Dompdf ile basılır. */
+    @page {
+        size: A4 portrait;
+        margin: 14mm;
+        @bottom-right { content: "Sayfa " counter(page) " / " counter(pages); font-size: 9px; color: #888; }
+    }
     @page landscape { size: A4 landscape; }
 
     html, body { background: #fff !important; }

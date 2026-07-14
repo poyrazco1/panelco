@@ -43,6 +43,20 @@ final class PdfService
         $dompdf->setPaper('A4', $orientation);
         $dompdf->render();
 
+        // Otomatik sayfa numarası (§4): her sayfanın altına "Sayfa X / Y".
+        try {
+            $canvas = $dompdf->getCanvas();
+            $font   = $dompdf->getFontMetrics()->getFont('DejaVu Sans', 'normal');
+            if ($font !== null) {
+                $canvas->page_text(
+                    $canvas->get_width() - 105, $canvas->get_height() - 26,
+                    'Sayfa {PAGE_NUM} / {PAGE_COUNT}', $font, 8, [0.45, 0.45, 0.45]
+                );
+            }
+        } catch (Throwable $e) {
+            // sayfa numarası eklenemese de PDF üretimi sürer
+        }
+
         return (string) $dompdf->output();
     }
 
