@@ -127,6 +127,17 @@ function notif_ensure_schema(): void
         foreach ($stmts as $sql) {
             db()->exec($sql);
         }
+        // user_notifications: lead takip alanları (idempotent — migration çalışmadıysa da güvenli)
+        $cols = [
+            'action_url'   => "ALTER TABLE `user_notifications` ADD COLUMN `action_url` VARCHAR(255) NULL AFTER `related_id`",
+            'is_dismissed' => "ALTER TABLE `user_notifications` ADD COLUMN `is_dismissed` TINYINT(1) NOT NULL DEFAULT 0 AFTER `read_at`",
+            'dismissed_at' => "ALTER TABLE `user_notifications` ADD COLUMN `dismissed_at` DATETIME NULL AFTER `is_dismissed`",
+        ];
+        foreach ($cols as $col => $alter) {
+            $chk = db()->prepare("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'user_notifications' AND COLUMN_NAME = :c");
+            $chk->execute([':c' => $col]);
+            if ((int) $chk->fetchColumn() === 0) { db()->exec($alter); }
+        }
     } catch (Throwable $e) {
         log_error('notif_ensure_schema: ' . $e->getMessage());
     }
@@ -463,7 +474,7 @@ function get_user_notifications(int $userId, int $limit = 20, array $filters = [
     $sql = 'SELECT n.*, p.full_name AS personnel_name, p.phone AS personnel_phone, p.whatsapp AS personnel_whatsapp, p.email AS personnel_email
             FROM user_notifications n
             LEFT JOIN personnel p ON (n.related_type = "personnel" AND p.id = n.related_id)
-            WHERE n.user_id = :uid AND n.is_deleted = 0';
+            WHERE n.user_id = :uid AND n.is_deleted = 0 AND n.is_dismissed = 0';
     $p = [':uid' => $userId];
     if (!empty($filters['type']) && array_key_exists($filters['type'], notif_types())) { $sql .= ' AND n.notification_type = :t'; $p[':t'] = (string) $filters['type']; }
     if (isset($filters['is_read']) && $filters['is_read'] !== '') { $sql .= ' AND n.is_read = :r'; $p[':r'] = (int) $filters['is_read']; }
@@ -477,7 +488,7 @@ function get_unread_notification_count(int $userId): int
 {
     notif_ensure_schema();
     try {
-        $st = db()->prepare('SELECT COUNT(*) FROM user_notifications WHERE user_id = :uid AND is_read = 0 AND is_deleted = 0');
+        $st = db()->prepare('SELECT COUNT(*) FROM user_notifications WHERE user_id = :uid AND is_read = 0 AND is_deleted = 0 AND is_dismissed = 0');
         $st->execute([':uid' => $userId]);
         return (int) $st->fetchColumn();
     } catch (Throwable $e) { log_error('get_unread_notification_count: ' . $e->getMessage()); return 0; }
