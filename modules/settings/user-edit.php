@@ -7,6 +7,7 @@ declare(strict_types=1);
  * "En az bir aktif yönetici" kuralı korunur; kullanıcı kendini pasifleştiremez.
  */
 require_once __DIR__ . '/../../includes/permissions.php';
+require_once __DIR__ . '/../../includes/email_system.php';
 
 auth_boot();
 require_permission('settings');
@@ -110,6 +111,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ];
             }
             db()->prepare($sql)->execute($params);
+            user_email_pref_save($id, [
+                'corporate_email'     => $_POST['pref_corporate_email'] ?? '',
+                'department'          => $_POST['pref_department'] ?? '',
+                'default_account_id'  => (int) ($_POST['pref_default_account_id'] ?? 0),
+                'can_receive_replies' => isset($_POST['pref_can_receive_replies']),
+                'auto_cc'             => isset($_POST['pref_auto_cc']),
+                'is_active'           => isset($_POST['pref_is_active']),
+            ]);
             flash('success', 'Kullanıcı güncellendi.');
             redirect('modules/settings/users.php');
         } catch (Throwable $e) {
@@ -118,6 +127,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+$pref = user_email_pref_get($id);
+$deptAccounts = dept_accounts_all();
 layout_top('Kullanıcıyı Düzenle', 'settings');
 ?>
 
@@ -183,6 +194,27 @@ layout_top('Kullanıcıyı Düzenle', 'settings');
                 <?php if ($isSelf): ?>
                     <div class="field-hint">Kendi hesabınızı pasifleştiremezsiniz.</div>
                 <?php endif; ?>
+            </div>
+
+            <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:8px">
+                <h3 style="margin:0 0 10px;font-size:15px">E-Posta / Gönderim Tercihleri</h3>
+                <div class="form-row">
+                    <div class="form-group"><label for="pref_corporate_email">Kurumsal e-posta</label>
+                        <input type="email" id="pref_corporate_email" name="pref_corporate_email" value="<?= e((string) ($pref['corporate_email'] ?? '')) ?>">
+                        <div class="field-hint">Reply-To bu adrese döner. Boşsa hesap e-postası kullanılır.</div></div>
+                    <div class="form-group"><label for="pref_department">Departman</label>
+                        <input type="text" id="pref_department" name="pref_department" value="<?= e((string) ($pref['department'] ?? '')) ?>"></div>
+                </div>
+                <div class="form-group"><label for="pref_default_account_id">Varsayılan gönderim hesabı</label>
+                    <select id="pref_default_account_id" name="pref_default_account_id">
+                        <option value="">— Yok —</option>
+                        <?php foreach ($deptAccounts as $a): ?>
+                            <option value="<?= (int) $a['id'] ?>"<?= (int) ($pref['default_account_id'] ?? 0) === (int) $a['id'] ? ' selected' : '' ?>><?= e((string) $a['department_name']) ?> · <?= e((string) $a['from_email']) ?></option>
+                        <?php endforeach; ?>
+                    </select></div>
+                <div class="form-check"><label><input type="checkbox" name="pref_can_receive_replies" <?= (int) ($pref['can_receive_replies'] ?? 1) === 1 ? 'checked' : '' ?>> Mail cevaplarını alabilir</label></div>
+                <div class="form-check"><label><input type="checkbox" name="pref_auto_cc" <?= (int) ($pref['auto_cc'] ?? 0) === 1 ? 'checked' : '' ?>> Gönderdiği belgelerde CC'ye otomatik eklensin</label></div>
+                <div class="form-check"><label><input type="checkbox" name="pref_is_active" <?= (int) ($pref['is_active'] ?? 1) === 1 ? 'checked' : '' ?>> Gönderim tercihi aktif</label></div>
             </div>
 
             <div class="form-actions">
