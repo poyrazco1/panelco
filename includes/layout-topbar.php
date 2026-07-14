@@ -26,10 +26,14 @@ $kurUpdated = ($kurRates !== null) ? (($kurRates['fetched_at'] ?? '') !== '' ? $
 
 // Header bildirim (İK) — okundu sayısı + son bildirimler (yalnız okuma; üretim dashboard/merkezde)
 require_once __DIR__ . '/notifications.php';
+require_once __DIR__ . '/lead_notifications.php';
 $notifUid = current_user_id();
 $notifUnread = $notifUid ? get_unread_notification_count((int) $notifUid) : 0;
 $notifRecent = $notifUid ? get_user_notifications((int) $notifUid, 8) : [];
-$notifTypeIcon = ['leave' => 'calendar-check', 'birthday' => 'gift', 'anniversary' => 'user-check', 'system' => 'info'];
+$notifTypeIcon = ['leave' => 'calendar-check', 'birthday' => 'gift', 'anniversary' => 'user-check', 'system' => 'info',
+    'lead_followup_soon' => 'bell-ring', 'lead_followup_due' => 'bell-ring', 'lead_followup_overdue' => 'alarm-clock'];
+$notifLastId  = $notifUid ? latest_notification_id((int) $notifUid) : 0;
+$notifPrefs   = $notifUid ? lead_notif_prefs((int) $notifUid) : lead_notif_pref_defaults();
 ?>
 <div class="main">
     <header class="topbar">
@@ -137,6 +141,10 @@ $notifTypeIcon = ['leave' => 'calendar-check', 'birthday' => 'gift', 'anniversar
             window.CSRF_TOKEN = <?= json_encode(csrf_token(), JSON_UNESCAPED_UNICODE) ?>;
             window.PREF_ENDPOINT = <?= json_encode(url('api/user-preferences.php'), JSON_UNESCAPED_UNICODE) ?>;
             window.NOTIF_ENDPOINT = <?= json_encode(url('api/notifications.php'), JSON_UNESCAPED_UNICODE) ?>;
+            window.APP_BASE = <?= json_encode(url(''), JSON_UNESCAPED_UNICODE) ?>;
+            window.NOTIF_LAST_ID = <?= (int) $notifLastId ?>;
+            window.NOTIF_POLL_MS = 60000;
+            window.NOTIF_SOUND = <?= !empty($notifPrefs['sound_enabled']) ? 'true' : 'false' ?>;
             window.UI_THEME = <?= json_encode($uiTheme, JSON_UNESCAPED_UNICODE) ?>;
             window.UI_SIDEBAR = <?= json_encode($uiSidebar, JSON_UNESCAPED_UNICODE) ?>;
         </script>

@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../../includes/permissions.php';
 require_once __DIR__ . '/../../includes/notifications.php';
+require_once __DIR__ . '/../../includes/lead_reminders.php';
+require_once __DIR__ . '/../../includes/lead_notifications.php';
 
 auth_boot();
 require_permission('dashboard'); // tüm giriş yapmış kullanıcılar
@@ -33,7 +35,9 @@ $types = notif_types();
 $unread = get_unread_notification_count($uid);
 $canDetails = notif_can_see_details();
 
-$typeIcon = ['leave' => 'calendar-check', 'birthday' => 'gift', 'anniversary' => 'user-check', 'system' => 'info'];
+$typeIcon = ['leave' => 'calendar-check', 'birthday' => 'gift', 'anniversary' => 'user-check', 'system' => 'info',
+    'lead_followup_soon' => 'bell-ring', 'lead_followup_due' => 'bell-ring', 'lead_followup_overdue' => 'alarm-clock'];
+$leadActUrl = e(url('modules/leads/lead-action.php'));
 
 layout_top('Bildirim Merkezi', 'notifications');
 ?>
@@ -83,6 +87,8 @@ layout_top('Bildirim Merkezi', 'notifications');
                 $type = (string) $n['notification_type'];
                 $celebrate = in_array($type, ['birthday', 'anniversary'], true) && (string) $n['related_type'] === 'personnel' && !empty($n['related_id']);
                 $waLink = $celebrate ? whatsapp_celebration_link((int) $n['related_id'], $type) : null;
+                $isLead = strncmp($type, 'lead_followup', 13) === 0 && (string) $n['related_type'] === 'lead_reminder';
+                $leadRem = $isLead ? lead_reminder_get((int) $n['related_id']) : null;
             ?>
                 <li class="notif-item<?= (int) $n['is_read'] === 0 ? ' is-unread' : '' ?>">
                     <span class="notif-ic notif-<?= e($type) ?>"><?= icon($typeIcon[$type] ?? 'bell', 'icon-sm') ?></span>
@@ -90,6 +96,27 @@ layout_top('Bildirim Merkezi', 'notifications');
                         <div class="notif-title"><?= e((string) $n['title']) ?><?php if (!empty($n['notification_date'])): ?><span class="notif-date"><?= e(fmt_date((string) $n['notification_date'])) ?></span><?php endif; ?></div>
                         <div class="notif-msg"><?= e((string) $n['message']) ?></div>
                         <div class="notif-actions">
+                            <?php if ($isLead): $lid = (int) ($leadRem['lead_id'] ?? 0);
+                                $phone = $leadRem ? lead_normalize_phone((string) ($leadRem['phone'] ?? $leadRem['whatsapp'] ?? '')) : '';
+                                $waDigits = $phone !== '' ? ltrim(preg_replace('/\D+/', '', $phone) ?? '', '0') : '';
+                                $rid = (int) ($n['related_id']); ?>
+                                <a class="btn btn-xs btn-primary" href="<?= e(url((string) ($n['action_url'] ?: 'modules/leads/view.php?id=' . $lid))) ?>"><?= icon('eye', 'icon-xs') ?>Lead Detayı</a>
+                                <?php if ($phone !== ''): ?>
+                                    <a class="btn btn-xs" href="tel:<?= e($phone) ?>"><?= icon('phone', 'icon-xs') ?>Ara</a>
+                                    <a class="btn btn-xs btn-wa" href="https://wa.me/<?= e($waDigits) ?>" target="_blank" rel="noopener"><?= icon('message-circle', 'icon-xs') ?>WhatsApp</a>
+                                <?php endif; ?>
+                                <?php if ($leadRem && (string) $leadRem['status'] !== 'done' && (string) $leadRem['status'] !== 'cancelled' && can('leads.remind')): ?>
+                                    <a class="btn btn-xs" href="<?= e(url('modules/leads/view.php?id=' . $lid . '&tab=reminders')) ?>"><?= icon('check', 'icon-xs') ?>Tamamla</a>
+                                    <?php foreach (['15' => '15dk', '60' => '1 saat', 'tomorrow' => 'Yarın'] as $po => $pl): ?>
+                                    <form method="post" action="<?= $leadActUrl ?>" style="display:inline"><?= csrf_field() ?>
+                                        <input type="hidden" name="action" value="reminder_postpone"><input type="hidden" name="id" value="<?= $lid ?>">
+                                        <input type="hidden" name="reminder_id" value="<?= $rid ?>"><input type="hidden" name="postpone" value="<?= e($po) ?>">
+                                        <input type="hidden" name="return" value="modules/notifications/index.php">
+                                        <button class="btn btn-xs" title="Ertele"><?= icon('clock', 'icon-xs') ?><?= e($pl) ?></button>
+                                    </form>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            <?php endif; ?>
                             <?php if ($celebrate && $waLink): ?>
                                 <a class="btn btn-xs btn-wa" href="<?= e($waLink) ?>" target="_blank" rel="noopener"><?= icon('message-circle', 'icon-xs') ?>WhatsApp ile Kutla</a>
                             <?php elseif ($celebrate): ?>

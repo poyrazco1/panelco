@@ -263,3 +263,108 @@
         });
     }
 }());
+
+/* ---- Anlık bildirim polling + toast + ses (§21) ---- */
+(function () {
+    'use strict';
+    if (!window.NOTIF_ENDPOINT || !window.CSRF_TOKEN) { return; }
+    var lastId = parseInt(window.NOTIF_LAST_ID || 0, 10) || 0;
+    var pollMs = parseInt(window.NOTIF_POLL_MS || 60000, 10) || 60000;
+    var soundOn = !!window.NOTIF_SOUND;
+    var base = window.APP_BASE || '';
+    var seen = {};        // aynı bildirimi iki kez gösterme
+    var audioCtx = null;
+
+    function beep() {
+        if (!soundOn) { return; }
+        try {
+            audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+            var o = audioCtx.createOscillator(), g = audioCtx.createGain();
+            o.type = 'sine'; o.frequency.value = 880; o.connect(g); g.connect(audioCtx.destination);
+            g.gain.setValueAtTime(0.06, audioCtx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.35);
+            o.start(); o.stop(audioCtx.currentTime + 0.36);
+        } catch (e) { /* ses engellenirse sessizce geç */ }
+    }
+
+    function ensureToastWrap() {
+        var w = document.getElementById('toastWrap');
+        if (!w) {
+            w = document.createElement('div');
+            w.id = 'toastWrap';
+            w.style.cssText = 'position:fixed;right:16px;bottom:16px;z-index:9999;display:flex;flex-direction:column;gap:8px;max-width:340px';
+            document.body.appendChild(w);
+        }
+        return w;
+    }
+
+    function showToast(n) {
+        var w = ensureToastWrap();
+        var t = document.createElement('div');
+        t.style.cssText = 'background:#1F2A44;color:#fff;border-radius:8px;padding:11px 13px;box-shadow:0 4px 14px rgba(0,0,0,.25);font-size:13px;cursor:pointer;opacity:0;transition:opacity .2s';
+        var title = document.createElement('div');
+        title.style.cssText = 'font-weight:600;margin-bottom:2px';
+        title.textContent = n.title || 'Bildirim';
+        var msg = document.createElement('div');
+        msg.style.cssText = 'opacity:.9';
+        msg.textContent = n.message || '';
+        t.appendChild(title); t.appendChild(msg);
+        if (n.url) {
+            t.addEventListener('click', function () { window.location.href = base + n.url; });
+        }
+        w.appendChild(t);
+        requestAnimationFrame(function () { t.style.opacity = '1'; });
+        setTimeout(function () { t.style.opacity = '0'; setTimeout(function () { t.remove(); }, 250); }, 8000);
+    }
+
+    function updateBadge(unread) {
+        var badge = document.getElementById('notifBadge');
+        var trigger = document.getElementById('notifTrigger');
+        if (unread > 0) {
+            if (!badge && trigger) {
+                badge = document.createElement('span');
+                badge.className = 'notif-badge'; badge.id = 'notifBadge';
+                trigger.appendChild(badge);
+            }
+            if (badge) { badge.textContent = unread > 99 ? '99+' : unread; }
+        } else if (badge) {
+            badge.remove();
+        }
+    }
+
+    function poll() {
+        var fd = new FormData();
+        fd.append('_csrf', window.CSRF_TOKEN);
+        fd.append('action', 'since');
+        fd.append('after', String(lastId));
+        fetch(window.NOTIF_ENDPOINT, { method: 'POST', body: fd, credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+            .then(function (r) { return r.ok ? r.json() : Promise.reject(); })
+            .then(function (data) {
+                if (!data || !data.ok) { return; }
+                if (typeof data.sound === 'boolean') { soundOn = data.sound; }
+                updateBadge(data.unread || 0);
+                var newOnes = 0;
+                (data.items || []).forEach(function (n) {
+                    if (seen[n.id]) { return; }
+                    seen[n.id] = true;
+                    if (n.id > lastId) { lastId = n.id; }
+                    showToast(n);
+                    newOnes++;
+                });
+                if (data.latest && data.latest > lastId) { lastId = data.latest; }
+                if (newOnes > 0) { beep(); }
+            })
+            .catch(function () {});
+    }
+
+    // Sekme görünürken düzenli poll (arka planda duraklat)
+    var timer = setInterval(function () {
+        if (document.visibilityState === 'visible') { poll(); }
+    }, pollMs);
+    document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible') { poll(); }
+    });
+    // İlk yüklemede kısa gecikmeyle bir kez
+    setTimeout(poll, 3000);
+    window.addEventListener('beforeunload', function () { clearInterval(timer); });
+}());
