@@ -9,6 +9,7 @@ require_once __DIR__ . '/../../includes/customers.php';
 require_once __DIR__ . '/../../includes/forms.php';
 require_once __DIR__ . '/../../includes/email_system.php';
 require_once __DIR__ . '/../../includes/mail.php';
+require_once __DIR__ . '/../../classes/DocumentTokenService.php';
 
 auth_boot();
 require_permission('reconciliation.view');
@@ -16,6 +17,24 @@ require_permission('reconciliation.view');
 $id = (int) ($_GET['id'] ?? 0);
 $r  = get_reconciliation($id);
 if (!$r) { flash('error', 'Mutabakat bulunamadı.'); redirect('modules/reconciliation/index.php'); }
+
+// Onay iptali / güvenli bağlantı iptali (yetkiye bağlı).
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    csrf_check();
+    $op = (string) ($_POST['op'] ?? '');
+    if ($op === 'cancel_approval' && can('reconciliation.approval_cancel')) {
+        try { db()->prepare("UPDATE reconciliations SET agreement = 'pending' WHERE id = ?")->execute([$id]); }
+        catch (Throwable $e) { log_error('recon cancel: ' . $e->getMessage()); }
+        log_activity('reconciliation_approval_cancel', 'reconciliation', $id, (string) $r['recon_no'], 'success', 'Onay iptal edildi');
+        flash('success', 'Mutabakat onayı iptal edildi (durum: beklemede).');
+    } elseif ($op === 'revoke_links' && can('reconciliation.token_renew')) {
+        DocumentTokenService::revokeAll('reconciliation', $id);
+        log_activity('reconciliation_token_revoke', 'reconciliation', $id, (string) $r['recon_no'], 'success', 'Güvenli bağlantılar iptal edildi');
+        flash('success', 'Mevcut güvenli onay bağlantıları iptal edildi. Yeni gönderimde yeni bağlantı üretilir.');
+    }
+    http_response_code(303);
+    redirect('modules/reconciliation/view.php?id=' . $id);
+}
 
 $sym = quote_currency_symbol((string) $r['currency']);
 $cid = (int) ($r['customer_id'] ?? 0);
@@ -71,6 +90,18 @@ $row = static fn(string $l, ?string $v): string => trim((string) $v) !== '' ? '<
     <?php if (can('reconciliation.pdf')): ?><a class="btn btn-sm" href="<?= e(url('modules/reconciliation/pdf.php?id=' . $id . '&inline=1')) ?>" target="_blank"><?= icon('eye') ?>Önizle</a><a class="btn btn-sm" href="<?= e(url('modules/reconciliation/pdf.php?id=' . $id)) ?>"><?= icon('file-down') ?>PDF indir</a><?php endif; ?>
     <?php if (can('reconciliation.mail')): ?><button type="button" class="btn btn-primary btn-sm" data-open-send><?= icon('mail') ?>E-posta gönder</button><?php endif; ?>
     <?php if (can('reconciliation.edit')): ?><a class="btn btn-sm" href="<?= e(url('modules/reconciliation/edit.php?id=' . $id)) ?>"><?= icon('pencil') ?>Düzenle</a><?php endif; ?>
+    <?php if (can('reconciliation.approval_cancel') && (string) $r['agreement'] !== 'pending'): ?>
+        <form method="post" style="display:inline" data-confirm="Müşteri onayı iptal edilip durum 'beklemede'ye alınsın mı?">
+            <?= csrf_field() ?><input type="hidden" name="op" value="cancel_approval">
+            <button type="submit" class="btn btn-sm">Onayı iptal et</button>
+        </form>
+    <?php endif; ?>
+    <?php if (can('reconciliation.token_renew')): ?>
+        <form method="post" style="display:inline" data-confirm="Mevcut güvenli onay bağlantıları iptal edilsin mi? (Eski linkler çalışmaz.)">
+            <?= csrf_field() ?><input type="hidden" name="op" value="revoke_links">
+            <button type="submit" class="btn btn-sm">Bağlantıları iptal et</button>
+        </form>
+    <?php endif; ?>
 </div></div>
 <?= render_flashes() ?>
 

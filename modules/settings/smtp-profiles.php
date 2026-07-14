@@ -11,10 +11,14 @@ require_once __DIR__ . '/../../includes/email_system.php';
 require_once __DIR__ . '/../../classes/MailService.php';
 
 auth_boot();
-require_permission('settings');
+if (!can('settings')) { require_permission('email.smtp_view'); } // ince yetki: SMTP görüntüle/düzenle
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_check();
+    if (!can('settings') && !can('email.smtp_edit')) {
+        flash('error', 'SMTP ayarlarını değiştirme yetkiniz yok.');
+        redirect('modules/settings/smtp-profiles.php');
+    }
     $op  = (string) ($_POST['op'] ?? '');
     $uid = current_user_id();
 

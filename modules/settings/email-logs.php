@@ -10,7 +10,7 @@ require_once __DIR__ . '/../../includes/permissions.php';
 require_once __DIR__ . '/../../includes/email_system.php';
 
 auth_boot();
-require_permission('settings');
+if (!can('settings')) { require_permission('email.logs_view'); }
 
 $logs = document_email_logs_recent(200);
 
