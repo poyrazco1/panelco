@@ -37,6 +37,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $flashes = get_flashes();
 
+/* -------------------------------------------------------------------------
+ | Marka (logo + ad): Ayarlar → Şirket Bilgileri'nden yönetilir.
+ | Logo yüklendiyse görsel, firma adı girildiyse metin buradan gelir.
+ | Hiçbiri ayarlı değilse tasarımın varsayılanı ("flowpath" + elmas) kullanılır.
+ * ---------------------------------------------------------------------- */
+$brandLogo    = function_exists('pub_logo_url') ? pub_logo_url() : null;
+$brandFavicon = function_exists('pub_favicon_url') ? pub_favicon_url() : null;
+$brandName    = 'flowpath';
+try {
+    if (function_exists('db')) {
+        $st = db()->prepare("SELECT setting_value FROM app_settings WHERE setting_key = 'company_name' LIMIT 1");
+        $st->execute();
+        $cn = trim((string) ($st->fetchColumn() ?: ''));
+        if ($cn !== '') { $brandName = $cn; }
+    }
+} catch (Throwable $e) {
+    // Sessiz: veritabanı erişilemezse tasarımın varsayılan markası kullanılır.
+}
+
 /* Navigasyon menüsü (dekoratif). Ürün tanıtım başlıkları. */
 $navItems = [
     ['label' => 'Product',   'items' => ['Connections', 'Workflows', 'Insights']],
@@ -55,6 +74,9 @@ $icon_chevron = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stro
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
     <title>Giriş · <?= e(SITE_NAME) ?></title>
+    <?php if ($brandFavicon): ?>
+    <link rel="icon" type="<?= e(favicon_mime($brandFavicon)) ?>" href="<?= e($brandFavicon) ?>">
+    <?php endif; ?>
 
     <!-- Helvetica Now Text -->
     <link rel="stylesheet" href="https://db.onlinewebfonts.com/c/08e020de1811ec4489f82d1247a42c09?family=Helvetica+Now+Text">
@@ -77,11 +99,15 @@ $icon_chevron = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stro
             <div class="flex items-center justify-between">
                 <!-- Logo -->
                 <a href="<?= e(url('login.php')) ?>" class="flex items-center gap-2 shrink-0">
-                    <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                        <path d="M14 2 L26 14 L14 26 L2 14 Z" fill="#ffffff" opacity="0.9"/>
-                        <path d="M14 8 L20 14 L14 20 L8 14 Z" fill="#ffffff" opacity="0.5"/>
-                    </svg>
-                    <span class="text-white text-lg sm:text-xl font-medium tracking-tight">flowpath</span>
+                    <?php if ($brandLogo): ?>
+                        <img src="<?= e($brandLogo) ?>" alt="<?= e($brandName) ?>" class="h-7 sm:h-8 w-auto object-contain">
+                    <?php else: ?>
+                        <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                            <path d="M14 2 L26 14 L14 26 L2 14 Z" fill="#ffffff" opacity="0.9"/>
+                            <path d="M14 8 L20 14 L14 20 L8 14 Z" fill="#ffffff" opacity="0.5"/>
+                        </svg>
+                    <?php endif; ?>
+                    <span class="text-white text-lg sm:text-xl font-medium tracking-tight"><?= e($brandName) ?></span>
                 </a>
 
                 <!-- Masaüstü menü -->
