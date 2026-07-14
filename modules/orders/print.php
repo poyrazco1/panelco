@@ -15,7 +15,7 @@ $fav = function_exists('pub_favicon_url') ? pub_favicon_url() : null;
 <!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow"><title>Sipariş <?= e((string) $o['order_no']) ?></title>
 <?php if ($fav): ?><link rel="icon" href="<?= e($fav) ?>"><?php endif; ?>
-<link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>"></head><body>
+<link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>"><link rel="stylesheet" href="<?= e(asset('css/print.css')) ?>"></head><body>
 <?php document_actions(); ?>
 <div class="doc-sheet">
     <?php document_header(['title' => 'SİPARİŞ FORMU', 'number' => (string) $o['order_no'], 'date' => (string) ($o['order_date'] ?? '')]); ?>

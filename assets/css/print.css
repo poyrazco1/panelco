@@ -1,0 +1,84 @@
+/* =========================================================================
+   print.css — Kurumsal A4 belge çıktısı (mutabakat, teklif, sipariş, sevkiyat,
+   ekstre, tahsilat/ödeme, servis, iade vb. tüm form çıktıları için ortak).
+
+   app.css'ten SONRA yüklenir; belge bileşenlerini (kaşe/imza görselleri, üst/alt
+   bilgi ek alanları) biçimler ve @media print altında temiz A4 çıktısı üretir.
+   Ekran renklerine bağımlı değildir; siyah-beyaz yazıcıda okunur.
+   ========================================================================= */
+
+/* ---- Belge bileşenleri (ekran önizleme + baskıda ortak) ---- */
+.doc-logo            { max-height: 68px; max-width: 200px; width: auto; height: auto; object-fit: contain; }
+.doc-company-legal   { font-size: 11.5px; color: #555; margin: 2px 0 0; }
+
+/* Üst-bilgi ek meta satırları zaten .doc-meta-row ile gelir */
+.doc-meta-row span:first-child { white-space: nowrap; }
+
+/* Kaşe / imza alanı */
+.doc-sign-row        { display: flex; justify-content: space-between; gap: 40px; margin-top: 36px; page-break-inside: avoid; }
+.doc-sign-box        { flex: 1; text-align: center; min-width: 0; }
+.doc-sign-media      { height: 78px; display: flex; align-items: flex-end; justify-content: center; margin-bottom: 4px; }
+.doc-sign-media img  { max-height: 76px; max-width: 200px; object-fit: contain; }
+.doc-sign-line       { border-top: 1px solid #333; margin-top: 6px; padding-top: 6px; font-size: 12px; color: #444; }
+.doc-sign-name       { font-size: 12.5px; font-weight: 600; color: #222; margin-top: 4px; }
+
+/* Alt-bilgi genişletmeleri */
+.doc-footer          { margin-top: 22px; padding-top: 12px; border-top: 1px solid #ddd; font-size: 11px; color: #666; }
+.doc-footer-line     { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.doc-footer-note     { margin-top: 4px; font-size: 10.5px; color: #888; }
+.doc-verify          { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+.doc-verify img      { width: 74px; height: 74px; }
+.doc-verify-text     { font-size: 10.5px; color: #666; }
+
+/* ---- Baskı kuralları ---- */
+@media print {
+    @page { size: A4 portrait; margin: 14mm; }
+    @page landscape { size: A4 landscape; }
+
+    html, body { background: #fff !important; }
+
+    /* app.css yalnızca .a4 içeriğini görünür bırakıp gerisini (body *) gizler.
+       Kurumsal belgeler .doc-sheet kullandığından, çıktının boş kalmaması için
+       .doc-sheet ve içeriğini tekrar görünür yapıyoruz (aynı .a4 kalıbı). */
+    body * { visibility: hidden !important; }
+    .doc-sheet, .doc-sheet * { visibility: visible !important; }
+    .doc-sheet {
+        position: absolute; left: 0; top: 0; width: 100%;
+        border: 0 !important; box-shadow: none !important; max-width: 100% !important;
+        margin: 0 !important; padding: 0 !important; border-radius: 0 !important;
+    }
+
+    /* Ekran/panel bileşenlerini tümüyle kaldır (yer kaplamasın) */
+    body.app > .layout > .sidebar,
+    .topbar, .app-footer, .footer,
+    .doc-actions, .no-print, .flash, .toast { display: none !important; }
+
+    /* Yatay çıktı istenen belgeler <body class="doc-landscape"> kullanır */
+    body.doc-landscape { }
+    body.doc-landscape .doc-sheet { }
+
+    /* Uzun tablolarda başlık her sayfada tekrarlansın; satırlar bölünmesin */
+    table       { width: 100%; border-collapse: collapse; }
+    thead       { display: table-header-group; }
+    tfoot       { display: table-footer-group; }
+    tr, td, th  { page-break-inside: avoid; }
+
+    /* Anlamlı bloklar sayfa arasında bölünmesin */
+    .doc-header, .doc-party, .doc-sign-row, .doc-footer,
+    .card, .doc-block { page-break-inside: avoid; }
+    h1, h2, h3 { page-break-after: avoid; }
+
+    /* Logo, kaşe ve imza görselleri baskıda net çıksın */
+    .doc-logo, .doc-sign-media img, .doc-verify img {
+        -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+    }
+
+    a[href]:after { content: ""; } /* link URL'lerini bastırma */
+}
+
+/* Yatay çıktı sayfası (body.doc-landscape) için A4 yatay */
+@media print {
+    body.doc-landscape { }
+}
+@page landscape { size: A4 landscape; }

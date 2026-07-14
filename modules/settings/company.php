@@ -16,6 +16,7 @@ require_permission('settings');
 /* app_settings anahtarları (metin alanları) */
 $textKeys = [
     'company_name', 'company_legal_name', 'company_tax_office', 'company_tax_no',
+    'company_mersis', 'company_trade_registry', 'company_authorized_name',
     'company_address', 'company_phone', 'company_whatsapp', 'company_email',
     'company_website', 'default_currency', 'default_vat', 'mail_from_name', 'mail_from_email',
     'landing_title', 'landing_subtitle', 'landing_cta',
@@ -83,9 +84,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($vat !== '' && !is_numeric(str_replace(',', '.', $vat))) { $errors[] = 'KDV oranı sayısal olmalıdır.'; }
 
     // Dosya yüklemeleri (hata varsa $errors dolar, kayıt yapılmaz)
-    $logoRel = $handleUpload('company_logo_file', 'logo',
-        ['png' => ['image/png'], 'jpg' => ['image/jpeg'], 'jpeg' => ['image/jpeg'], 'webp' => ['image/webp'], 'svg' => ['image/svg+xml']],
-        2 * 1024 * 1024);
+    $imgTypes = ['png' => ['image/png'], 'jpg' => ['image/jpeg'], 'jpeg' => ['image/jpeg'], 'webp' => ['image/webp'], 'svg' => ['image/svg+xml']];
+    $logoRel      = $handleUpload('company_logo_file',       'logo',       $imgTypes, 2 * 1024 * 1024);
+    $logoPrintRel = $handleUpload('company_logo_print_file', 'logo-print', $imgTypes, 2 * 1024 * 1024);
+    $logoDarkRel  = $handleUpload('company_logo_dark_file',  'logo-dark',  $imgTypes, 2 * 1024 * 1024);
+    $logoLightRel = $handleUpload('company_logo_light_file', 'logo-light', $imgTypes, 2 * 1024 * 1024);
+    $kaseRel      = $handleUpload('company_kase_file',       'kase',       $imgTypes, 2 * 1024 * 1024);
+    $signRel      = $handleUpload('company_signature_file',  'signature',  $imgTypes, 2 * 1024 * 1024);
     $favRel = $handleUpload('company_favicon_file', 'favicon',
         ['ico' => ['image/x-icon', 'image/vnd.microsoft.icon'], 'png' => ['image/png'], 'svg' => ['image/svg+xml']],
         512 * 1024);
@@ -99,8 +104,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $taxCombined = trim(trim((string) ($_POST['company_tax_office'] ?? '')) . ' / ' . trim((string) ($_POST['company_tax_no'] ?? '')), ' /');
             app_setting_set('company_tax', $taxCombined);
 
-            if ($logoRel !== null) { app_setting_set('company_logo', $logoRel); }
-            if ($favRel !== null)  { app_setting_set('company_favicon', $favRel); }
+            if ($logoRel !== null)      { app_setting_set('company_logo', $logoRel); }
+            if ($logoPrintRel !== null) { app_setting_set('company_logo_print', $logoPrintRel); }
+            if ($logoDarkRel !== null)  { app_setting_set('company_logo_dark', $logoDarkRel); }
+            if ($logoLightRel !== null) { app_setting_set('company_logo_light', $logoLightRel); }
+            if ($kaseRel !== null)      { app_setting_set('company_kase', $kaseRel); }
+            if ($signRel !== null)      { app_setting_set('company_signature', $signRel); }
+            if ($favRel !== null)       { app_setting_set('company_favicon', $favRel); }
 
             log_activity('settings_update', 'settings', null, 'company', 'success', 'Şirket bilgileri güncellendi');
             flash('success', 'Şirket bilgileri kaydedildi.');
@@ -115,6 +125,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $logo = $get('company_logo');
 $fav  = $get('company_favicon');
+
+/* Kurumsal Kimlik: yüklü görsel yollarını (varsa) önizleme için oku. */
+$identityFiles = [
+    'company_logo'       => ['label' => 'Ana logo',        'field' => 'company_logo_file',       'hint' => 'Panelde ve varsayılan olarak belgelerde kullanılır.'],
+    'company_logo_print' => ['label' => 'Yazdırma logosu', 'field' => 'company_logo_print_file', 'hint' => 'Belge çıktılarında önceliklidir. Boşsa ana logo kullanılır.'],
+    'company_logo_dark'  => ['label' => 'Koyu zemin logo', 'field' => 'company_logo_dark_file',  'hint' => 'Koyu arka planlı ekranlar için (ör. giriş sayfası).'],
+    'company_logo_light' => ['label' => 'Açık zemin logo', 'field' => 'company_logo_light_file', 'hint' => 'Açık arka planlar için.'],
+    'company_kase'       => ['label' => 'Kaşe görseli',    'field' => 'company_kase_file',       'hint' => 'Belge kaşe/imza alanında görünür (PNG şeffaf önerilir).'],
+    'company_signature'  => ['label' => 'İmza görseli',    'field' => 'company_signature_file',  'hint' => 'Yetkili imzası; belge çıktısında kaşenin yanında görünür.'],
+];
 
 layout_top('Şirket Bilgileri', 'settings');
 ?>
@@ -140,6 +160,11 @@ layout_top('Şirket Bilgileri', 'settings');
                 <div class="form-group"><label for="company_tax_office">Vergi dairesi</label><input type="text" id="company_tax_office" name="company_tax_office" value="<?= e($get('company_tax_office')) ?>"></div>
                 <div class="form-group"><label for="company_tax_no">Vergi numarası</label><input type="text" id="company_tax_no" name="company_tax_no" value="<?= e($get('company_tax_no')) ?>"></div>
             </div>
+            <div class="form-row">
+                <div class="form-group"><label for="company_mersis">MERSİS numarası</label><input type="text" id="company_mersis" name="company_mersis" value="<?= e($get('company_mersis')) ?>"></div>
+                <div class="form-group"><label for="company_trade_registry">Ticaret sicil numarası</label><input type="text" id="company_trade_registry" name="company_trade_registry" value="<?= e($get('company_trade_registry')) ?>"></div>
+            </div>
+            <div class="form-group"><label for="company_authorized_name">Yetkili adı (belge kaşe/imza altında görünür)</label><input type="text" id="company_authorized_name" name="company_authorized_name" value="<?= e($get('company_authorized_name')) ?>"></div>
             <div class="form-group"><label for="company_address">Adres</label><textarea id="company_address" name="company_address" rows="2"><?= e($get('company_address')) ?></textarea></div>
         </div>
     </div>
@@ -179,23 +204,28 @@ layout_top('Şirket Bilgileri', 'settings');
     </div>
 
     <div class="card" style="max-width:820px">
-        <div class="card-header"><h2>Logo & Favicon</h2></div>
+        <div class="card-header"><h2>Kurumsal Kimlik — Logo, Kaşe & İmza</h2></div>
         <div class="card-body">
-            <div class="form-group">
-                <label for="company_logo_file">Logo yükle (PNG, JPG, WEBP, SVG — max 2 MB)</label>
-                <input type="file" id="company_logo_file" name="company_logo_file" accept=".png,.jpg,.jpeg,.webp,.svg,image/*">
-                <div class="field-hint">Formlarda, PDF çıktılarda ve public takip sayfalarında kullanılır.</div>
-                <?php if ($logo !== '' && is_file(APP_ROOT . '/' . ltrim($logo, '/'))): ?>
-                    <div class="settings-media-preview"><img src="<?= e(asset(ltrim($logo, '/'))) ?>" alt="Logo"></div>
-                <?php endif; ?>
-            </div>
-            <div class="form-group">
-                <label for="company_favicon_file">Favicon yükle (ICO, PNG, SVG — max 512 KB)</label>
-                <input type="file" id="company_favicon_file" name="company_favicon_file" accept=".ico,.png,.svg,image/*">
-                <div class="field-hint">Tüm panel sekmelerinde tarayıcı ikonu olarak gösterilir.</div>
-                <?php if ($fav !== '' && is_file(APP_ROOT . '/' . ltrim($fav, '/'))): ?>
-                    <div class="settings-media-preview is-favicon"><img src="<?= e(asset(ltrim($fav, '/'))) ?>" alt="Favicon"></div>
-                <?php endif; ?>
+            <p class="field-hint" style="margin-top:0">PNG, JPG, WEBP veya SVG — her biri max 2 MB. Görseller orantısı bozulmadan küçültülür; yazdırma, PDF ve e-posta ekindeki belgelerde görünür. Yeni dosya seçmezseniz mevcut görsel korunur.</p>
+            <div class="form-row" style="flex-wrap:wrap">
+                <?php foreach ($identityFiles as $key => $meta): $val = $get($key); ?>
+                    <div class="form-group" style="min-width:240px">
+                        <label for="<?= e($meta['field']) ?>"><?= e($meta['label']) ?></label>
+                        <input type="file" id="<?= e($meta['field']) ?>" name="<?= e($meta['field']) ?>" accept=".png,.jpg,.jpeg,.webp,.svg,image/*">
+                        <div class="field-hint"><?= e($meta['hint']) ?></div>
+                        <?php if ($val !== '' && is_file(APP_ROOT . '/' . ltrim($val, '/'))): ?>
+                            <div class="settings-media-preview"><img src="<?= e(asset(ltrim($val, '/'))) ?>" alt="<?= e($meta['label']) ?>"></div>
+                        <?php endif; ?>
+                    </div>
+                <?php endforeach; ?>
+                <div class="form-group" style="min-width:240px">
+                    <label for="company_favicon_file">Favicon (ICO, PNG, SVG — max 512 KB)</label>
+                    <input type="file" id="company_favicon_file" name="company_favicon_file" accept=".ico,.png,.svg,image/*">
+                    <div class="field-hint">Tüm panel sekmelerinde tarayıcı ikonu olarak gösterilir.</div>
+                    <?php if ($fav !== '' && is_file(APP_ROOT . '/' . ltrim($fav, '/'))): ?>
+                        <div class="settings-media-preview is-favicon"><img src="<?= e(asset(ltrim($fav, '/'))) ?>" alt="Favicon"></div>
+                    <?php endif; ?>
+                </div>
             </div>
         </div>
     </div>

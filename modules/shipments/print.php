@@ -18,7 +18,7 @@ $fav = function_exists('pub_favicon_url') ? pub_favicon_url() : null;
 <html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow"><title>Sevkiyat <?= e((string) $s['shipment_no']) ?></title>
 <?php if ($fav): ?><link rel="icon" href="<?= e($fav) ?>"><?php endif; ?>
-<link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>"></head><body>
+<link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>"><link rel="stylesheet" href="<?= e(asset('css/print.css')) ?>"></head><body>
 <?php document_actions(); ?>
 <div class="doc-sheet">
     <?php document_header(['title' => 'SEVKİYAT FİŞİ', 'number' => (string) $s['shipment_no'], 'date' => (string) ($s['shipment_date'] ?? ''), 'extra' => ['Tip' => shipment_type_label((string) $s['shipment_type'])]]); ?>

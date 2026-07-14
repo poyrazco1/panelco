@@ -31,6 +31,7 @@ try {
     <title>Teklif <?= e((string) $q['quote_no']) ?></title>
     <?php if ($fav): ?><link rel="icon" href="<?= e($fav) ?>"><?php endif; ?>
     <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>">
+    <link rel="stylesheet" href="<?= e(asset('css/print.css')) ?>">
 </head>
 <body>
 <?php document_actions(); ?>
