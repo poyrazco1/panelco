@@ -18,6 +18,18 @@ $isSuper = gp_is_super_admin();
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_check();
 
+    // Bağlantı testi (kayıtlı anahtarla; kaydetmeden ayrı çalışır)
+    if (isset($_POST['do_test'])) {
+        require_once __DIR__ . '/../../classes/GooglePlacesService.php';
+        $svc = new GooglePlacesService(current_user_id());
+        $ping = $svc->ping();
+        log_activity('settings_test', 'settings', null, 'lead_scan', $ping['ok'] ? 'success' : 'error',
+            'Google Places bağlantı testi: ' . ($ping['ok'] ? 'başarılı' : 'başarısız'));
+        flash($ping['ok'] ? 'success' : 'error', $ping['message'] . ($ping['ok'] ? ' (' . (int) $ping['count'] . ' örnek sonuç alındı)' : ''));
+        http_response_code(303);
+        redirect('modules/settings/lead-scan-settings.php');
+    }
+
     // Anahtar değişikliği YALNIZCA Süper Admin'e izinlidir (backend denetimi).
     $newKey = null;
     if ($isSuper) {
@@ -100,14 +112,32 @@ layout_top('Lead Tarama Ayarları', 'settings');
         <?php endif; ?>
     </div></div>
 
+    <?php if ($hasKey): ?>
+    <div class="card" style="max-width:820px"><div class="card-body" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <span>Kayıtlı anahtarla Google bağlantısını test edin (etkinleştirmeden de çalışır):</span>
+        <button type="submit" name="do_test" value="1" class="btn btn-sm" formnovalidate><?= icon('plug') ?>Bağlantıyı Test Et</button>
+        <span class="field-hint" style="margin:0">Küçük bir örnek arama yapar; anahtar hiçbir yere sızmaz.</span>
+    </div></div>
+    <?php endif; ?>
+
     <div class="card" style="max-width:820px"><div class="card-header"><h2>Genel</h2></div><div class="card-body">
         <div class="form-group">
             <label class="checkbox"><input type="checkbox" name="is_active" value="1" <?= !empty($s['is_active']) ? 'checked' : '' ?>> Google Places taramasını etkinleştir</label>
             <div class="field-hint">Kapalıyken tarama başlatılamaz. Anahtar tanımlı değilse etkinleştirilemez.</div>
         </div>
         <div class="form-row">
-            <div class="form-group"><label for="default_country">Varsayılan ülke</label><input type="text" id="default_country" name="default_country" value="<?= e((string) $s['default_country']) ?>"></div>
-            <div class="form-group"><label for="default_city">Varsayılan şehir</label><input type="text" id="default_city" name="default_city" value="<?= e((string) $s['default_city']) ?>" placeholder="Örn. İzmir"></div>
+            <div class="form-group"><label for="default_country">Varsayılan ülke</label>
+                <?php $countries = gp_country_options(); $curCountry = (string) $s['default_country']; ?>
+                <select id="default_country" name="default_country">
+                    <?php foreach ($countries as $c): ?><option value="<?= e($c) ?>"<?= $curCountry === $c ? ' selected' : '' ?>><?= e($c) ?></option><?php endforeach; ?>
+                    <?php if ($curCountry !== '' && !in_array($curCountry, $countries, true)): ?><option value="<?= e($curCountry) ?>" selected><?= e($curCountry) ?></option><?php endif; ?>
+                </select>
+            </div>
+            <div class="form-group"><label for="default_city">Varsayılan şehir</label>
+                <input type="text" id="default_city" name="default_city" value="<?= e((string) $s['default_city']) ?>" placeholder="Örn. İzmir" list="gpProvinces" autocomplete="off">
+                <datalist id="gpProvinces"><?php foreach (gp_turkish_provinces() as $prov): ?><option value="<?= e($prov) ?>"></option><?php endforeach; ?></datalist>
+                <div class="field-hint">Listeden seçin veya yazın (Türkiye illeri önerilir).</div>
+            </div>
         </div>
         <div class="form-row">
             <div class="form-group"><label for="default_language">Dil kodu</label><input type="text" id="default_language" name="default_language" value="<?= e((string) $s['default_language']) ?>" placeholder="tr" style="max-width:120px"></div>

@@ -50,6 +50,28 @@ final class GooglePlacesService
         $this->userId = $userId ?? (function_exists('current_user_id') ? current_user_id() : null);
     }
 
+    /**
+     * Kayıtlı (şifreli) anahtarla küçük bir test araması yapar. is_active şartı
+     * ARANMAZ (etkinleştirmeden önce de test edilebilir). Anahtar sızmaz.
+     * @return array{ok:bool, message:string, count:int}
+     */
+    public function ping(): array
+    {
+        if (!function_exists('curl_init')) { return ['ok' => false, 'message' => 'Sunucuda cURL etkin değil.', 'count' => 0]; }
+        if (!gp_has_api_key()) { return ['ok' => false, 'message' => 'API anahtarı tanımlı değil. Önce anahtarı kaydedin.', 'count' => 0]; }
+        if (gp_api_key() === null) { return ['ok' => false, 'message' => 'API anahtarı çözülemedi (şifreleme anahtarı değişmiş olabilir).', 'count' => 0]; }
+        $s = gp_settings();
+        $city = trim((string) ($s['default_city'] ?? ''));
+        $query = 'restoran' . ($city !== '' ? ' ' . $city : '');
+        $res = $this->call('places:searchText', [
+            'textQuery' => $query, 'languageCode' => (string) ($s['default_language'] ?? 'tr'), 'maxResultCount' => 1,
+        ], self::FIELD_MASK, 'test', null);
+        if ($res['ok']) {
+            return ['ok' => true, 'message' => 'Bağlantı başarılı — Google Places yanıt verdi.', 'count' => count($res['places'])];
+        }
+        return ['ok' => false, 'message' => $res['error'], 'count' => 0];
+    }
+
     /** Servis çağrılabilir durumda mı? (anahtar var + aktif + cURL). */
     public function isReady(): array
     {

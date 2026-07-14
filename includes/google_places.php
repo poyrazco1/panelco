@@ -18,11 +18,65 @@ require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/vault.php';
 require_once __DIR__ . '/permissions.php';
 
+/**
+ * Google Places tablolarını (yoksa) oluşturur — migration çalışmadıysa da
+ * ayarların kaydedilebilmesi için savunmacı şema. Bir istekte bir kez çalışır.
+ * (leads tablosundaki ek kolonlar buraya dahil DEĞİLDİR; tarama kaydı için
+ *  database/migrations/2026-07-leads-crm.sql çalıştırılmalıdır.)
+ */
+function gp_ensure_schema(): void
+{
+    static $done = false;
+    if ($done) { return; }
+    $done = true;
+    try {
+        db()->exec("CREATE TABLE IF NOT EXISTS `google_places_settings` (
+            `id` TINYINT UNSIGNED NOT NULL DEFAULT 1,
+            `api_key_enc` TEXT DEFAULT NULL,
+            `is_active` TINYINT(1) NOT NULL DEFAULT 0,
+            `default_country` VARCHAR(80) NOT NULL DEFAULT 'Türkiye',
+            `default_city` VARCHAR(80) NOT NULL DEFAULT '',
+            `default_language` VARCHAR(10) NOT NULL DEFAULT 'tr',
+            `default_radius` INT UNSIGNED NOT NULL DEFAULT 5000,
+            `max_results` INT UNSIGNED NOT NULL DEFAULT 60,
+            `daily_query_limit` INT UNSIGNED NOT NULL DEFAULT 1000,
+            `monthly_est_limit` INT UNSIGNED NOT NULL DEFAULT 20000,
+            `block_duplicates` TINYINT(1) NOT NULL DEFAULT 1,
+            `include_no_phone` TINYINT(1) NOT NULL DEFAULT 1,
+            `include_no_website` TINYINT(1) NOT NULL DEFAULT 1,
+            `auto_details` TINYINT(1) NOT NULL DEFAULT 1,
+            `last_success_at` DATETIME DEFAULT NULL,
+            `last_error` VARCHAR(255) NOT NULL DEFAULT '',
+            `updated_by` INT UNSIGNED DEFAULT NULL,
+            `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (`id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        db()->exec("INSERT IGNORE INTO `google_places_settings` (`id`) VALUES (1)");
+        db()->exec("CREATE TABLE IF NOT EXISTS `google_places_api_usage` (
+            `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            `endpoint` VARCHAR(60) NOT NULL DEFAULT '',
+            `op_type` VARCHAR(40) NOT NULL DEFAULT '',
+            `search_id` INT UNSIGNED NULL,
+            `user_id` INT UNSIGNED NULL,
+            `result_count` INT UNSIGNED NOT NULL DEFAULT 0,
+            `success` TINYINT(1) NOT NULL DEFAULT 0,
+            `http_code` SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+            `google_error` VARCHAR(120) NOT NULL DEFAULT '',
+            `est_cost` DECIMAL(10,4) NOT NULL DEFAULT 0,
+            `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (`id`), KEY `idx_gpu_created` (`created_at`), KEY `idx_gpu_success` (`success`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    } catch (Throwable $e) {
+        log_error('gp_ensure_schema: ' . $e->getMessage());
+    }
+}
+
 /** Google Places ayar satırı (tek satır, id=1). Anahtar ŞİFRELİ döner; çözülmez. */
 function gp_settings(): array
 {
     static $cache = null;
     if ($cache !== null) { return $cache; }
+    gp_ensure_schema();
     $defaults = [
         'id' => 1, 'api_key_enc' => null, 'is_active' => 0,
         'default_country' => 'Türkiye', 'default_city' => '', 'default_language' => 'tr',
@@ -93,6 +147,7 @@ function gp_is_super_admin(): bool
  */
 function gp_settings_save(array $in, ?string $newApiKey, ?int $userId): array
 {
+    gp_ensure_schema();
     $cur = gp_settings();
 
     $country  = trim((string) ($in['default_country'] ?? $cur['default_country']));
@@ -146,7 +201,8 @@ function gp_settings_save(array $in, ?string $newApiKey, ?int $userId): array
         return ['ok' => true, 'error' => ''];
     } catch (Throwable $e) {
         log_error('gp_settings_save: ' . $e->getMessage());
-        return ['ok' => false, 'error' => 'Ayarlar kaydedilemedi.'];
+        $detail = (defined('DEBUG') && DEBUG) ? ' (' . $e->getMessage() . ')' : '';
+        return ['ok' => false, 'error' => 'Ayarlar kaydedilemedi. Veritabanı tablosu eksik olabilir; database/migrations/2026-07-leads-crm.sql çalıştırın.' . $detail];
     }
 }
 
@@ -254,6 +310,27 @@ function lead_normalize_phone(?string $raw): string
     }
     // Belirsiz: rakamları koru (karşılaştırma yine tutarlı olur)
     return '+' . $digits;
+}
+
+/** Varsayılan ülke seçenekleri (tarama ayarları). */
+function gp_country_options(): array
+{
+    return ['Türkiye', 'KKTC', 'Almanya', 'Hollanda', 'Fransa', 'İngiltere', 'ABD', 'BAE', 'Azerbaycan'];
+}
+
+/** Türkiye il listesi (81 il) — varsayılan şehir seçimi için. */
+function gp_turkish_provinces(): array
+{
+    return [
+        'Adana','Adıyaman','Afyonkarahisar','Ağrı','Aksaray','Amasya','Ankara','Antalya','Ardahan','Artvin',
+        'Aydın','Balıkesir','Bartın','Batman','Bayburt','Bilecik','Bingöl','Bitlis','Bolu','Burdur',
+        'Bursa','Çanakkale','Çankırı','Çorum','Denizli','Diyarbakır','Düzce','Edirne','Elazığ','Erzincan',
+        'Erzurum','Eskişehir','Gaziantep','Giresun','Gümüşhane','Hakkâri','Hatay','Iğdır','Isparta','İstanbul',
+        'İzmir','Kahramanmaraş','Karabük','Karaman','Kars','Kastamonu','Kayseri','Kırıkkale','Kırklareli','Kırşehir',
+        'Kilis','Kocaeli','Konya','Kütahya','Malatya','Manisa','Mardin','Mersin','Muğla','Muş',
+        'Nevşehir','Niğde','Ordu','Osmaniye','Rize','Sakarya','Samsun','Siirt','Sinop','Sivas',
+        'Şanlıurfa','Şırnak','Tekirdağ','Tokat','Trabzon','Tunceli','Uşak','Van','Yalova','Yozgat','Zonguldak',
+    ];
 }
 
 /** URL'den ana alan adını çıkarır (kopya kontrolü). "https://www.x.com/a" → "x.com" */
