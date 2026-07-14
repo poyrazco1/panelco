@@ -2164,3 +2164,134 @@ INSERT IGNORE INTO `app_settings` (`setting_key`, `setting_value`) VALUES
     ('intl_daily_mail_limit', '200'),
     ('intl_sender_name',      ''),
     ('intl_sender_whatsapp',  '');
+
+/* =========================================================================
+ |  BELGE E-POSTA / GÖNDERİM SİSTEMİ
+ |  Ayrıntı ve idempotent yükseltme: migrations/2026-07-document-email-system.sql
+ * ====================================================================== */
+CREATE TABLE IF NOT EXISTS `smtp_profiles` (
+    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `name` VARCHAR(150) NOT NULL,
+    `host` VARCHAR(190) NOT NULL DEFAULT '',
+    `port` SMALLINT UNSIGNED NOT NULL DEFAULT 465,
+    `encryption` ENUM('ssl','tls','none') NOT NULL DEFAULT 'ssl',
+    `username` VARCHAR(190) NOT NULL DEFAULT '',
+    `password_enc` TEXT DEFAULT NULL,
+    `from_email` VARCHAR(190) NOT NULL DEFAULT '',
+    `from_name` VARCHAR(190) NOT NULL DEFAULT '',
+    `timeout` SMALLINT UNSIGNED NOT NULL DEFAULT 20,
+    `test_email` VARCHAR(190) NOT NULL DEFAULT '',
+    `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+    `is_default` TINYINT(1) NOT NULL DEFAULT 0,
+    `created_by` INT UNSIGNED DEFAULT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`), UNIQUE KEY `uq_smtp_name` (`name`),
+    KEY `idx_smtp_active` (`is_active`), KEY `idx_smtp_default` (`is_default`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `email_templates` (
+    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `module_key` VARCHAR(60) NOT NULL DEFAULT '',
+    `name` VARCHAR(150) NOT NULL,
+    `subject` VARCHAR(300) NOT NULL DEFAULT '',
+    `body` MEDIUMTEXT DEFAULT NULL,
+    `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+    `is_default` TINYINT(1) NOT NULL DEFAULT 0,
+    `created_by` INT UNSIGNED DEFAULT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`), KEY `idx_tpl_module` (`module_key`), KEY `idx_tpl_active` (`is_active`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `department_email_accounts` (
+    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `department_name` VARCHAR(150) NOT NULL,
+    `module_key` VARCHAR(60) NOT NULL DEFAULT '',
+    `from_name` VARCHAR(190) NOT NULL DEFAULT '',
+    `from_email` VARCHAR(190) NOT NULL DEFAULT '',
+    `reply_to_mode` ENUM('user','department','fixed') NOT NULL DEFAULT 'user',
+    `reply_to_fixed` VARCHAR(190) NOT NULL DEFAULT '',
+    `default_cc` VARCHAR(500) NOT NULL DEFAULT '',
+    `default_bcc` VARCHAR(500) NOT NULL DEFAULT '',
+    `forward_to` VARCHAR(500) NOT NULL DEFAULT '',
+    `smtp_profile_id` INT UNSIGNED DEFAULT NULL,
+    `template_id` INT UNSIGNED DEFAULT NULL,
+    `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+    `created_by` INT UNSIGNED DEFAULT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`), KEY `idx_dept_module` (`module_key`), KEY `idx_dept_active` (`is_active`),
+    CONSTRAINT `fk_dept_smtp` FOREIGN KEY (`smtp_profile_id`) REFERENCES `smtp_profiles` (`id`) ON DELETE SET NULL,
+    CONSTRAINT `fk_dept_tpl` FOREIGN KEY (`template_id`) REFERENCES `email_templates` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `document_email_logs` (
+    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `document_type` VARCHAR(60) NOT NULL DEFAULT '',
+    `document_id` INT UNSIGNED DEFAULT NULL,
+    `document_no` VARCHAR(100) NOT NULL DEFAULT '',
+    `sent_by_user_id` INT UNSIGNED DEFAULT NULL,
+    `sent_by_name` VARCHAR(190) NOT NULL DEFAULT '',
+    `department` VARCHAR(150) NOT NULL DEFAULT '',
+    `smtp_profile_id` INT UNSIGNED DEFAULT NULL,
+    `from_email` VARCHAR(190) NOT NULL DEFAULT '',
+    `reply_to` VARCHAR(190) NOT NULL DEFAULT '',
+    `to_email` VARCHAR(500) NOT NULL DEFAULT '',
+    `cc` VARCHAR(500) NOT NULL DEFAULT '',
+    `bcc` VARCHAR(500) NOT NULL DEFAULT '',
+    `subject` VARCHAR(300) NOT NULL DEFAULT '',
+    `body` MEDIUMTEXT DEFAULT NULL,
+    `has_pdf` TINYINT(1) NOT NULL DEFAULT 0,
+    `pdf_path` VARCHAR(255) NOT NULL DEFAULT '',
+    `doc_link` VARCHAR(255) NOT NULL DEFAULT '',
+    `status` ENUM('sent','failed') NOT NULL DEFAULT 'failed',
+    `error_message` TEXT DEFAULT NULL,
+    `message_id` VARCHAR(255) NOT NULL DEFAULT '',
+    `resend_of_id` BIGINT UNSIGNED DEFAULT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`), KEY `idx_del_doc` (`document_type`,`document_id`),
+    KEY `idx_del_created` (`created_at`), KEY `idx_del_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `document_access_tokens` (
+    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `document_type` VARCHAR(60) NOT NULL DEFAULT '',
+    `document_id` INT UNSIGNED NOT NULL,
+    `token_hash` CHAR(64) NOT NULL,
+    `expires_at` DATETIME DEFAULT NULL,
+    `revoked_at` DATETIME DEFAULT NULL,
+    `used_count` INT UNSIGNED NOT NULL DEFAULT 0,
+    `last_used_at` DATETIME DEFAULT NULL,
+    `created_by` INT UNSIGNED DEFAULT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`), UNIQUE KEY `uq_dat_hash` (`token_hash`),
+    KEY `idx_dat_doc` (`document_type`,`document_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `document_approvals` (
+    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `document_type` VARCHAR(60) NOT NULL DEFAULT '',
+    `document_id` INT UNSIGNED NOT NULL,
+    `token_id` BIGINT UNSIGNED DEFAULT NULL,
+    `decision` ENUM('agreed','disagreed') NOT NULL,
+    `note` TEXT DEFAULT NULL,
+    `authorized_name` VARCHAR(190) NOT NULL DEFAULT '',
+    `ip_address` VARCHAR(45) NOT NULL DEFAULT '',
+    `user_agent` VARCHAR(255) NOT NULL DEFAULT '',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`), KEY `idx_dap_doc` (`document_type`,`document_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `user_email_preferences` (
+    `user_id` INT UNSIGNED NOT NULL,
+    `corporate_email` VARCHAR(190) NOT NULL DEFAULT '',
+    `department` VARCHAR(150) NOT NULL DEFAULT '',
+    `default_account_id` INT UNSIGNED DEFAULT NULL,
+    `can_receive_replies` TINYINT(1) NOT NULL DEFAULT 1,
+    `auto_cc` TINYINT(1) NOT NULL DEFAULT 0,
+    `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`user_id`),
+    CONSTRAINT `fk_uep_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

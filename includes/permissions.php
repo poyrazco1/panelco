@@ -102,6 +102,7 @@ function module_action_registry(): array
         'leave'           => ['İzin / İK',             'İK / Finans', ['view','create','edit','delete','approve','export']],
         'attendance'      => ['Puantaj',               'İK / Finans', ['view','edit','export']],
         'settings'        => ['Ayarlar',               'Sistem',      ['view','edit','settings']],
+        'email'           => ['E-Posta / Belge Gönderimi', 'Sistem',  ['manage','send_as_other','logs_view','resend']],
         'forms'           => ['Form Merkezi',          'Form',        ['view','create','edit','delete','submit','submissions.view','submissions.manage','approve','external.manage','templates.manage','categories.manage']],
         'international_customers' => ['Yurtdışı Müşteriler', 'Dış Ticaret', ['view','create','edit','delete','import','export','filter','message_mail','message_whatsapp','blacklist','notes','view_contacts','create_contacts','edit_contacts','delete_contacts','view_brands','edit_brands','view_notes','edit_notes','status_change','relationship_change']],
         'product_lists'   => ['Ürün Listeleri',        'Dış Ticaret', ['view','create','edit','delete','export','pdf','mail','whatsapp','print']],
