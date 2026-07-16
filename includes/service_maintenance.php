@@ -1121,6 +1121,276 @@ function smaint_view_url(int $reminderId): string
     return 'modules/maintenance/view.php?id=' . $reminderId;
 }
 
+/* =========================================================================
+ * 9) LİSTELEME / SAYIMLAR / YAŞAM DÖNGÜSÜ (§14, §10)
+ * ====================================================================== */
+
+/** Atanabilir aktif kullanıcılar (id => ad). */
+function smaint_assignable_users(): array
+{
+    smaint_ensure_schema();
+    try {
+        $rows = db()->query('SELECT id, full_name FROM users WHERE is_active = 1 ORDER BY full_name ASC')->fetchAll();
+        $out = [];
+        foreach ($rows as $r) { $out[(int) $r['id']] = (string) $r['full_name']; }
+        return $out;
+    } catch (Throwable $e) { log_error('smaint_assignable_users: ' . $e->getMessage()); return []; }
+}
+
+/** Kalan/geçen gün (bugüne göre); negatif = geçmiş. */
+function smaint_days_to_due(?string $dueDate): ?int
+{
+    $d = substr(trim((string) $dueDate), 0, 10);
+    if ($d === '') { return null; }
+    try {
+        $due = new DateTime($d);
+        $t   = new DateTime('today');
+        return (int) $t->diff($due)->format('%r%a');
+    } catch (Throwable $e) { return null; }
+}
+
+/**
+ * Filtreli bakım hatırlatma listesi (§14).
+ * $opts: ['scope_user'=>?int (kendi kayıtları), 'limit'=>int, 'order'=>string]
+ */
+function smaint_reminder_list(array $f = [], array $opts = []): array
+{
+    smaint_ensure_schema();
+    $where = ['r.deleted_at IS NULL'];
+    $p = [];
+
+    $like = static function (string $col, string $key) use (&$where, &$p, $f): void {
+        if (trim((string) ($f[$key] ?? '')) !== '') {
+            $where[] = "$col LIKE :$key";
+            $p[':' . $key] = '%' . trim((string) $f[$key]) . '%';
+        }
+    };
+
+    if (trim((string) ($f['search'] ?? '')) !== '') {
+        $where[] = '(r.customer_name LIKE :q OR r.company_name LIKE :q OR r.phone LIKE :q OR r.whatsapp LIKE :q
+                    OR r.email LIKE :q OR r.serial_no LIKE :q OR r.brand_name LIKE :q OR r.device_model LIKE :q
+                    OR s.reference_code LIKE :q)';
+        $p[':q'] = '%' . trim((string) $f['search']) . '%';
+    }
+    if (trim((string) ($f['customer'] ?? '')) !== '') {
+        $where[] = '(r.customer_name LIKE :cust OR r.company_name LIKE :cust)';
+        $p[':cust'] = '%' . trim((string) $f['customer']) . '%';
+    }
+    if (trim((string) ($f['phone'] ?? '')) !== '') {
+        $where[] = '(r.phone LIKE :ph OR r.whatsapp LIKE :ph)';
+        $p[':ph'] = '%' . trim((string) $f['phone']) . '%';
+    }
+    $like('r.email', 'email');
+    $like('r.brand_name', 'brand');
+    $like('r.device_model', 'model');
+    $like('r.serial_no', 'serial');
+
+    if (isset(smaint_statuses()[(string) ($f['status'] ?? '')])) {
+        $where[] = 'r.status = :status';
+        $p[':status'] = (string) $f['status'];
+    }
+    if ((int) ($f['assigned'] ?? 0) > 0) {
+        $where[] = 'r.assigned_user_id = :assigned';
+        $p[':assigned'] = (int) $f['assigned'];
+    }
+    if (isset(smaint_channels()[(string) ($f['channel'] ?? '')])) {
+        $where[] = 'r.preferred_channel = :channel';
+        $p[':channel'] = (string) $f['channel'];
+    }
+    if (trim((string) ($f['due_from'] ?? '')) !== '') {
+        $where[] = 'r.maintenance_due_date >= :dfrom';
+        $p[':dfrom'] = substr((string) $f['due_from'], 0, 10);
+    }
+    if (trim((string) ($f['due_to'] ?? '')) !== '') {
+        $where[] = 'r.maintenance_due_date <= :dto';
+        $p[':dto'] = substr((string) $f['due_to'], 0, 10);
+    }
+    // Özel bayrak filtreleri
+    switch ((string) ($f['flag'] ?? '')) {
+        case 'msg_sent':     $where[] = 'r.last_message_at IS NOT NULL'; break;
+        case 'msg_unsent':   $where[] = "r.last_message_at IS NULL AND r.status NOT IN ('completed','cancelled','service_opened')"; break;
+        case 'overdue':      $where[] = "(r.status = 'overdue' OR (r.maintenance_due_date < CURDATE() AND r.status NOT IN ('completed','cancelled','service_opened','not_interested')))"; break;
+        case 'appointment':  $where[] = "(r.status = 'appointment_set' OR r.appointment_at IS NOT NULL)"; break;
+        case 'not_interested': $where[] = "r.status = 'not_interested'"; break;
+    }
+
+    $scopeUser = $opts['scope_user'] ?? null;
+    if ($scopeUser !== null && (int) $scopeUser > 0) {
+        $where[] = 'r.assigned_user_id = :scopeu';
+        $p[':scopeu'] = (int) $scopeUser;
+    }
+
+    $order = (string) ($opts['order'] ?? 'due_asc');
+    $orderSql = match ($order) {
+        'due_desc'     => 'r.maintenance_due_date DESC',
+        'created_desc' => 'r.id DESC',
+        default        => 'r.maintenance_due_date ASC',
+    };
+    $limit = max(1, min(5000, (int) ($opts['limit'] ?? 1000)));
+
+    try {
+        $sql = 'SELECT r.*, s.reference_code, s.status AS service_status, u.full_name AS assignee_name
+                FROM service_maintenance_reminders r
+                LEFT JOIN service_records s ON s.id = r.service_id
+                LEFT JOIN users u ON u.id = r.assigned_user_id
+                WHERE ' . implode(' AND ', $where) . '
+                ORDER BY ' . $orderSql . ' LIMIT ' . $limit;
+        $st = db()->prepare($sql);
+        $st->execute($p);
+        return $st->fetchAll();
+    } catch (Throwable $e) {
+        log_error('smaint_reminder_list: ' . $e->getMessage());
+        return [];
+    }
+}
+
+/** Özet sayımlar (kart/rozet). $scopeUser verilirse yalnız o kullanıcının. */
+function smaint_reminder_counts(?int $scopeUser = null): array
+{
+    smaint_ensure_schema();
+    $scope = ($scopeUser !== null && $scopeUser > 0) ? ' AND assigned_user_id = :u' : '';
+    $p = $scope !== '' ? [':u' => (int) $scopeUser] : [];
+    $q = static function (string $extra) use ($scope, $p): int {
+        try {
+            $st = db()->prepare(
+                'SELECT COUNT(*) FROM service_maintenance_reminders
+                 WHERE deleted_at IS NULL' . $scope . ' ' . $extra
+            );
+            $st->execute($p);
+            return (int) $st->fetchColumn();
+        } catch (Throwable $e) { log_error('smaint_reminder_counts: ' . $e->getMessage()); return 0; }
+    };
+    return [
+        'today'    => $q("AND maintenance_due_date = CURDATE() AND status NOT IN ('completed','cancelled','service_opened','not_interested')"),
+        'week'     => $q("AND maintenance_due_date BETWEEN CURDATE() AND (CURDATE() + INTERVAL 7 DAY) AND status NOT IN ('completed','cancelled','service_opened','not_interested')"),
+        'overdue'  => $q("AND maintenance_due_date < CURDATE() AND status NOT IN ('completed','cancelled','service_opened','not_interested')"),
+        'msg_unsent' => $q("AND last_message_at IS NULL AND status NOT IN ('completed','cancelled','service_opened','not_interested')"),
+        'awaiting' => $q("AND status = 'awaiting_customer'"),
+        'appointment' => $q("AND status = 'appointment_set'"),
+        'open'     => $q("AND status NOT IN ('completed','cancelled','service_opened','not_interested')"),
+    ];
+}
+
+/** Personel atar (§14, §17). */
+function smaint_assign_reminder(int $id, ?int $newUserId, ?int $byUserId): bool
+{
+    $r = smaint_reminder_get($id);
+    if (!$r) { return false; }
+    try {
+        db()->prepare('UPDATE service_maintenance_reminders SET assigned_user_id = :u WHERE id = :id AND deleted_at IS NULL')
+            ->execute([':u' => $newUserId ?: null, ':id' => $id]);
+        smaint_status_history_add($id, (string) $r['status'], (string) $r['status'],
+            'Personel atandı (#' . (int) $newUserId . ')', $byUserId);
+        log_activity('maintenance_assign', 'maintenance', $id, (string) ($r['reference_code'] ?? ''), 'success',
+            'Atanan kullanıcı: #' . (int) $newUserId);
+        return true;
+    } catch (Throwable $e) { log_error('smaint_assign_reminder: ' . $e->getMessage()); return false; }
+}
+
+/** Tercih edilen iletişim kanalını ayarlar. */
+function smaint_set_preferred_channel(int $id, string $channel): void
+{
+    if (!isset(smaint_channels()[$channel])) { return; }
+    try {
+        db()->prepare('UPDATE service_maintenance_reminders SET preferred_channel = :c WHERE id = :id AND deleted_at IS NULL')
+            ->execute([':c' => $channel, ':id' => $id]);
+    } catch (Throwable $e) { log_error('smaint_set_preferred_channel: ' . $e->getMessage()); }
+}
+
+/** Son iletişim zamanını damgalar. */
+function smaint_touch_contact(int $id): void
+{
+    try {
+        db()->prepare('UPDATE service_maintenance_reminders SET last_contact_at = NOW() WHERE id = :id AND deleted_at IS NULL')
+            ->execute([':id' => $id]);
+    } catch (Throwable $e) { log_error('smaint_touch_contact: ' . $e->getMessage()); }
+}
+
+/** Bakım tarihini (elle) değiştirir. */
+function smaint_set_due_date(int $id, string $newDue, ?int $userId, string $reason = ''): bool
+{
+    $r = smaint_reminder_get($id);
+    if (!$r) { return false; }
+    $new = substr(trim($newDue), 0, 10);
+    if ($new === '') { return false; }
+    try {
+        db()->prepare('UPDATE service_maintenance_reminders SET maintenance_due_date = :d, reminder_stage = \'\' WHERE id = :id AND deleted_at IS NULL')
+            ->execute([':d' => $new, ':id' => $id]);
+        db()->prepare(
+            'INSERT INTO service_maintenance_postponements (reminder_id, old_due_date, new_due_date, reason, postponed_by)
+             VALUES (:r,:od,:nd,:reason,:by)'
+        )->execute([':r' => $id, ':od' => $r['maintenance_due_date'], ':nd' => $new,
+            ':reason' => mb_substr($reason, 0, 500), ':by' => $userId]);
+        log_activity('maintenance_due_change', 'maintenance', $id, (string) ($r['reference_code'] ?? ''), 'success',
+            'Yeni bakım tarihi: ' . $new);
+        return true;
+    } catch (Throwable $e) { log_error('smaint_set_due_date: ' . $e->getMessage()); return false; }
+}
+
+/** Daha sonra hatırlat / ertele (§10): yeni iletişim tarihi zorunlu. */
+function smaint_postpone_reminder(int $id, string $newContactAt, string $reason, ?int $userId): array
+{
+    $r = smaint_reminder_get($id);
+    if (!$r) { return ['ok' => false, 'error' => 'Kayıt bulunamadı.']; }
+    $new = trim($newContactAt);
+    if ($new === '') { return ['ok' => false, 'error' => 'Yeni tarih/saat zorunludur.']; }
+    $new = str_replace('T', ' ', $new);
+    if (strlen($new) === 16) { $new .= ':00'; }
+    try {
+        db()->prepare(
+            'UPDATE service_maintenance_reminders
+             SET status = \'remind_later\', next_contact_at = :n, postpone_count = postpone_count + 1
+             WHERE id = :id AND deleted_at IS NULL'
+        )->execute([':n' => $new, ':id' => $id]);
+        db()->prepare(
+            'INSERT INTO service_maintenance_postponements (reminder_id, old_contact_at, new_contact_at, reason, postponed_by)
+             VALUES (:r,:oc,:nc,:reason,:by)'
+        )->execute([':r' => $id, ':oc' => $r['next_contact_at'], ':nc' => $new,
+            ':reason' => mb_substr($reason, 0, 500), ':by' => $userId]);
+        smaint_status_history_add($id, (string) $r['status'], 'remind_later', 'Ertelendi → ' . $new . ($reason !== '' ? ' · ' . $reason : ''), $userId);
+        log_activity('maintenance_postpone', 'maintenance', $id, (string) ($r['reference_code'] ?? ''), 'success',
+            'Yeni iletişim: ' . $new);
+        if (function_exists('smaint_dismiss_notifications')) { smaint_dismiss_notifications($id); }
+        return ['ok' => true, 'error' => ''];
+    } catch (Throwable $e) {
+        log_error('smaint_postpone_reminder: ' . $e->getMessage());
+        return ['ok' => false, 'error' => 'Erteleme kaydedilemedi.'];
+    }
+}
+
+/** Erteleme geçmişi. */
+function smaint_postpone_history(int $reminderId): array
+{
+    smaint_ensure_schema();
+    try {
+        $st = db()->prepare(
+            'SELECT h.*, u.full_name AS by_name FROM service_maintenance_postponements h
+             LEFT JOIN users u ON u.id = h.postponed_by
+             WHERE h.reminder_id = :r ORDER BY h.id DESC LIMIT 200'
+        );
+        $st->execute([':r' => $reminderId]);
+        return $st->fetchAll();
+    } catch (Throwable $e) { log_error('smaint_postpone_history: ' . $e->getMessage()); return []; }
+}
+
+/** Bakım kaydını tamamlar. */
+function smaint_complete_reminder(int $id, ?int $userId, string $note = ''): bool
+{
+    $r = smaint_reminder_get($id);
+    if (!$r) { return false; }
+    try {
+        db()->prepare(
+            'UPDATE service_maintenance_reminders
+             SET status = \'completed\', completed_at = NOW(), completed_by = :by
+             WHERE id = :id AND deleted_at IS NULL'
+        )->execute([':by' => $userId, ':id' => $id]);
+        smaint_status_history_add($id, (string) $r['status'], 'completed', $note, $userId);
+        log_activity('maintenance_complete', 'maintenance', $id, (string) ($r['reference_code'] ?? ''), 'success', $note);
+        if (function_exists('smaint_dismiss_notifications')) { smaint_dismiss_notifications($id); }
+        return true;
+    } catch (Throwable $e) { log_error('smaint_complete_reminder: ' . $e->getMessage()); return false; }
+}
+
 /** Cron çalışma özetini service_maintenance_cron_logs tablosuna yazar. */
 function smaint_cron_log_write(array $d): void
 {
