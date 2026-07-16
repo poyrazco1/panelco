@@ -126,6 +126,46 @@ switch ($action) {
             : flash('error', 'İşlem yapılamadı.');
         break;
 
+    case 'record_response':
+        if (!can_maint_message()) { require_permission('maintenance.message'); }
+        $result = (string) ($_POST['result'] ?? '');
+        $note   = trim((string) ($_POST['note'] ?? ''));
+        if ($result === 'call_later') {
+            // "Daha sonra aranmak istiyor" → yeni tarih/saat zorunlu (§10).
+            $na = (string) ($_POST['new_contact_at'] ?? '');
+            if (trim($na) === '') { flash('error', 'Daha sonra aranmak için yeni tarih/saat zorunludur.'); break; }
+            $pr = smaint_postpone_reminder($id, $na, $note, $uid);
+            if (!$pr['ok']) { flash('error', $pr['error']); break; }
+        }
+        $res = smaint_record_response($id, $result, $note, $uid);
+        $res['ok'] ? flash('success', 'Müşteri cevabı kaydedildi.') : flash('error', $res['error']);
+        break;
+
+    case 'create_appointment':
+        if (!can_maint_appointment()) { require_permission('maintenance.appointment'); }
+        $res = smaint_create_appointment(
+            $id,
+            (string) ($_POST['appointment_at'] ?? ''),
+            (string) ($_POST['service_type'] ?? 'periodic'),
+            (string) ($_POST['location'] ?? 'store'),
+            (int) ($_POST['technician_id'] ?? 0) ?: null,
+            trim((string) ($_POST['appointment_note'] ?? '')),
+            $uid
+        );
+        $res['ok'] ? flash('success', 'Bakım randevusu oluşturuldu.') : flash('error', $res['error']);
+        break;
+
+    case 'open_service':
+        if (!can_maint_convert()) { require_permission('maintenance.convert'); }
+        $res = smaint_open_service_from_reminder($id, $uid);
+        if ($res['ok']) {
+            flash('success', 'Bakım servisi açıldı: ' . ($res['reference_code'] ?: ('#' . $res['service_id'])));
+            http_response_code(303);
+            redirect('modules/service/view.php?id=' . (int) $res['service_id']);
+        }
+        flash('error', $res['error']);
+        break;
+
     default:
         flash('error', 'Bilinmeyen işlem.');
 }

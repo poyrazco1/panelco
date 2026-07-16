@@ -1391,6 +1391,145 @@ function smaint_complete_reminder(int $id, ?int $userId, string $note = ''): boo
     } catch (Throwable $e) { log_error('smaint_complete_reminder: ' . $e->getMessage()); return false; }
 }
 
+/* =========================================================================
+ * 10) MÜŞTERİ CEVABI · RANDEVU · SERVİSE DÖNÜŞTÜRME (§10, §11)
+ * ====================================================================== */
+
+/** Cevap sonucundan durum eşlemesi. null = özel akış (randevu). */
+function smaint_response_status_map(): array
+{
+    return [
+        'wants_appointment' => null,
+        'call_later'        => 'remind_later',
+        'wa_callback'       => 'awaiting_customer',
+        'wants_price'       => 'awaiting_customer',
+        'device_inactive'   => 'not_interested',
+        'device_disposed'   => 'not_interested',
+        'other_company'     => 'not_interested',
+        'not_interested'    => 'not_interested',
+        'unreachable'       => 'unreachable',
+        'wrong_number'      => 'unreachable',
+    ];
+}
+
+/** Müşteri cevabını/işlem sonucunu kaydeder (§10). */
+function smaint_record_response(int $id, string $result, string $note, ?int $userId): array
+{
+    if (!isset(smaint_response_results()[$result])) { return ['ok' => false, 'error' => 'Geçersiz sonuç.']; }
+    $r = smaint_reminder_get($id);
+    if (!$r) { return ['ok' => false, 'error' => 'Kayıt bulunamadı.']; }
+    try {
+        db()->prepare(
+            'UPDATE service_maintenance_reminders
+             SET response_result = :res, response_note = :note, response_at = NOW(), last_contact_at = NOW()
+             WHERE id = :id AND deleted_at IS NULL'
+        )->execute([':res' => $result, ':note' => mb_substr($note, 0, 500), ':id' => $id]);
+
+        $map = smaint_response_status_map();
+        $newStatus = $map[$result] ?? null;
+        if ($newStatus !== null && $newStatus !== (string) $r['status']) {
+            smaint_set_status($id, $newStatus, $userId, 'Müşteri cevabı: ' . smaint_response_label($result) . ($note !== '' ? ' · ' . $note : ''));
+        } else {
+            smaint_status_history_add($id, (string) $r['status'], (string) $r['status'],
+                'Müşteri cevabı: ' . smaint_response_label($result) . ($note !== '' ? ' · ' . $note : ''), $userId);
+        }
+        log_activity('maintenance_response', 'maintenance', $id, (string) ($r['reference_code'] ?? ''), 'success', smaint_response_label($result));
+        return ['ok' => true, 'error' => ''];
+    } catch (Throwable $e) {
+        log_error('smaint_record_response: ' . $e->getMessage());
+        return ['ok' => false, 'error' => 'Cevap kaydedilemedi.'];
+    }
+}
+
+/** Bakım randevusu oluşturur (§10). */
+function smaint_create_appointment(int $id, string $at, string $serviceType, string $location, ?int $techId, string $note, ?int $userId): array
+{
+    $r = smaint_reminder_get($id);
+    if (!$r) { return ['ok' => false, 'error' => 'Kayıt bulunamadı.']; }
+    $at = str_replace('T', ' ', trim($at));
+    if ($at === '') { return ['ok' => false, 'error' => 'Randevu tarihi/saati zorunludur.']; }
+    if (strlen($at) === 16) { $at .= ':00'; }
+    if (!isset(smaint_appointment_service_types()[$serviceType])) { $serviceType = 'periodic'; }
+    if (!isset(smaint_appointment_locations()[$location])) { $location = 'store'; }
+    try {
+        db()->prepare(
+            'UPDATE service_maintenance_reminders
+             SET appointment_at = :at, appointment_service_type = :stype, appointment_location = :loc,
+                 appointment_technician_id = :tech, appointment_note = :note,
+                 response_result = \'wants_appointment\', response_at = NOW(), last_contact_at = NOW()
+             WHERE id = :id AND deleted_at IS NULL'
+        )->execute([
+            ':at' => $at, ':stype' => $serviceType, ':loc' => $location,
+            ':tech' => $techId ?: null, ':note' => mb_substr($note, 0, 500), ':id' => $id,
+        ]);
+        smaint_set_status($id, 'appointment_set', $userId, 'Randevu: ' . $at . ' · ' . (smaint_appointment_service_types()[$serviceType] ?? $serviceType));
+        log_activity('maintenance_appointment', 'maintenance', $id, (string) ($r['reference_code'] ?? ''), 'success', 'Randevu: ' . $at);
+        return ['ok' => true, 'error' => ''];
+    } catch (Throwable $e) {
+        log_error('smaint_create_appointment: ' . $e->getMessage());
+        return ['ok' => false, 'error' => 'Randevu oluşturulamadı.'];
+    }
+}
+
+/**
+ * Bakım kaydından yeni teknik servis kaydı açar (§11). Müşteri/cihaz/önceki servis
+ * bilgileri aktarılır; servis sebebi "Periyodik Bakım"; bakım kaydı bağlanır ve
+ * "Bakım Servisi Açıldı" durumuna geçer.
+ * @return array{ok:bool,error:string,service_id:int,reference_code:string}
+ */
+function smaint_open_service_from_reminder(int $id, ?int $userId): array
+{
+    $r = smaint_reminder_get($id);
+    if (!$r) { return ['ok' => false, 'error' => 'Kayıt bulunamadı.', 'service_id' => 0, 'reference_code' => '']; }
+
+    $orig = null;
+    if (!empty($r['service_id'])) { $orig = get_service_record((int) $r['service_id']); }
+
+    $prevRef  = (string) ($orig['reference_code'] ?? $r['reference_code'] ?? '');
+    $prevWork = trim((string) ($orig['final_note'] ?? $r['work_done'] ?? ''));
+    $problem  = 'Periyodik Bakım';
+
+    $d = [
+        'customer_name'    => (string) ($orig['customer_name'] ?? $r['customer_name'] ?? ''),
+        'customer_phone'   => (string) ($orig['customer_phone'] ?? $r['phone'] ?? ''),
+        'customer_email'   => (string) ($orig['customer_email'] ?? $r['email'] ?? ''),
+        'customer_address' => (string) ($orig['customer_address'] ?? ''),
+        'customer_tax_no'  => (string) ($orig['customer_tax_no'] ?? ''),
+        'device_type'      => (string) ($orig['device_type'] ?? ''),
+        'brand_id'         => (int) ($orig['brand_id'] ?? 0),
+        'brand_name'       => (string) ($orig['brand_name'] ?? $r['brand_name'] ?? ''),
+        'device_model'     => (string) ($orig['device_model'] ?? $r['device_model'] ?? ''),
+        'serial_no'        => (string) ($orig['serial_no'] ?? $r['serial_no'] ?? ''),
+        'quantity'         => (int) ($orig['quantity'] ?? 1),
+        'problem_description' => $problem,
+        'internal_note'    => 'Bakım hatırlatmasından açıldı. Önceki servis: ' . $prevRef
+            . ($prevWork !== '' ? ' · Önceki işlem: ' . $prevWork : '')
+            . ' · Bakım talep tarihi: ' . date('Y-m-d'),
+        'status'           => 'new',
+        'approval_required' => 1,
+    ];
+
+    if (trim($d['customer_name']) === '') { return ['ok' => false, 'error' => 'Müşteri adı bulunamadı.', 'service_id' => 0, 'reference_code' => '']; }
+
+    try {
+        $res = create_service_record($d, null);
+        $newId = (int) ($res['id'] ?? 0);
+        if ($newId <= 0) { return ['ok' => false, 'error' => 'Servis kaydı oluşturulamadı.', 'service_id' => 0, 'reference_code' => '']; }
+
+        db()->prepare(
+            'UPDATE service_maintenance_reminders SET converted_service_id = :cs WHERE id = :id AND deleted_at IS NULL'
+        )->execute([':cs' => $newId, ':id' => $id]);
+        smaint_set_status($id, 'service_opened', $userId, 'Bakım servisi açıldı: ' . ($res['reference_code'] ?? ('#' . $newId)));
+        log_activity('maintenance_open_service', 'maintenance', $id, (string) ($r['reference_code'] ?? ''), 'success',
+            'Yeni servis: ' . ($res['reference_code'] ?? ('#' . $newId)));
+        if (function_exists('smaint_dismiss_notifications')) { smaint_dismiss_notifications($id); }
+        return ['ok' => true, 'error' => '', 'service_id' => $newId, 'reference_code' => (string) ($res['reference_code'] ?? '')];
+    } catch (Throwable $e) {
+        log_error('smaint_open_service_from_reminder: ' . $e->getMessage());
+        return ['ok' => false, 'error' => 'Servis kaydı oluşturulamadı: ' . $e->getMessage(), 'service_id' => 0, 'reference_code' => ''];
+    }
+}
+
 /** Cron çalışma özetini service_maintenance_cron_logs tablosuna yazar. */
 function smaint_cron_log_write(array $d): void
 {
