@@ -1271,6 +1271,42 @@ function smaint_reminder_counts(?int $scopeUser = null): array
     ];
 }
 
+/**
+ * Dashboard "Yaklaşan Bakımlar" kartı bölümleri (§4).
+ * @return array{overdue:array,today:array,week:array,need_msg:array,awaiting:array,appointment:array}
+ */
+function smaint_dashboard_sections(?int $scopeUser = null, int $limit = 50): array
+{
+    smaint_ensure_schema();
+    $scoped = ($scopeUser !== null && $scopeUser > 0);
+    $scope = $scoped ? ' AND r.assigned_user_id = :u' : '';
+    $base = 'SELECT r.id, r.service_id, r.customer_name, r.company_name, r.brand_name, r.device_model,
+                    r.serial_no, r.phone, r.whatsapp, r.maintenance_due_date, r.last_contact_at, r.status,
+                    r.email_consent, r.whatsapp_consent, r.appointment_at,
+                    s.reference_code, u.full_name AS assignee_name
+             FROM service_maintenance_reminders r
+             LEFT JOIN service_records s ON s.id = r.service_id
+             LEFT JOIN users u ON u.id = r.assigned_user_id
+             WHERE r.deleted_at IS NULL';
+    $lim = max(1, min(200, $limit));
+    $run = static function (string $extra) use ($base, $scope, $scoped, $scopeUser, $lim): array {
+        try {
+            $st = db()->prepare($base . $scope . ' ' . $extra . ' LIMIT ' . $lim);
+            $st->execute($scoped ? [':u' => (int) $scopeUser] : []);
+            return $st->fetchAll();
+        } catch (Throwable $e) { log_error('smaint_dashboard_sections: ' . $e->getMessage()); return []; }
+    };
+    $open = "AND r.status NOT IN ('completed','cancelled','service_opened','not_interested')";
+    return [
+        'overdue'     => $run("$open AND r.maintenance_due_date < CURDATE() ORDER BY r.maintenance_due_date ASC"),
+        'today'       => $run("$open AND r.maintenance_due_date = CURDATE() ORDER BY r.maintenance_due_date ASC"),
+        'week'        => $run("$open AND r.maintenance_due_date > CURDATE() AND r.maintenance_due_date <= (CURDATE() + INTERVAL 7 DAY) ORDER BY r.maintenance_due_date ASC"),
+        'need_msg'    => $run("$open AND r.last_message_at IS NULL AND r.maintenance_due_date <= (CURDATE() + INTERVAL 7 DAY) ORDER BY r.maintenance_due_date ASC"),
+        'awaiting'    => $run("AND r.status = 'awaiting_customer' ORDER BY r.updated_at DESC"),
+        'appointment' => $run("AND r.status = 'appointment_set' ORDER BY r.appointment_at ASC"),
+    ];
+}
+
 /** Personel atar (§14, §17). */
 function smaint_assign_reminder(int $id, ?int $newUserId, ?int $byUserId): bool
 {

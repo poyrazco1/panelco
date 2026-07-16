@@ -60,6 +60,24 @@ if ($uid > 0 && can('leads.view')) {
     $_SESSION['lead_fu_modal_seen'] = 1;
 }
 
+// Bakım takip (Yaklaşan Bakımlar) kartı verisi (§4) — servis/bakım yetkisi olana
+$maintData = null; $maintCounts = null; $maintShowCard = false;
+if ($uid > 0 && (can('service') || can('maintenance'))) {
+    require_once __DIR__ . '/includes/service_maintenance.php';
+    require_once __DIR__ . '/includes/service_maintenance_render.php';
+    require_once __DIR__ . '/includes/service_maintenance_notifications.php';
+    $ms = smaint_settings();
+    if ((int) ($ms['is_active'] ?? 1) === 1 && (int) ($ms['dashboard_enabled'] ?? 1) === 1 && can_maint_view()) {
+        $mnp = smaint_notif_prefs($uid);
+        if (!empty($mnp['dashboard_enabled'])) {
+            $mScope = can_maint_view_all() ? null : $uid;
+            $maintCounts = smaint_reminder_counts($mScope);
+            $maintData   = smaint_dashboard_sections($mScope);
+            $maintShowCard = true;
+        }
+    }
+}
+
 $fmtRate = static fn($v) => $v !== null ? number_format((float) $v, 2, ',', '.') : '—';
 
 /** Aksiyon/hareket satırındaki tarihi kısa ve okunur biçime çevirir. */
@@ -148,6 +166,11 @@ layout_top('Genel Bakış', 'dashboard');
     </section>
     <?php endif; ?>
 <?php endif; ?>
+
+<!-- 2c) YAKLAŞAN BAKIMLAR (§4) -->
+<?php if ($maintShowCard && $maintData !== null):
+    smaint_dashboard_card($maintData, $maintCounts, e(url('modules/maintenance/action.php')), 'dashboard.php');
+endif; ?>
 
 <div class="dash-columns">
     <div class="dash-col-main">
