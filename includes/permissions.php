@@ -82,6 +82,15 @@ function permission_action_labels(): array
         'edit_notes'          => 'Not Düzenle',
         'status_change'       => 'Durum Değiştir',
         'relationship_change' => 'İlişki Değiştir',
+        // Bakım Takipleri (periyodik bakım hatırlatma) işlemleri
+        'view_own'            => 'Kendi Takipleri',
+        'view_all'            => 'Tüm Takipler',
+        'cancel'              => 'İptal Et',
+        'message'             => 'Mesaj Hazırla',
+        'email'               => 'E-posta Gönder',
+        'appointment'         => 'Randevu Oluştur',
+        'convert'             => 'Servise Dönüştür',
+        'templates'           => 'Şablon Yönet',
     ];
 }
 
@@ -103,6 +112,7 @@ function module_action_registry(): array
         'suppliers'       => ['Tedarikçiler',          'Satın Alma',  ['view','create','edit','delete','export']],
         'tsoft_products'  => ['T-Soft Ürünler',        'Satın Alma',  ['view']],
         'service'         => ['Teknik Servis',         'Operasyon',   ['view','create','edit','delete','status','mail','whatsapp','print','pdf']],
+        'maintenance'     => ['Bakım Takipleri',       'Operasyon',   ['view','view_own','view_all','create','edit','cancel','message','email','whatsapp','appointment','convert','templates','settings','reports','assign']],
         'rma'             => ['İade-Değişim Yönetimi', 'Operasyon',   ['view','create','edit','delete','import','export','status','print']],
         'shipment_addresses' => ['Sevkiyat Adresleri', 'Sevkiyat',   ['view','create','edit','delete']],
         'shipments'       => ['Sevkiyat Takibi',       'Sevkiyat',   ['view','create','edit','delete','status','assign','complete','photo_upload','reports','route_plan','whatsapp','collection_view','collection_create','collection_edit','collection_complete','print','pdf','mail']],

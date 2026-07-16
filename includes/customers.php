@@ -112,6 +112,12 @@ function customer_fields_from_input(array $in): array
         'source'        => trim((string) ($in['source'] ?? '')),
         'notes'         => trim((string) ($in['notes'] ?? '')),
         'is_active'     => isset($in['is_active']) ? 1 : 0,
+        // Bakım hatırlatma iletişim izinleri (§8)
+        'maintenance_opt_in'    => isset($in['maintenance_opt_in']) ? 1 : 0,
+        'maint_email_consent'   => isset($in['maint_email_consent']) ? 1 : 0,
+        'maint_whatsapp_consent' => isset($in['maint_whatsapp_consent']) ? 1 : 0,
+        'maint_phone_consent'   => isset($in['maint_phone_consent']) ? 1 : 0,
+        'maint_consent_source'  => trim((string) ($in['maint_consent_source'] ?? '')),
     ];
 }
 
@@ -128,17 +134,29 @@ function customer_validate(array $d): array
 function create_customer(array $d, ?int $userId): int
 {
     try {
+        smaint_ensure_customer_consent_columns_if_available();
+        $anyConsent = ((int) ($d['maintenance_opt_in'] ?? 0)
+            + (int) ($d['maint_email_consent'] ?? 0)
+            + (int) ($d['maint_whatsapp_consent'] ?? 0)
+            + (int) ($d['maint_phone_consent'] ?? 0)) > 0;
+        $params = customer_bind($d, $userId);
+        $params[':maint_consent_at'] = $anyConsent ? date('Y-m-d H:i:s') : null;
+        $params[':maint_consent_by']  = $anyConsent ? $userId : null;
         $st = db()->prepare(
             'INSERT INTO customers
                 (code, company_name, contact_name, phone, whatsapp, email, tax_office, tax_no,
                  country, city, district, address, website, customer_type, source, notes,
-                 is_active, created_by, updated_by)
+                 is_active, maintenance_opt_in, maint_email_consent, maint_whatsapp_consent,
+                 maint_phone_consent, maint_consent_source, maint_consent_at, maint_consent_by_user_id,
+                 created_by, updated_by)
              VALUES
                 (:code,:company_name,:contact_name,:phone,:whatsapp,:email,:tax_office,:tax_no,
                  :country,:city,:district,:address,:website,:customer_type,:source,:notes,
-                 :is_active,:cby,:uby)'
+                 :is_active,:maintenance_opt_in,:maint_email_consent,:maint_whatsapp_consent,
+                 :maint_phone_consent,:maint_consent_source,:maint_consent_at,:maint_consent_by,
+                 :cby,:uby)'
         );
-        $st->execute(customer_bind($d, $userId));
+        $st->execute($params);
         return (int) db()->lastInsertId();
     } catch (Throwable $e) {
         log_error('create_customer: ' . $e->getMessage());
@@ -150,22 +168,90 @@ function create_customer(array $d, ?int $userId): int
 function update_customer(int $id, array $d, ?int $userId): bool
 {
     try {
+        smaint_ensure_customer_consent_columns_if_available();
+        // İzin metaverisi: ilk izinde tarih/kullanıcı damgalanır; tümü kaldırılırsa
+        // iptal tarihi damgalanır, tekrar verilirse iptal temizlenir (§8).
+        $prev = null;
+        try {
+            $ps = db()->prepare('SELECT maint_consent_at, maint_consent_by_user_id, maint_consent_revoked_at FROM customers WHERE id = :id LIMIT 1');
+            $ps->execute([':id' => $id]);
+            $prev = $ps->fetch() ?: null;
+        } catch (Throwable $e) { $prev = null; }
+
+        $anyConsent = ((int) ($d['maintenance_opt_in'] ?? 0)
+            + (int) ($d['maint_email_consent'] ?? 0)
+            + (int) ($d['maint_whatsapp_consent'] ?? 0)
+            + (int) ($d['maint_phone_consent'] ?? 0)) > 0;
+        $now = date('Y-m-d H:i:s');
+
+        $consentAt = $prev['maint_consent_at'] ?? null;
+        $consentBy = $prev['maint_consent_by_user_id'] ?? null;
+        $revokedAt = $prev['maint_consent_revoked_at'] ?? null;
+        if ($anyConsent) {
+            if ($consentAt === null) { $consentAt = $now; $consentBy = $userId; }
+            $revokedAt = null; // yeniden izin verildi
+        } else {
+            if ($revokedAt === null && $consentAt !== null) { $revokedAt = $now; }
+        }
+
         $st = db()->prepare(
             'UPDATE customers SET
                 code=:code, company_name=:company_name, contact_name=:contact_name, phone=:phone,
                 whatsapp=:whatsapp, email=:email, tax_office=:tax_office, tax_no=:tax_no,
                 country=:country, city=:city, district=:district, address=:address, website=:website,
                 customer_type=:customer_type, source=:source, notes=:notes, is_active=:is_active,
+                maintenance_opt_in=:maintenance_opt_in, maint_email_consent=:maint_email_consent,
+                maint_whatsapp_consent=:maint_whatsapp_consent, maint_phone_consent=:maint_phone_consent,
+                maint_consent_source=:maint_consent_source, maint_consent_at=:maint_consent_at,
+                maint_consent_by_user_id=:maint_consent_by, maint_consent_revoked_at=:maint_consent_revoked_at,
                 updated_by=:uby
              WHERE id=:id AND is_deleted = 0'
         );
         $params = customer_bind($d, $userId);
         unset($params[':cby']);
+        $params[':maint_consent_at'] = $consentAt;
+        $params[':maint_consent_by'] = $consentBy;
+        $params[':maint_consent_revoked_at'] = $revokedAt;
         $params[':id'] = $id;
         return $st->execute($params);
     } catch (Throwable $e) {
         log_error('update_customer: ' . $e->getMessage());
         return false;
+    }
+}
+
+/**
+ * customers tablosunda bakım izin kolonları yoksa oluşturur (kendi kendine yeter;
+ * service_maintenance.php yüklü olmasa da çalışır). İstek başına bir kez.
+ */
+function smaint_ensure_customer_consent_columns_if_available(): void
+{
+    static $done = false;
+    if ($done) { return; }
+    $done = true;
+    $cols = [
+        'maintenance_opt_in'       => 'TINYINT(1) NOT NULL DEFAULT 0',
+        'maint_email_consent'      => 'TINYINT(1) NOT NULL DEFAULT 0',
+        'maint_whatsapp_consent'   => 'TINYINT(1) NOT NULL DEFAULT 0',
+        'maint_phone_consent'      => 'TINYINT(1) NOT NULL DEFAULT 0',
+        'maint_consent_at'         => 'DATETIME NULL',
+        'maint_consent_source'     => 'VARCHAR(60) NULL',
+        'maint_consent_by_user_id' => 'INT UNSIGNED NULL',
+        'maint_consent_revoked_at' => 'DATETIME NULL',
+    ];
+    try {
+        $st = db()->prepare(
+            "SELECT COLUMN_NAME FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'customers'"
+        );
+        $st->execute();
+        $have = array_flip(array_map('strval', $st->fetchAll(PDO::FETCH_COLUMN) ?: []));
+        foreach ($cols as $name => $ddl) {
+            if (isset($have[$name])) { continue; }
+            db()->exec("ALTER TABLE `customers` ADD COLUMN `$name` $ddl");
+        }
+    } catch (Throwable $e) {
+        log_error('customer consent columns ensure: ' . $e->getMessage());
     }
 }
 
@@ -181,7 +267,13 @@ function customer_bind(array $d, ?int $userId): array
         ':district' => $d['district'] ?: null, ':address' => $d['address'] ?: null,
         ':website' => $d['website'] ?: null, ':customer_type' => $d['customer_type'],
         ':source' => $d['source'] ?: null, ':notes' => $d['notes'] ?: null,
-        ':is_active' => (int) $d['is_active'], ':cby' => $userId, ':uby' => $userId,
+        ':is_active' => (int) $d['is_active'],
+        ':maintenance_opt_in' => (int) ($d['maintenance_opt_in'] ?? 0),
+        ':maint_email_consent' => (int) ($d['maint_email_consent'] ?? 0),
+        ':maint_whatsapp_consent' => (int) ($d['maint_whatsapp_consent'] ?? 0),
+        ':maint_phone_consent' => (int) ($d['maint_phone_consent'] ?? 0),
+        ':maint_consent_source' => ($d['maint_consent_source'] ?? '') !== '' ? $d['maint_consent_source'] : null,
+        ':cby' => $userId, ':uby' => $userId,
     ];
 }
 

@@ -51,6 +51,28 @@ $curType = (string) ($c['customer_type'] ?? 'tr');
 </div>
 
 <div class="card" style="max-width:900px">
+    <div class="card-header"><h2>Bakım Hatırlatma İzinleri</h2></div>
+    <div class="card-body">
+        <p class="text-muted" style="margin-top:0">Müşterinin periyodik bakım hatırlatmalarını hangi kanallardan almayı kabul ettiği (KVKK). İlgili kanal için izin yoksa otomatik gönderim yapılmaz.</p>
+        <div class="form-group"><label class="check-inline"><input type="checkbox" name="maintenance_opt_in" value="1"<?= (int) ($c['maintenance_opt_in'] ?? 0) === 1 ? ' checked' : '' ?>> Bakım hatırlatması almak istiyor</label></div>
+        <div class="form-row">
+            <div class="form-group"><label class="check-inline"><input type="checkbox" name="maint_email_consent" value="1"<?= (int) ($c['maint_email_consent'] ?? 0) === 1 ? ' checked' : '' ?>> E-posta iletişim izni</label></div>
+            <div class="form-group"><label class="check-inline"><input type="checkbox" name="maint_whatsapp_consent" value="1"<?= (int) ($c['maint_whatsapp_consent'] ?? 0) === 1 ? ' checked' : '' ?>> WhatsApp iletişim izni</label></div>
+            <div class="form-group"><label class="check-inline"><input type="checkbox" name="maint_phone_consent" value="1"<?= (int) ($c['maint_phone_consent'] ?? 0) === 1 ? ' checked' : '' ?>> Telefonla aranma izni</label></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label for="maint_consent_source">İzin kaynağı</label><input type="text" id="maint_consent_source" name="maint_consent_source" value="<?= $val('maint_consent_source') ?>" placeholder="Servis formu, web, telefon…"></div>
+            <?php if (!empty($c['maint_consent_at'])): ?>
+            <div class="form-group"><label>İzin tarihi</label><input type="text" value="<?= e(fmt_date((string) $c['maint_consent_at'])) ?>" disabled></div>
+            <?php endif; ?>
+        </div>
+        <?php if (!empty($c['maint_consent_revoked_at'])): ?>
+        <p class="text-muted">İzin iptal tarihi: <?= e(fmt_date((string) $c['maint_consent_revoked_at'])) ?></p>
+        <?php endif; ?>
+    </div>
+</div>
+
+<div class="card" style="max-width:900px">
     <div class="card-header"><h2>Vergi & Notlar</h2></div>
     <div class="card-body">
         <div class="form-row">
