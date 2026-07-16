@@ -54,6 +54,7 @@ layout_top('Bakım Takipleri', 'service');
 <div class="page-head">
     <h1 class="page-title"><?= icon('wrench') ?> Bakım Takipleri</h1>
     <div class="page-actions">
+        <?php if (can_maint_reports()): ?><a class="btn btn-sm" href="<?= e(url('modules/maintenance/reports.php')) ?>"><?= icon('clipboard-list') ?>Raporlar</a><?php endif; ?>
         <a class="btn btn-sm" href="<?= e(url('modules/maintenance/export.php' . ($qs !== '' ? '?' . $qs : ''))) ?>"><?= icon('download') ?>CSV Dışa Aktar</a>
     </div>
 </div>
