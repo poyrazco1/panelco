@@ -19,7 +19,7 @@ $team    = lead_reminder_team_by_user();
 $counts  = lead_reminder_counts(0, true);
 $data    = lead_reminder_dashboard(0, 1); // teamAll
 $users   = lead_assignable_users();
-$overPostponed = lead_reminders_over_postponed(3, 100);
+$overPostponed = can_followup_reports() ? lead_reminders_over_postponed(3, 100) : [];
 $actUrl  = e(url('modules/leads/lead-action.php'));
 $ret     = 'modules/leads/team-reminders.php';
 

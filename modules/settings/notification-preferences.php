@@ -7,10 +7,14 @@ declare(strict_types=1);
  */
 
 require_once __DIR__ . '/../../includes/permissions.php';
+require_once __DIR__ . '/../../includes/lead_reminders.php';
 require_once __DIR__ . '/../../includes/lead_notifications.php';
 
 auth_boot();
-require_permission('dashboard'); // her giriş yapmış kullanıcı kendi tercihini yönetir
+require_login();
+// Bildirim tercihleri kişiseldir; giriş yapan herkes kendi tercihini yönetebilir.
+// 'leads.notif_settings' yetkisi rol matrisinde ayrıca atanabilir (§21).
+if (!can_followup_notif_settings()) { require_permission('leads.notif_settings'); }
 
 $uid = (int) (current_user_id() ?? 0);
 

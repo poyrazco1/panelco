@@ -160,7 +160,7 @@ $actTypeLabel = static fn(string $t): string => [
             </div></div>
 
         <?php elseif ($tab === 'reminders'): ?>
-            <?php if (can('leads.remind')): ?>
+            <?php if (can_followup_create()): ?>
             <div class="card"><div class="card-header"><strong>Takip Planla</strong></div><div class="card-body">
                 <form method="post" action="<?= $actUrl ?>"><?= csrf_field() ?><input type="hidden" name="action" value="reminder"><input type="hidden" name="id" value="<?= $id ?>">
                     <div class="form-row">
@@ -195,15 +195,16 @@ $actTypeLabel = static fn(string $t): string => [
                                 <div class="muted" style="font-size:12px"><?= e((string) ($rm['assignee'] ?? '')) ?>
                                     <?php if ($rm['completion_result']): ?> · Sonuç: <?= e(lead_reminder_result_label((string) $rm['completion_result'])) ?><?php endif; ?></div>
                             </div>
-                            <?php if (!$closed && can('leads.remind')): ?>
+                            <?php if (!$closed && (can_followup_complete() || can_followup_postpone() || can_followup_edit())): ?>
                             <div style="display:flex;gap:6px;align-items:flex-start">
-                                <button type="button" class="btn btn-xs btn-primary" onclick="document.getElementById('cmp<?= $rid ?>').hidden=!document.getElementById('cmp<?= $rid ?>').hidden"><?= icon('check', 'icon-xs') ?>Tamamla</button>
-                                <button type="button" class="btn btn-xs" onclick="document.getElementById('pp<?= $rid ?>').hidden=!document.getElementById('pp<?= $rid ?>').hidden"><?= icon('clock', 'icon-xs') ?>Ertele</button>
-                                <form method="post" action="<?= $actUrl ?>" style="display:inline" onsubmit="return confirm('Takip iptal edilsin mi?')"><?= csrf_field() ?><input type="hidden" name="action" value="reminder_cancel"><input type="hidden" name="id" value="<?= $id ?>"><input type="hidden" name="reminder_id" value="<?= $rid ?>"><button class="btn btn-xs"><?= icon('x', 'icon-xs') ?></button></form>
+                                <?php if (can_followup_complete()): ?><button type="button" class="btn btn-xs btn-primary" onclick="document.getElementById('cmp<?= $rid ?>').hidden=!document.getElementById('cmp<?= $rid ?>').hidden"><?= icon('check', 'icon-xs') ?>Tamamla</button><?php endif; ?>
+                                <?php if (can_followup_postpone()): ?><button type="button" class="btn btn-xs" onclick="document.getElementById('pp<?= $rid ?>').hidden=!document.getElementById('pp<?= $rid ?>').hidden"><?= icon('clock', 'icon-xs') ?>Ertele</button><?php endif; ?>
+                                <?php if (can_followup_edit()): ?><form method="post" action="<?= $actUrl ?>" style="display:inline" onsubmit="return confirm('Takip iptal edilsin mi?')"><?= csrf_field() ?><input type="hidden" name="action" value="reminder_cancel"><input type="hidden" name="id" value="<?= $id ?>"><input type="hidden" name="reminder_id" value="<?= $rid ?>"><button class="btn btn-xs"><?= icon('x', 'icon-xs') ?></button></form><?php endif; ?>
                             </div>
                             <?php endif; ?>
                         </div>
-                        <?php if (!$closed && can('leads.remind')): ?>
+                        <?php if (!$closed && (can_followup_complete() || can_followup_postpone())): ?>
+                        <?php if (can_followup_complete()): ?>
                         <!-- Tamamla formu -->
                         <form method="post" action="<?= $actUrl ?>" id="cmp<?= $rid ?>" hidden style="margin-top:10px;background:var(--surface-2,#f7f8fa);padding:10px;border-radius:6px">
                             <?= csrf_field() ?><input type="hidden" name="action" value="reminder_complete"><input type="hidden" name="id" value="<?= $id ?>"><input type="hidden" name="reminder_id" value="<?= $rid ?>">
@@ -220,6 +221,8 @@ $actTypeLabel = static fn(string $t): string => [
                             </div>
                             <div style="margin-top:8px"><button class="btn btn-sm btn-primary">Tamamla</button></div>
                         </form>
+                        <?php endif; ?>
+                        <?php if (can_followup_postpone()): ?>
                         <!-- Ertele formu -->
                         <form method="post" action="<?= $actUrl ?>" id="pp<?= $rid ?>" hidden style="margin-top:10px;background:var(--surface-2,#f7f8fa);padding:10px;border-radius:6px">
                             <?= csrf_field() ?><input type="hidden" name="action" value="reminder_postpone"><input type="hidden" name="id" value="<?= $id ?>"><input type="hidden" name="reminder_id" value="<?= $rid ?>">
@@ -230,6 +233,7 @@ $actTypeLabel = static fn(string $t): string => [
                             </div>
                             <button class="btn btn-sm">Ertele</button>
                         </form>
+                        <?php endif; ?>
                         <?php endif; ?>
                     </div>
                 <?php endforeach; ?>

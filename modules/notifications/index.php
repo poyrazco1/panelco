@@ -105,8 +105,11 @@ layout_top('Bildirim Merkezi', 'notifications');
                                     <a class="btn btn-xs" href="tel:<?= e($phone) ?>"><?= icon('phone', 'icon-xs') ?>Ara</a>
                                     <a class="btn btn-xs btn-wa" href="https://wa.me/<?= e($waDigits) ?>" target="_blank" rel="noopener"><?= icon('message-circle', 'icon-xs') ?>WhatsApp</a>
                                 <?php endif; ?>
-                                <?php if ($leadRem && (string) $leadRem['status'] !== 'done' && (string) $leadRem['status'] !== 'cancelled' && can('leads.remind')): ?>
+                                <?php $notDone = $leadRem && (string) $leadRem['status'] !== 'done' && (string) $leadRem['status'] !== 'cancelled'; ?>
+                                <?php if ($notDone && can_followup_complete()): ?>
                                     <a class="btn btn-xs" href="<?= e(url('modules/leads/view.php?id=' . $lid . '&tab=reminders')) ?>"><?= icon('check', 'icon-xs') ?>Tamamla</a>
+                                <?php endif; ?>
+                                <?php if ($notDone && can_followup_postpone()): ?>
                                     <?php foreach (['15' => '15dk', '60' => '1 saat', 'tomorrow' => 'Yarın'] as $po => $pl): ?>
                                     <form method="post" action="<?= $leadActUrl ?>" style="display:inline"><?= csrf_field() ?>
                                         <input type="hidden" name="action" value="reminder_postpone"><input type="hidden" name="id" value="<?= $lid ?>">

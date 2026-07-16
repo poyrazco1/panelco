@@ -104,6 +104,22 @@ function lead_reminders_can_see_team(): bool
     return can('leads.team_reminders') || (function_exists('current_permissions') && in_array('all', current_permissions(), true));
 }
 
+/* --------------------------------------------------------------------- *
+ |  §21 İnce takip yetkileri.
+ |  Yeni granüler anahtarlar (leads.followup_*) — eski kaba anahtarlar
+ |  (leads.remind / leads.assign / leads.reports) ve kaba "leads" / "all"
+ |  yetkileri GERİYE DÖNÜK olarak kapsanır; mevcut roller bozulmaz.
+ * --------------------------------------------------------------------- */
+function can_followup_view(): bool          { return can('leads.followup_view')     || can('leads.view'); }
+function can_followup_create(): bool        { return can('leads.followup_create')   || can('leads.remind'); }
+function can_followup_edit(): bool          { return can('leads.followup_edit')     || can('leads.remind'); }
+function can_followup_postpone(): bool      { return can('leads.followup_postpone') || can('leads.remind'); }
+function can_followup_complete(): bool      { return can('leads.followup_complete') || can('leads.remind'); }
+function can_followup_reassign(): bool      { return can('leads.followup_reassign') || can('leads.assign'); }
+function can_followup_reports(): bool       { return can('leads.followup_reports')  || can('leads.reports'); }
+/** Bildirim tercihleri kişiseldir; giriş yapan herkes kendi tercihini yönetir. */
+function can_followup_notif_settings(): bool { return can('leads.notif_settings')   || is_logged_in(); }
+
 /** Takip atanabilecek aktif panel kullanıcıları [user_id => ad]. */
 function lead_assignable_users(): array
 {

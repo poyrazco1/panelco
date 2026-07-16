@@ -54,7 +54,7 @@ switch ($action) {
         break;
 
     case 'reminder':
-        require_action('leads', 'remind');
+        if (!can_followup_create()) { require_permission('leads.followup_create'); }
         $r = lead_reminder_create($id, [
             'reminder_type' => $_POST['reminder_type'] ?? 'call', 'reminder_date' => $_POST['reminder_date'] ?? '',
             'reminder_time' => $_POST['reminder_time'] ?? '', 'priority' => $_POST['priority'] ?? 'normal',
@@ -65,14 +65,14 @@ switch ($action) {
         break;
 
     case 'reminder_postpone':
-        require_action('leads', 'remind');
+        if (!can_followup_postpone()) { require_permission('leads.followup_postpone'); }
         $r = lead_reminder_postpone((int) ($_POST['reminder_id'] ?? 0), (string) ($_POST['postpone'] ?? ''),
             (string) ($_POST['custom_at'] ?? ''), (string) ($_POST['reason'] ?? ''), $uid);
         flash($r['ok'] ? 'success' : 'error', $r['ok'] ? 'Takip ertelendi.' : $r['error']);
         break;
 
     case 'reminder_complete':
-        require_action('leads', 'remind');
+        if (!can_followup_complete()) { require_permission('leads.followup_complete'); }
         $r = lead_reminder_complete((int) ($_POST['reminder_id'] ?? 0), [
             'completion_result' => $_POST['completion_result'] ?? '', 'completion_note' => $_POST['completion_note'] ?? '',
             'contact_person' => $_POST['contact_person'] ?? '', 'new_status' => $_POST['new_status'] ?? '',
@@ -85,13 +85,13 @@ switch ($action) {
         break;
 
     case 'reminder_cancel':
-        require_action('leads', 'remind');
+        if (!can_followup_edit()) { require_permission('leads.followup_edit'); }
         lead_reminder_cancel((int) ($_POST['reminder_id'] ?? 0), $uid, (string) ($_POST['reason'] ?? ''));
         flash('success', 'Takip iptal edildi.');
         break;
 
     case 'reminder_reassign':
-        require_action('leads', 'assign');
+        if (!can_followup_reassign()) { require_permission('leads.followup_reassign'); }
         if (!lead_reminders_can_see_team()) { flash('error', 'Yeniden atama yetkiniz yok.'); break; }
         lead_reminder_reassign((int) ($_POST['reminder_id'] ?? 0), (int) ($_POST['new_user_id'] ?? 0) ?: 0, $uid);
         flash('success', 'Takip yeniden atandı.');

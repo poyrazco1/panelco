@@ -10,7 +10,7 @@ require_once __DIR__ . '/../../includes/permissions.php';
 require_once __DIR__ . '/../../includes/lead_followup_render.php';
 
 auth_boot();
-require_permission('leads.view');
+if (!can_followup_view()) { require_permission('leads.followup_view'); }
 
 $uid    = (int) (current_user_id() ?? 0);
 $counts = lead_reminder_counts($uid, false);

@@ -47,7 +47,7 @@ function lead_followup_row_html(array $r, string $actUrl, string $ret): void
                     <a class="btn btn-xs quick-action-whatsapp" href="https://wa.me/<?= e($waDigits) ?>" target="_blank" rel="noopener" title="WhatsApp"><?= icon('message-circle', 'icon-xs') ?></a>
                 <?php endif; ?>
                 <a class="btn btn-xs" href="<?= e(url('modules/leads/view.php?id=' . $lead)) ?>" title="Lead detayı"><?= icon('eye', 'icon-xs') ?></a>
-                <?php if (!$done && can('leads.remind')): ?>
+                <?php if (!$done && can_followup_complete()): ?>
                     <a class="btn btn-xs btn-primary" href="<?= e(url('modules/leads/view.php?id=' . $lead . '&tab=reminders')) ?>" title="Tamamla (sonuç + not)"><?= icon('check', 'icon-xs') ?>Tamamla</a>
                     <!-- Ulaşılamadı: hızlı tamamlama -->
                     <form method="post" action="<?= $actUrl ?>" style="display:inline" title="Ulaşılamadı olarak işaretle"><?= $csrf ?>
@@ -56,12 +56,22 @@ function lead_followup_row_html(array $r, string $actUrl, string $ret): void
                         <input type="hidden" name="return" value="<?= e($ret) ?>">
                         <button class="btn btn-xs"><?= icon('phone-off', 'icon-xs') ?>Ulaşılamadı</button>
                     </form>
+                <?php endif; ?>
+                <?php if (!$done && can_followup_postpone()): ?>
                     <!-- Ertele: hızlı -->
                     <form method="post" action="<?= $actUrl ?>" style="display:inline-flex;gap:3px" title="Ertele"><?= $csrf ?>
                         <input type="hidden" name="action" value="reminder_postpone"><input type="hidden" name="id" value="<?= $lead ?>">
                         <input type="hidden" name="reminder_id" value="<?= $rid ?>"><input type="hidden" name="return" value="<?= e($ret) ?>">
                         <select name="postpone" class="btn-xs" style="padding:2px"><?php foreach (lead_reminder_postpone_options() as $ok => $ol): if ($ok === 'custom') continue; ?><option value="<?= e($ok) ?>"<?= $ok === '60' ? ' selected' : '' ?>><?= e($ol) ?></option><?php endforeach; ?></select>
                         <button class="btn btn-xs"><?= icon('clock', 'icon-xs') ?>Ertele</button>
+                    </form>
+                    <!-- Yeni Tarih Belirle: özel tarih/saat ile ertele -->
+                    <form method="post" action="<?= $actUrl ?>" style="display:inline-flex;gap:3px" title="Yeni tarih ve saat belirle"><?= $csrf ?>
+                        <input type="hidden" name="action" value="reminder_postpone"><input type="hidden" name="id" value="<?= $lead ?>">
+                        <input type="hidden" name="reminder_id" value="<?= $rid ?>"><input type="hidden" name="return" value="<?= e($ret) ?>">
+                        <input type="hidden" name="postpone" value="custom">
+                        <input type="datetime-local" name="custom_at" class="btn-xs" style="padding:2px" required>
+                        <button class="btn btn-xs"><?= icon('calendar-days', 'icon-xs') ?>Yeni Tarih</button>
                     </form>
                 <?php endif; ?>
             </div>
