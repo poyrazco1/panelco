@@ -786,8 +786,9 @@ function smaint_resolve_customer(array $rec): array
             $c = $st->fetch() ?: null;
         }
         if (!$c && $phone !== '') {
-            $st = db()->prepare('SELECT * FROM customers WHERE is_deleted = 0 AND (phone = :p OR whatsapp = :p) ORDER BY id ASC LIMIT 1');
-            $st->execute([':p' => $phone]);
+            // Not: EMULATE_PREPARES=false → aynı yer tutucu tek sefer kullanılabilir.
+            $st = db()->prepare('SELECT * FROM customers WHERE is_deleted = 0 AND (phone = :p1 OR whatsapp = :p2) ORDER BY id ASC LIMIT 1');
+            $st->execute([':p1' => $phone, ':p2' => $phone]);
             $c = $st->fetch() ?: null;
         }
         if ($c) {
@@ -1167,19 +1168,24 @@ function smaint_reminder_list(array $f = [], array $opts = []): array
         }
     };
 
+    // Not: EMULATE_PREPARES=false → aynı yer tutucu bir sorguda yalnızca bir kez
+    // kullanılabilir; tekrar eden aramalar için ayrı adlar kullanıp aynı değeri bağlıyoruz.
     if (trim((string) ($f['search'] ?? '')) !== '') {
-        $where[] = '(r.customer_name LIKE :q OR r.company_name LIKE :q OR r.phone LIKE :q OR r.whatsapp LIKE :q
-                    OR r.email LIKE :q OR r.serial_no LIKE :q OR r.brand_name LIKE :q OR r.device_model LIKE :q
-                    OR s.reference_code LIKE :q)';
-        $p[':q'] = '%' . trim((string) $f['search']) . '%';
+        $qv = '%' . trim((string) $f['search']) . '%';
+        $where[] = '(r.customer_name LIKE :q1 OR r.company_name LIKE :q2 OR r.phone LIKE :q3 OR r.whatsapp LIKE :q4
+                    OR r.email LIKE :q5 OR r.serial_no LIKE :q6 OR r.brand_name LIKE :q7 OR r.device_model LIKE :q8
+                    OR s.reference_code LIKE :q9)';
+        foreach (['q1','q2','q3','q4','q5','q6','q7','q8','q9'] as $k) { $p[':' . $k] = $qv; }
     }
     if (trim((string) ($f['customer'] ?? '')) !== '') {
-        $where[] = '(r.customer_name LIKE :cust OR r.company_name LIKE :cust)';
-        $p[':cust'] = '%' . trim((string) $f['customer']) . '%';
+        $cv = '%' . trim((string) $f['customer']) . '%';
+        $where[] = '(r.customer_name LIKE :cust1 OR r.company_name LIKE :cust2)';
+        $p[':cust1'] = $cv; $p[':cust2'] = $cv;
     }
     if (trim((string) ($f['phone'] ?? '')) !== '') {
-        $where[] = '(r.phone LIKE :ph OR r.whatsapp LIKE :ph)';
-        $p[':ph'] = '%' . trim((string) $f['phone']) . '%';
+        $pv = '%' . trim((string) $f['phone']) . '%';
+        $where[] = '(r.phone LIKE :ph1 OR r.whatsapp LIKE :ph2)';
+        $p[':ph1'] = $pv; $p[':ph2'] = $pv;
     }
     $like('r.email', 'email');
     $like('r.brand_name', 'brand');
