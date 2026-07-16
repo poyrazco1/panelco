@@ -9,6 +9,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../../includes/permissions.php';
 require_once __DIR__ . '/../../includes/lead_reminders.php';
 require_once __DIR__ . '/../../includes/lead_notifications.php';
+require_once __DIR__ . '/../../includes/service_maintenance_notifications.php';
 
 auth_boot();
 require_login();
@@ -30,6 +31,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'daily_digest'          => $_POST['daily_digest'] ?? 0,
         'show_pending_on_login' => $_POST['show_pending_on_login'] ?? 0,
     ]);
+    smaint_notif_prefs_save($uid, [
+        'maint_enabled'     => $_POST['maint_enabled'] ?? 0,
+        'sound_enabled'     => $_POST['maint_sound_enabled'] ?? 0,
+        'dashboard_enabled' => $_POST['maint_dashboard_enabled'] ?? 0,
+        'soon_enabled'      => $_POST['maint_soon_enabled'] ?? 0,
+        'overdue_enabled'   => $_POST['maint_overdue_enabled'] ?? 0,
+        'digest_enabled'    => $_POST['maint_digest_enabled'] ?? 0,
+    ]);
     flash('success', 'Bildirim tercihleriniz kaydedildi.');
     http_response_code(303);
     redirect('modules/settings/notification-preferences.php');
@@ -37,6 +46,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $p = lead_notif_prefs($uid);
 $chk = static fn(string $k): string => !empty($p[$k]) ? ' checked' : '';
+$mp = smaint_notif_prefs($uid);
+$mchk = static fn(string $k): string => !empty($mp[$k]) ? ' checked' : '';
 
 layout_top('Bildirim Tercihleri', 'settings');
 ?>
@@ -66,6 +77,15 @@ layout_top('Bildirim Tercihleri', 'settings');
         <div class="form-group"><label class="checkbox"><input type="checkbox" name="sound_enabled" value="1"<?= $chk('sound_enabled') ?>> Yeni bildirimde ses çal</label></div>
         <div class="form-group"><label class="checkbox"><input type="checkbox" name="show_pending_on_login" value="1"<?= $chk('show_pending_on_login') ?>> Girişte tamamlanmamış takipleri özet olarak göster</label></div>
         <div class="form-group"><label class="checkbox"><input type="checkbox" name="daily_digest" value="1"<?= $chk('daily_digest') ?>> Günlük takip özeti göster</label></div>
+    </div></div>
+
+    <div class="card" style="max-width:720px"><div class="card-header"><h2>Bakım Hatırlatma Bildirimleri</h2></div><div class="card-body">
+        <div class="form-group"><label class="checkbox"><input type="checkbox" name="maint_enabled" value="1"<?= $mchk('maint_enabled') ?>> Bakım hatırlatma bildirimleri aktif</label></div>
+        <div class="form-group"><label class="checkbox"><input type="checkbox" name="maint_soon_enabled" value="1"<?= $mchk('soon_enabled') ?>> Yaklaşan bakım bildirimi</label></div>
+        <div class="form-group"><label class="checkbox"><input type="checkbox" name="maint_overdue_enabled" value="1"<?= $mchk('overdue_enabled') ?>> Geciken bakım bildirimi</label></div>
+        <div class="form-group"><label class="checkbox"><input type="checkbox" name="maint_digest_enabled" value="1"<?= $mchk('digest_enabled') ?>> Günlük bakım özeti (yarınki bakımlar)</label></div>
+        <div class="form-group"><label class="checkbox"><input type="checkbox" name="maint_dashboard_enabled" value="1"<?= $mchk('dashboard_enabled') ?>> Dashboard'da "Yaklaşan Bakımlar" kartını göster</label></div>
+        <div class="form-group"><label class="checkbox"><input type="checkbox" name="maint_sound_enabled" value="1"<?= $mchk('sound_enabled') ?>> Yeni bakım bildiriminde ses çal</label></div>
     </div></div>
 
     <div class="form-actions" style="max-width:720px"><button type="submit" class="btn btn-primary">Kaydet</button></div>
