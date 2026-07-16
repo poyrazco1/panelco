@@ -9,6 +9,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../../includes/permissions.php';
 require_once __DIR__ . '/../../includes/service_maintenance.php';
 require_once __DIR__ . '/../../includes/service_maintenance_notifications.php';
+require_once __DIR__ . '/../../includes/service_maintenance_comm.php';
 
 auth_boot();
 if (!can_maint_view()) { require_permission('maintenance.view'); }
@@ -98,6 +99,30 @@ switch ($action) {
         if (!can_maint_cancel()) { require_permission('maintenance.cancel'); }
         smaint_cancel_reminder($id, $uid, trim((string) ($_POST['reason'] ?? '')))
             ? flash('success', 'Bakım kaydı iptal edildi.')
+            : flash('error', 'İşlem yapılamadı.');
+        break;
+
+    case 'email_send':
+        if (!can_maint_email()) { require_permission('maintenance.email'); }
+        $subject = trim((string) ($_POST['subject'] ?? ''));
+        $body    = (string) ($_POST['body'] ?? '');
+        $tplName = trim((string) ($_POST['template_name'] ?? '')) ?: null;
+        if ($subject === '' || trim($body) === '') { flash('error', 'Konu ve mesaj boş olamaz.'); break; }
+        $res = smaint_send_email($id, $subject, $body, $tplName, $uid, true);
+        $res['ok'] ? flash('success', 'E-posta gönderildi.') : flash('error', 'E-posta gönderilemedi: ' . $res['msg']);
+        break;
+
+    case 'wa_sent':
+        if (!can_maint_whatsapp()) { require_permission('maintenance.whatsapp'); }
+        $body = (string) ($_POST['body'] ?? '');
+        $res  = smaint_wa_mark_sent($id, $body, $uid, true);
+        $res['ok'] ? flash('success', $res['msg']) : flash('error', $res['msg']);
+        break;
+
+    case 'customer_replied':
+        if (!can_maint_message()) { require_permission('maintenance.message'); }
+        smaint_mark_customer_replied($id, $uid, trim((string) ($_POST['note'] ?? '')))
+            ? flash('success', 'Müşteri cevabı kaydedildi.')
             : flash('error', 'İşlem yapılamadı.');
         break;
 
