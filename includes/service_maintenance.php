@@ -588,3 +588,368 @@ function can_maint_templates(): bool      { return can('maintenance.templates') 
 function can_maint_settings(): bool       { return can('maintenance.settings') || can('settings'); }
 function can_maint_reports(): bool        { return can('maintenance.reports') || can('service') || can('reports'); }
 function can_maint_assign(): bool         { return can('maintenance.assign') || can('service'); }
+
+/* =========================================================================
+ * 6) HATIRLATMA KAYITLARI — okuma / durum / geçmiş
+ * ====================================================================== */
+
+/** Tek bakım hatırlatması. */
+function smaint_reminder_get(int $id): ?array
+{
+    if ($id <= 0) { return null; }
+    smaint_ensure_schema();
+    try {
+        $st = db()->prepare(
+            'SELECT r.*, s.reference_code, s.status AS service_status,
+                    u.full_name AS assignee_name
+             FROM service_maintenance_reminders r
+             LEFT JOIN service_records s ON s.id = r.service_id
+             LEFT JOIN users u ON u.id = r.assigned_user_id
+             WHERE r.id = :id AND r.deleted_at IS NULL LIMIT 1'
+        );
+        $st->execute([':id' => $id]);
+        $row = $st->fetch();
+        return $row ?: null;
+    } catch (Throwable $e) {
+        log_error('smaint_reminder_get: ' . $e->getMessage());
+        return null;
+    }
+}
+
+/** Bir servis kaydına ait bakım hatırlatmaları. */
+function smaint_reminders_for_service(int $serviceId): array
+{
+    if ($serviceId <= 0) { return []; }
+    smaint_ensure_schema();
+    try {
+        $st = db()->prepare(
+            'SELECT * FROM service_maintenance_reminders
+             WHERE service_id = :s AND deleted_at IS NULL
+             ORDER BY id DESC'
+        );
+        $st->execute([':s' => $serviceId]);
+        return $st->fetchAll();
+    } catch (Throwable $e) {
+        log_error('smaint_reminders_for_service: ' . $e->getMessage());
+        return [];
+    }
+}
+
+/** Servise ait aktif (kapanmamış) bakım hatırlatması var mı? */
+function smaint_active_reminder_for_service(int $serviceId): ?array
+{
+    if ($serviceId <= 0) { return null; }
+    smaint_ensure_schema();
+    try {
+        $st = db()->prepare(
+            "SELECT * FROM service_maintenance_reminders
+             WHERE service_id = :s AND deleted_at IS NULL
+               AND status NOT IN ('completed','cancelled','service_opened')
+             ORDER BY id DESC LIMIT 1"
+        );
+        $st->execute([':s' => $serviceId]);
+        $row = $st->fetch();
+        return $row ?: null;
+    } catch (Throwable $e) {
+        log_error('smaint_active_reminder_for_service: ' . $e->getMessage());
+        return null;
+    }
+}
+
+/** Durum geçmişine kayıt ekler (§9). */
+function smaint_status_history_add(int $reminderId, string $old, string $new, string $note, ?int $userId): void
+{
+    try {
+        db()->prepare(
+            'INSERT INTO service_maintenance_status_history (reminder_id, old_status, new_status, note, changed_by)
+             VALUES (:r,:o,:n,:note,:by)'
+        )->execute([
+            ':r' => $reminderId, ':o' => $old, ':n' => $new,
+            ':note' => mb_substr($note, 0, 500), ':by' => $userId,
+        ]);
+    } catch (Throwable $e) {
+        log_error('smaint_status_history_add: ' . $e->getMessage());
+    }
+}
+
+/** Durum geçmişini (kullanıcı adıyla) getirir. */
+function smaint_status_history(int $reminderId, int $limit = 100): array
+{
+    smaint_ensure_schema();
+    try {
+        $st = db()->prepare(
+            'SELECT h.*, u.full_name AS by_name
+             FROM service_maintenance_status_history h
+             LEFT JOIN users u ON u.id = h.changed_by
+             WHERE h.reminder_id = :r ORDER BY h.id DESC LIMIT ' . max(1, min(500, $limit))
+        );
+        $st->execute([':r' => $reminderId]);
+        return $st->fetchAll();
+    } catch (Throwable $e) {
+        log_error('smaint_status_history: ' . $e->getMessage());
+        return [];
+    }
+}
+
+/**
+ * Genel durum değiştirici (tarihçe kaydeder). Terminal alanları (tamamlandı/iptal)
+ * özel fonksiyonlar (smaint_complete_reminder / smaint_cancel_reminder) damgalar.
+ * Bildirimin okunması bu fonksiyonu tetiklemez (§18: okuma ≠ tamamlama).
+ */
+function smaint_set_status(int $id, string $newStatus, ?int $userId, string $note = ''): bool
+{
+    if (!isset(smaint_statuses()[$newStatus])) { return false; }
+    $r = smaint_reminder_get($id);
+    if (!$r) { return false; }
+    $old = (string) $r['status'];
+    if ($old === $newStatus && $note === '') { return true; }
+    try {
+        db()->prepare('UPDATE service_maintenance_reminders SET status = :s WHERE id = :id AND deleted_at IS NULL')
+            ->execute([':s' => $newStatus, ':id' => $id]);
+        if ($old !== $newStatus) {
+            smaint_status_history_add($id, $old, $newStatus, $note, $userId);
+            log_activity('maintenance_status', 'maintenance', $id, (string) ($r['reference_code'] ?? ''), 'success',
+                smaint_status_label($old) . ' → ' . smaint_status_label($newStatus) . ($note !== '' ? ' · ' . $note : ''));
+        }
+        return true;
+    } catch (Throwable $e) {
+        log_error('smaint_set_status: ' . $e->getMessage());
+        return false;
+    }
+}
+
+/** Hatırlatmayı iptal eder (pasife alır) — tarihçe + audit. */
+function smaint_cancel_reminder(int $id, ?int $userId, string $reason = ''): bool
+{
+    $r = smaint_reminder_get($id);
+    if (!$r) { return false; }
+    if (in_array((string) $r['status'], ['completed', 'cancelled'], true)) { return true; }
+    try {
+        db()->prepare(
+            'UPDATE service_maintenance_reminders
+             SET status = \'cancelled\', cancelled_at = NOW(), cancelled_by = :by, cancel_reason = :reason
+             WHERE id = :id AND deleted_at IS NULL'
+        )->execute([':by' => $userId, ':reason' => mb_substr($reason, 0, 500), ':id' => $id]);
+        smaint_status_history_add($id, (string) $r['status'], 'cancelled', $reason, $userId);
+        log_activity('maintenance_cancel', 'maintenance', $id, (string) ($r['reference_code'] ?? ''), 'success', $reason);
+        if (function_exists('smaint_dismiss_notifications')) { smaint_dismiss_notifications($id); }
+        return true;
+    } catch (Throwable $e) {
+        log_error('smaint_cancel_reminder: ' . $e->getMessage());
+        return false;
+    }
+}
+
+/* =========================================================================
+ * 7) SERVİS OLAYLARINDAN BAKIM PLANI ÜRETİMİ (§1, §18)
+ * ====================================================================== */
+
+/** Servis kaydından görünüm alanı anlık kopyası (§2). */
+function smaint_build_snapshot_from_service(array $rec): array
+{
+    $brand = trim((string) ($rec['brand_name'] ?? ''));
+    $phone = trim((string) ($rec['customer_phone'] ?? ''));
+    $email = trim((string) ($rec['customer_email'] ?? ''));
+    $work  = trim((string) ($rec['final_note'] ?? ''));
+    if ($work === '') { $work = trim((string) ($rec['problem_description'] ?? '')); }
+    return [
+        'customer_name' => (string) ($rec['customer_name'] ?? ''),
+        'company_name'  => (string) ($rec['customer_name'] ?? ''),
+        'contact_name'  => null,
+        'phone'         => $phone !== '' ? $phone : null,
+        'whatsapp'      => $phone !== '' ? $phone : null,
+        'email'         => $email !== '' ? $email : null,
+        'brand_name'    => $brand !== '' ? $brand : null,
+        'device_model'  => ($rec['device_model'] ?? '') !== '' ? (string) $rec['device_model'] : null,
+        'serial_no'     => ($rec['serial_no'] ?? '') !== '' ? (string) $rec['serial_no'] : null,
+        'work_done'     => $work !== '' ? $work : null,
+        'description'   => null,
+    ];
+}
+
+/**
+ * Servis kaydı iletişim bilgisinden CRM müşterisini ve izin durumunu çözer.
+ * @return array{id:?int,email_consent:int,whatsapp_consent:int,phone_consent:int}
+ */
+function smaint_resolve_customer(array $rec): array
+{
+    $out = ['id' => null, 'email_consent' => 0, 'whatsapp_consent' => 0, 'phone_consent' => 0];
+    $email = trim((string) ($rec['customer_email'] ?? ''));
+    $phone = trim((string) ($rec['customer_phone'] ?? ''));
+    if ($email === '' && $phone === '') { return $out; }
+    try { smaint_ensure_customer_consent_columns(db()); } catch (Throwable $e) { /* yoksay */ }
+    try {
+        $c = null;
+        if ($email !== '') {
+            $st = db()->prepare('SELECT * FROM customers WHERE is_deleted = 0 AND email = :e ORDER BY id ASC LIMIT 1');
+            $st->execute([':e' => $email]);
+            $c = $st->fetch() ?: null;
+        }
+        if (!$c && $phone !== '') {
+            $st = db()->prepare('SELECT * FROM customers WHERE is_deleted = 0 AND (phone = :p OR whatsapp = :p) ORDER BY id ASC LIMIT 1');
+            $st->execute([':p' => $phone]);
+            $c = $st->fetch() ?: null;
+        }
+        if ($c) {
+            $out['id'] = (int) $c['id'];
+            $revoked  = !empty($c['maint_consent_revoked_at']);
+            $out['email_consent']    = (!$revoked && (int) ($c['maint_email_consent'] ?? 0) === 1) ? 1 : 0;
+            $out['whatsapp_consent'] = (!$revoked && (int) ($c['maint_whatsapp_consent'] ?? 0) === 1) ? 1 : 0;
+            $out['phone_consent']    = (!$revoked && (int) ($c['maint_phone_consent'] ?? 0) === 1) ? 1 : 0;
+        }
+    } catch (Throwable $e) {
+        log_error('smaint_resolve_customer: ' . $e->getMessage());
+    }
+    return $out;
+}
+
+/**
+ * Servis durumu değiştiğinde bakım planını senkronlar.
+ * - delivered → bakım planı oluştur/yenile
+ * - closed (teslim tarihi varsa) → oluştur/yenile; teslim edilmemişse başlatma (§18)
+ * - teslim/kapalı iken geri açılırsa → aktif plan pasife alınır (§1)
+ * Servis akışını asla kırmamalı; çağrı yeri try/catch ile sarılıdır.
+ */
+function smaint_sync_service_reminder(int $serviceId, string $oldStatus, string $newStatus, ?int $userId = null): void
+{
+    smaint_ensure_schema();
+    if (!smaint_is_enabled()) { return; }
+
+    $rec = get_service_record($serviceId);
+    if (!$rec || (int) ($rec['is_deleted'] ?? 0) === 1) { return; }
+
+    $handover = ['delivered', 'closed'];
+    $isHandover  = in_array($newStatus, $handover, true);
+    $wasHandover = in_array($oldStatus, $handover, true);
+
+    if ($isHandover) {
+        $delivered = trim((string) ($rec['delivered_to_customer_at'] ?? ''));
+        $closed    = trim((string) ($rec['closed_at'] ?? ''));
+        // §18: yalnızca kapatılmış ancak teslim edilmemişse bakım başlamaz.
+        if ($newStatus === 'closed' && $delivered === '') { return; }
+        $baseRaw = $delivered !== '' ? $delivered : ($closed !== '' ? $closed : date('Y-m-d'));
+        smaint_create_or_refresh_for_service($rec, $baseRaw, $userId);
+        return;
+    }
+
+    if ($wasHandover && !$isHandover) {
+        smaint_passivate_active_for_service($serviceId, $userId,
+            'Servis kaydı yeniden açıldı; bakım planı pasife alındı.');
+    }
+}
+
+/** Aktif bakım planlarını pasife (iptal) alır — opsiyonel dönem hariç tutma. */
+function smaint_passivate_active_for_service(int $serviceId, ?int $userId, string $reason, ?string $exceptDate = null): int
+{
+    try {
+        $sql = "SELECT id FROM service_maintenance_reminders
+                WHERE service_id = :s AND deleted_at IS NULL
+                  AND status NOT IN ('completed','cancelled','service_opened')";
+        $params = [':s' => $serviceId];
+        if ($exceptDate !== null) { $sql .= ' AND source_delivery_date <> :d'; $params[':d'] = $exceptDate; }
+        $st = db()->prepare($sql);
+        $st->execute($params);
+        $ids = array_map('intval', $st->fetchAll(PDO::FETCH_COLUMN) ?: []);
+        foreach ($ids as $rid) { smaint_cancel_reminder($rid, $userId, $reason); }
+        return count($ids);
+    } catch (Throwable $e) {
+        log_error('smaint_passivate_active_for_service: ' . $e->getMessage());
+        return 0;
+    }
+}
+
+/**
+ * Bir servis + teslim dönemi için bakım planı oluşturur ya da (aynı dönem varsa)
+ * yeniden hesaplar. Aynı anda tek aktif plan kuralını uygular.
+ * @return int reminder id (0 = hata)
+ */
+function smaint_create_or_refresh_for_service(array $rec, string $baseRaw, ?int $userId): int
+{
+    $serviceId = (int) ($rec['id'] ?? 0);
+    if ($serviceId <= 0) { return 0; }
+    $base = substr(trim($baseRaw), 0, 10);
+    if ($base === '') { $base = date('Y-m-d'); }
+
+    $s    = smaint_settings();
+    $due  = smaint_calc_due_date($base, $s);
+    $snap = smaint_build_snapshot_from_service($rec);
+    $cust = smaint_resolve_customer($rec);
+
+    $assigned = (int) ($s['default_assigned_user_id'] ?? 0);
+    if ($assigned <= 0) { $assigned = (int) ($rec['received_by_user_id'] ?? 0); }
+    $assigned = $assigned > 0 ? $assigned : null;
+
+    $periodDays = ($s['default_period_key'] === 'custom') ? (int) $s['default_period_days'] : null;
+
+    try {
+        // Aynı servisin başka dönemdeki aktif planlarını pasife al (§1: tek aktif plan).
+        smaint_passivate_active_for_service($serviceId, $userId,
+            'Yeni teslim tarihine göre bakım planı yenilendi.', $base);
+
+        // Bu dönem için mevcut kayıt?
+        $st = db()->prepare(
+            'SELECT id, status FROM service_maintenance_reminders
+             WHERE service_id = :s AND service_product_id = 0 AND source_delivery_date = :d LIMIT 1'
+        );
+        $st->execute([':s' => $serviceId, ':d' => $base]);
+        $ex = $st->fetch();
+
+        if ($ex) {
+            $exId = (int) $ex['id'];
+            // Bitmiş döngüleri diriltme.
+            if (in_array((string) $ex['status'], ['completed', 'service_opened'], true)) {
+                return $exId;
+            }
+            db()->prepare(
+                'UPDATE service_maintenance_reminders SET
+                    customer_id=:cid, assigned_user_id=:au, delivery_date=:dd, maintenance_due_date=:due,
+                    period_key=:pk, period_days=:pd, status=\'planned\', reminder_stage=\'\',
+                    cancelled_at=NULL, cancelled_by=NULL, cancel_reason=NULL,
+                    email_consent=:ec, whatsapp_consent=:wc, phone_consent=:pc,
+                    customer_name=:cn, company_name=:comp, contact_name=:ctn, phone=:ph, whatsapp=:wa,
+                    email=:em, brand_name=:bn, device_model=:dm, serial_no=:sn, work_done=:wd, description=:desc
+                 WHERE id=:id AND deleted_at IS NULL'
+            )->execute([
+                ':cid' => $cust['id'], ':au' => $assigned, ':dd' => $base, ':due' => $due,
+                ':pk' => $s['default_period_key'], ':pd' => $periodDays,
+                ':ec' => $cust['email_consent'], ':wc' => $cust['whatsapp_consent'], ':pc' => $cust['phone_consent'],
+                ':cn' => $snap['customer_name'], ':comp' => $snap['company_name'], ':ctn' => $snap['contact_name'],
+                ':ph' => $snap['phone'], ':wa' => $snap['whatsapp'], ':em' => $snap['email'],
+                ':bn' => $snap['brand_name'], ':dm' => $snap['device_model'], ':sn' => $snap['serial_no'],
+                ':wd' => $snap['work_done'], ':desc' => $snap['description'], ':id' => $exId,
+            ]);
+            smaint_status_history_add($exId, (string) $ex['status'], 'planned', 'Yeni teslim tarihine göre yeniden hesaplandı.', $userId);
+            log_activity('maintenance_refresh', 'maintenance', $exId, (string) ($rec['reference_code'] ?? ''), 'success',
+                'Bakım tarihi: ' . $due);
+            return $exId;
+        }
+
+        db()->prepare(
+            'INSERT INTO service_maintenance_reminders
+                (service_id, service_product_id, customer_id, assigned_user_id, source_delivery_date,
+                 delivery_date, maintenance_due_date, period_key, period_days, status,
+                 email_consent, whatsapp_consent, phone_consent,
+                 customer_name, company_name, contact_name, phone, whatsapp, email,
+                 brand_name, device_model, serial_no, work_done, description, created_by)
+             VALUES
+                (:s,0,:cid,:au,:src,:dd,:due,:pk,:pd,\'planned\',
+                 :ec,:wc,:pc,:cn,:comp,:ctn,:ph,:wa,:em,:bn,:dm,:sn,:wd,:desc,:by)'
+        )->execute([
+            ':s' => $serviceId, ':cid' => $cust['id'], ':au' => $assigned, ':src' => $base,
+            ':dd' => $base, ':due' => $due, ':pk' => $s['default_period_key'], ':pd' => $periodDays,
+            ':ec' => $cust['email_consent'], ':wc' => $cust['whatsapp_consent'], ':pc' => $cust['phone_consent'],
+            ':cn' => $snap['customer_name'], ':comp' => $snap['company_name'], ':ctn' => $snap['contact_name'],
+            ':ph' => $snap['phone'], ':wa' => $snap['whatsapp'], ':em' => $snap['email'],
+            ':bn' => $snap['brand_name'], ':dm' => $snap['device_model'], ':sn' => $snap['serial_no'],
+            ':wd' => $snap['work_done'], ':desc' => $snap['description'], ':by' => $userId,
+        ]);
+        $id = (int) db()->lastInsertId();
+        smaint_status_history_add($id, '', 'planned', 'Bakım planı oluşturuldu (teslim: ' . $base . ', bakım: ' . $due . ').', $userId);
+        log_activity('maintenance_create', 'maintenance', $id, (string) ($rec['reference_code'] ?? ''), 'success',
+            'Bakım tarihi: ' . $due);
+        return $id;
+    } catch (Throwable $e) {
+        log_error('smaint_create_or_refresh_for_service: ' . $e->getMessage());
+        return 0;
+    }
+}

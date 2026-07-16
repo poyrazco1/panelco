@@ -537,6 +537,15 @@ function update_service_record(int $id, array $d, ?array $file = null): void
 
         if ($current['status'] !== $f['status']) {
             service_log_status($id, $current['status'], $f['status'], 'Kayıt güncellendi');
+            // Düzenleme formundan durum değiştiyse bakım planını da senkronla.
+            // Not: bu yol delivered_to_customer_at / closed_at damgalamaz; hook
+            // taze kaydı okuyup mevcut teslim tarihine göre karar verir.
+            try {
+                require_once __DIR__ . '/service_maintenance.php';
+                smaint_sync_service_reminder($id, (string) $current['status'], (string) $f['status'], current_user_id());
+            } catch (Throwable $e2) {
+                log_error('smaint sync (update_record): ' . $e2->getMessage());
+            }
         }
     } catch (Throwable $e) {
         service_delete_photo($newPhoto);
@@ -561,6 +570,14 @@ function service_change_status(int $id, string $newStatus, ?string $note = null)
         if ($newStatus === 'closed') { $extra = ', closed_at = NOW()'; }
         db()->prepare("UPDATE service_records SET status = :s$extra WHERE id = :id")->execute($bind);
         service_log_status($id, $rec['status'], $newStatus, $note);
+        // Bakım hatırlatma senkronizasyonu (teslim/kapatma → plan; geri açılma → pasif).
+        // Servis akışını kırmaması için ayrı try/catch.
+        try {
+            require_once __DIR__ . '/service_maintenance.php';
+            smaint_sync_service_reminder($id, (string) $rec['status'], $newStatus, current_user_id());
+        } catch (Throwable $e2) {
+            log_error('smaint sync (change_status): ' . $e2->getMessage());
+        }
     } catch (Throwable $e) {
         log_error('service_change_status: ' . $e->getMessage());
         throw new RuntimeException('Durum güncellenemedi.');
