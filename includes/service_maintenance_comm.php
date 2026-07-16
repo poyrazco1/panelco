@@ -287,6 +287,24 @@ function smaint_send_email(int $reminderId, string $subject, string $body, ?stri
     return ['ok' => (bool) $res['ok'], 'msg' => (string) $res['msg'], 'comm_id' => $cid];
 }
 
+/**
+ * Cron için otomatik bakım e-postası (varsayılan/seçili şablonla).
+ * İzin yoksa gönderilmez ($manual=false → smaint_send_email içinde engellenir).
+ * @return array{ok:bool,msg:string,comm_id:int}
+ */
+function smaint_auto_send_email(int $reminderId, ?int $templateId = null): array
+{
+    $r = smaint_reminder_get($reminderId);
+    if (!$r) { return ['ok' => false, 'msg' => 'Kayıt yok.', 'comm_id' => 0]; }
+    $tpl = ($templateId && $templateId > 0) ? smaint_template_get($templateId) : null;
+    if (!$tpl || (int) ($tpl['is_active'] ?? 1) !== 1 || (string) ($tpl['channel'] ?? '') !== 'email') {
+        $tpl = smaint_template_default('email');
+    }
+    $subject = smaint_msg_render((string) ($tpl['subject'] ?? ''), $r);
+    $body    = smaint_msg_render((string) ($tpl['body'] ?? ''), $r);
+    return smaint_send_email($reminderId, $subject, $body, (string) ($tpl['name'] ?? 'Otomatik'), null, false);
+}
+
 /* ---- WhatsApp ---- */
 
 /** wa.me bağlantısı (uluslararası format + urlencode). */

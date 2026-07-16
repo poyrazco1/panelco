@@ -56,6 +56,7 @@ require_once $root . '/includes/db.php';
 require_once $root . '/includes/helpers.php';
 require_once $root . '/includes/service_maintenance.php';
 require_once $root . '/includes/service_maintenance_notifications.php';
+require_once $root . '/includes/service_maintenance_comm.php';
 
 $logFile = $lockDir . '/cron_service_maintenance.log';
 $started = microtime(true);
@@ -67,7 +68,7 @@ $cronLog = static function (string $msg) use ($logFile): void {
 
 $today       = date('Y-m-d');
 $markedOver  = 0; $markedToday = 0; $markedUpcoming = 0;
-$notifs      = 0; $digest = 0; $errors = 0;
+$notifs      = 0; $digest = 0; $errors = 0; $emailsSent = 0;
 
 try {
     smaint_ensure_schema();
@@ -80,6 +81,15 @@ try {
     }
 
     $s = smaint_settings();
+
+    // Otomatik e-posta ölçütü (§6, §13): ayar açık + manuel onay gerekmiyor + kanal açık.
+    // İzin kontrolü smaint_send_email içinde yapılır ($manual=false → izinsiz gönderilmez).
+    $autoEmail = (int) ($s['auto_email_enabled'] ?? 0) === 1
+        && (int) ($s['manual_email_approval'] ?? 1) === 0
+        && (int) ($s['email_enabled'] ?? 1) === 1;
+    $maxRem = (int) ($s['max_reminders'] ?? 3);
+    $overdueReremind = (int) ($s['overdue_reremind'] ?? 1) === 1;
+    $emailTplId = (int) ($s['email_template_id'] ?? 0) ?: null;
 
     // ---- 4) Durum bakımı ----
     $markedOver     = smaint_mark_overdue();
@@ -106,6 +116,18 @@ try {
                 $notifs++;
             }
         }
+        // Otomatik e-posta: bakım günü ('due') ve (ayar açıksa) gecikme aşamalarında;
+        // izinli müşteriye, maksimum hatırlatma sınırı aşılmadıysa.
+        if ($autoEmail
+            && ($stage === 'due' || (($stage === 'o7' || $stage === 'o30') && $overdueReremind))
+            && ($maxRem <= 0 || (int) ($r['reminder_count'] ?? 0) < $maxRem)
+            && (int) ($r['email_consent'] ?? 0) === 1
+            && trim((string) ($r['email'] ?? '')) !== ''
+        ) {
+            $er = smaint_auto_send_email($rid, $emailTplId);
+            if (!empty($er['ok'])) { $emailsSent++; }
+        }
+
         // Bildirim üretilmese de aşamayı ilerlet (tekrar denenmesin).
         smaint_set_reminder_stage($rid, $stage);
     }
@@ -133,14 +155,15 @@ smaint_cron_log_write([
     'due_marked'     => $markedToday,
     'overdue_marked' => $markedOver,
     'notifications_created' => $notifs + $digest,
+    'emails_sent'    => $emailsSent,
     'errors'         => $errors,
     'duration_ms'    => $elapsedMs,
-    'detail'         => sprintf('yaklasan=%d bugun=%d gecikti=%d bildirim=%d ozet=%d',
-        $markedUpcoming, $markedToday, $markedOver, $notifs, $digest),
+    'detail'         => sprintf('yaklasan=%d bugun=%d gecikti=%d bildirim=%d ozet=%d eposta=%d',
+        $markedUpcoming, $markedToday, $markedOver, $notifs, $digest, $emailsSent),
 ]);
 
-$cronLog(sprintf('bitti · yaklasan=%d · bugun=%d · gecikti=%d · bildirim=%d · ozet=%d · hata=%d · sure=%dms',
-    $markedUpcoming, $markedToday, $markedOver, $notifs, $digest, $errors, $elapsedMs));
+$cronLog(sprintf('bitti · yaklasan=%d · bugun=%d · gecikti=%d · bildirim=%d · ozet=%d · eposta=%d · hata=%d · sure=%dms',
+    $markedUpcoming, $markedToday, $markedOver, $notifs, $digest, $emailsSent, $errors, $elapsedMs));
 
 $releaseLock();
 exit($errors > 0 ? 1 : 0);

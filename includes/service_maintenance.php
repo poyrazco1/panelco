@@ -1021,6 +1021,7 @@ function smaint_reminders_for_stage_notice(int $limit = 2000): array
         $st = db()->prepare(
             "SELECT r.id, r.assigned_user_id, r.maintenance_due_date, r.reminder_stage, r.status,
                     r.customer_name, r.company_name, r.brand_name, r.device_model, r.serial_no,
+                    r.email, r.email_consent, r.reminder_count,
                     u.is_active AS assignee_active
              FROM service_maintenance_reminders r
              INNER JOIN service_records s ON s.id = r.service_id AND s.is_deleted = 0
