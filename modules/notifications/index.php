@@ -36,7 +36,9 @@ $unread = get_unread_notification_count($uid);
 $canDetails = notif_can_see_details();
 
 $typeIcon = ['leave' => 'calendar-check', 'birthday' => 'gift', 'anniversary' => 'user-check', 'system' => 'info',
-    'lead_followup_soon' => 'bell-ring', 'lead_followup_due' => 'bell-ring', 'lead_followup_overdue' => 'alarm-clock'];
+    'lead_followup_soon' => 'bell-ring', 'lead_followup_due' => 'bell-ring', 'lead_followup_overdue' => 'alarm-clock',
+    'service_maintenance_soon' => 'wrench', 'service_maintenance_due' => 'wrench',
+    'service_maintenance_overdue' => 'alarm-clock', 'service_maintenance_digest' => 'wrench'];
 $leadActUrl = e(url('modules/leads/lead-action.php'));
 
 layout_top('Bildirim Merkezi', 'notifications');

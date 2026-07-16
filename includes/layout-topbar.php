@@ -31,7 +31,9 @@ $notifUid = current_user_id();
 $notifUnread = $notifUid ? get_unread_notification_count((int) $notifUid) : 0;
 $notifRecent = $notifUid ? get_user_notifications((int) $notifUid, 8) : [];
 $notifTypeIcon = ['leave' => 'calendar-check', 'birthday' => 'gift', 'anniversary' => 'user-check', 'system' => 'info',
-    'lead_followup_soon' => 'bell-ring', 'lead_followup_due' => 'bell-ring', 'lead_followup_overdue' => 'alarm-clock'];
+    'lead_followup_soon' => 'bell-ring', 'lead_followup_due' => 'bell-ring', 'lead_followup_overdue' => 'alarm-clock',
+    'service_maintenance_soon' => 'wrench', 'service_maintenance_due' => 'wrench',
+    'service_maintenance_overdue' => 'alarm-clock', 'service_maintenance_digest' => 'wrench'];
 $notifLastId  = $notifUid ? latest_notification_id((int) $notifUid) : 0;
 $notifPrefs   = $notifUid ? lead_notif_prefs((int) $notifUid) : lead_notif_pref_defaults();
 ?>

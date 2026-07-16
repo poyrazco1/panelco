@@ -656,6 +656,13 @@ function delete_service_record(int $id, ?int $userId = null): void
         }
         $pdo->commit();
         log_activity('service_record_delete_success', 'service', $id, $ref, 'success');
+        // Silinen servis için bakım planlarını pasife al (§18).
+        try {
+            require_once __DIR__ . '/service_maintenance.php';
+            smaint_on_service_deleted($id, $uid);
+        } catch (Throwable $e2) {
+            log_error('smaint on_service_deleted: ' . $e2->getMessage());
+        }
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) { $pdo->rollBack(); }
         log_error('delete_service_record: ' . $e->getMessage());

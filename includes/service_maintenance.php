@@ -953,3 +953,193 @@ function smaint_create_or_refresh_for_service(array $rec, string $baseRaw, ?int 
         return 0;
     }
 }
+
+/**
+ * Servis kaydı silindiğinde bakım planlarını pasife alır (§18: silinen servis
+ * için yeni bildirim üretilmez). service.php delete_service_record içinden
+ * güvenli şekilde çağrılır.
+ */
+function smaint_on_service_deleted(int $serviceId, ?int $userId): void
+{
+    smaint_ensure_schema();
+    smaint_passivate_active_for_service($serviceId, $userId, 'Servis kaydı silindi; bakım planı pasife alındı.');
+}
+
+/* =========================================================================
+ * 8) CRON — durum bakımı + aşamalı bildirim üretimi (§3, §12)
+ * ====================================================================== */
+
+/** Bakım tarihi geçmiş (sistem durumundaki) kayıtları "Gecikti" işaretler. */
+function smaint_mark_overdue(): int
+{
+    try {
+        $st = db()->prepare(
+            "UPDATE service_maintenance_reminders SET status = 'overdue'
+             WHERE deleted_at IS NULL AND status IN ('planned','upcoming','today')
+               AND maintenance_due_date < CURDATE()"
+        );
+        $st->execute();
+        return $st->rowCount();
+    } catch (Throwable $e) { log_error('smaint_mark_overdue: ' . $e->getMessage()); return 0; }
+}
+
+/** Bakım tarihi bugün olan kayıtları "Bugün" işaretler. */
+function smaint_mark_today(): int
+{
+    try {
+        $st = db()->prepare(
+            "UPDATE service_maintenance_reminders SET status = 'today'
+             WHERE deleted_at IS NULL AND status IN ('planned','upcoming')
+               AND maintenance_due_date = CURDATE()"
+        );
+        $st->execute();
+        return $st->rowCount();
+    } catch (Throwable $e) { log_error('smaint_mark_today: ' . $e->getMessage()); return 0; }
+}
+
+/** Bakım tarihi 30 gün içinde olan planlı kayıtları "Yaklaşıyor" işaretler. */
+function smaint_mark_upcoming(int $windowDays = 30): int
+{
+    try {
+        $st = db()->prepare(
+            "UPDATE service_maintenance_reminders SET status = 'upcoming'
+             WHERE deleted_at IS NULL AND status = 'planned'
+               AND maintenance_due_date > CURDATE()
+               AND maintenance_due_date <= (CURDATE() + INTERVAL :w DAY)"
+        );
+        $st->bindValue(':w', max(1, $windowDays), PDO::PARAM_INT);
+        $st->execute();
+        return $st->rowCount();
+    } catch (Throwable $e) { log_error('smaint_mark_upcoming: ' . $e->getMessage()); return 0; }
+}
+
+/** Bildirim üretmeye aday (terminal olmayan, servisi silinmemiş) kayıtlar. */
+function smaint_reminders_for_stage_notice(int $limit = 2000): array
+{
+    smaint_ensure_schema();
+    try {
+        $st = db()->prepare(
+            "SELECT r.id, r.assigned_user_id, r.maintenance_due_date, r.reminder_stage, r.status,
+                    r.customer_name, r.company_name, r.brand_name, r.device_model, r.serial_no,
+                    u.is_active AS assignee_active
+             FROM service_maintenance_reminders r
+             INNER JOIN service_records s ON s.id = r.service_id AND s.is_deleted = 0
+             LEFT JOIN users u ON u.id = r.assigned_user_id
+             WHERE r.deleted_at IS NULL
+               AND r.status NOT IN ('completed','cancelled','service_opened','not_interested')
+               AND r.maintenance_due_date <= (CURDATE() + INTERVAL 30 DAY)
+             ORDER BY r.maintenance_due_date ASC
+             LIMIT " . max(1, min(5000, $limit))
+        );
+        $st->execute();
+        return $st->fetchAll();
+    } catch (Throwable $e) { log_error('smaint_reminders_for_stage_notice: ' . $e->getMessage()); return []; }
+}
+
+/** Bir kaydın bugüne göre ulaştığı en son ETKİN aşamayı döndürür (yoksa null). */
+function smaint_applicable_stage(string $dueDate, array $s, ?string $today = null): ?string
+{
+    $due = substr(trim($dueDate), 0, 10);
+    if ($due === '') { return null; }
+    try {
+        $d = new DateTime($due);
+        $t = new DateTime($today ?? date('Y-m-d'));
+    } catch (Throwable $e) { return null; }
+    $applicable = null;
+    foreach (smaint_stages() as $key => [$label, $offset, $flag]) {
+        if ((int) ($s[$flag] ?? 1) !== 1) { continue; }
+        $trigger = (clone $d)->modify(($offset >= 0 ? '+' : '') . $offset . ' days');
+        if ($t >= $trigger) { $applicable = $key; }
+    }
+    return $applicable;
+}
+
+/** reminder_stage ilerletir (mükerrer bildirim engeli). */
+function smaint_set_reminder_stage(int $id, string $stage): void
+{
+    try {
+        db()->prepare('UPDATE service_maintenance_reminders SET reminder_stage = :s WHERE id = :id')
+            ->execute([':s' => $stage, ':id' => $id]);
+    } catch (Throwable $e) { log_error('smaint_set_reminder_stage: ' . $e->getMessage()); }
+}
+
+/** Aşamaya göre bildirim başlık/mesaj/tür üretir. @return array{0:string,1:string,2:string} */
+function smaint_stage_message(array $r, string $stage): array
+{
+    $who = trim((string) ($r['company_name'] ?? '')) !== ''
+        ? (string) $r['company_name'] : (string) ($r['customer_name'] ?? 'Müşteri');
+    $device = trim(((string) ($r['brand_name'] ?? '')) . ' ' . ((string) ($r['device_model'] ?? '')));
+    if ($device === '') { $device = 'cihaz'; }
+    $due = substr((string) ($r['maintenance_due_date'] ?? ''), 0, 10);
+
+    if (in_array($stage, ['o7', 'o30'], true)) {
+        $days = 0;
+        try { $days = (int) (new DateTime('today'))->diff(new DateTime($due))->format('%r%a'); } catch (Throwable $e) {}
+        $late = abs($days);
+        return [
+            'Geciken bakım',
+            $who . ' — ' . $device . ' cihazının bakım hatırlatması ' . $late . ' gündür gecikmiş.',
+            'service_maintenance_overdue',
+        ];
+    }
+    if ($stage === 'due') {
+        return [
+            'Bakım zamanı geldi',
+            $who . ' firmasının ' . $device . ' cihazı için bakım zamanı geldi (' . $due . ').',
+            'service_maintenance_due',
+        ];
+    }
+    // d30 / d15 / d7
+    return [
+        'Yaklaşan bakım',
+        $who . ' — ' . $device . ' cihazının periyodik bakım tarihi yaklaşıyor (' . $due . ').',
+        'service_maintenance_soon',
+    ];
+}
+
+/** Yarın bakımı olan kayıtları kullanıcıya göre gruplar (günlük özet). */
+function smaint_due_tomorrow_by_user(): array
+{
+    smaint_ensure_schema();
+    try {
+        $st = db()->query(
+            "SELECT r.assigned_user_id AS uid, COUNT(*) AS c
+             FROM service_maintenance_reminders r
+             INNER JOIN service_records s ON s.id = r.service_id AND s.is_deleted = 0
+             WHERE r.deleted_at IS NULL AND r.assigned_user_id IS NOT NULL
+               AND r.status NOT IN ('completed','cancelled','service_opened','not_interested')
+               AND r.maintenance_due_date = (CURDATE() + INTERVAL 1 DAY)
+             GROUP BY r.assigned_user_id"
+        );
+        return $st->fetchAll();
+    } catch (Throwable $e) { log_error('smaint_due_tomorrow_by_user: ' . $e->getMessage()); return []; }
+}
+
+/** Bakım kaydı görüntüleme URL'i (panel içi). */
+function smaint_view_url(int $reminderId): string
+{
+    return 'modules/maintenance/view.php?id=' . $reminderId;
+}
+
+/** Cron çalışma özetini service_maintenance_cron_logs tablosuna yazar. */
+function smaint_cron_log_write(array $d): void
+{
+    try {
+        db()->prepare(
+            'INSERT INTO service_maintenance_cron_logs
+                (upcoming_found, due_marked, overdue_marked, notifications_created, emails_sent, errors, duration_ms, detail)
+             VALUES (:uf,:dm,:om,:nc,:es,:er,:du,:de)'
+        )->execute([
+            ':uf' => (int) ($d['upcoming_found'] ?? 0),
+            ':dm' => (int) ($d['due_marked'] ?? 0),
+            ':om' => (int) ($d['overdue_marked'] ?? 0),
+            ':nc' => (int) ($d['notifications_created'] ?? 0),
+            ':es' => (int) ($d['emails_sent'] ?? 0),
+            ':er' => (int) ($d['errors'] ?? 0),
+            ':du' => (int) ($d['duration_ms'] ?? 0),
+            ':de' => isset($d['detail']) ? mb_substr((string) $d['detail'], 0, 2000) : null,
+        ]);
+    } catch (Throwable $e) {
+        log_error('smaint_cron_log_write: ' . $e->getMessage());
+    }
+}
